@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { hasStarted } from "./stats";
 import { bets, challengeParticipants, challenges, rankSnapshots } from "@drizzle/schema";
 
 const amsterdamDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam" });
@@ -46,6 +47,10 @@ export async function getWeeklyStandings(challengeId: string): Promise<WeeklySta
   ]);
 
   if (!challenge) return [];
+  // Before the challenge goes live nobody has a balance yet, so every row
+  // would read as -€10.000. There's also no week to have won.
+  if (!hasStarted(challenge.status)) return [];
+
   const baselineByUser = new Map(baseline.map((s) => [s.userId, s.balance]));
   // Stakes in open bets left the balance at placement but aren't losses yet.
   const openStakeByUser = new Map<string, number>();

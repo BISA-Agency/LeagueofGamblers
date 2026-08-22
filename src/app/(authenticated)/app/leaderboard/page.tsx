@@ -5,6 +5,7 @@ import { UserAvatar } from "@/components/profile/user-avatar";
 import { UsernameWithFlag } from "@/components/profile/username-with-flag";
 import { Countdown } from "@/components/challenges/countdown";
 import { LeaderboardAutoRefresh } from "@/components/leaderboard/auto-refresh";
+import { LeaderboardTabs } from "@/components/leaderboard/leaderboard-tabs";
 import { getActiveParticipation } from "@/lib/challenges/active";
 import { hasStarted } from "@/lib/challenges/stats";
 import { db } from "@/lib/db";
@@ -26,9 +27,19 @@ export default async function LeaderboardPage() {
 
   if (!participation) {
     return (
-      <div className="mx-auto max-w-md px-4 py-24 text-center">
-        <h1 className="text-lg font-semibold">Leaderboard</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Je doet nog niet mee aan een challenge.</p>
+      <div className="mx-auto max-w-2xl space-y-5 px-4 py-6">
+        <h1 className="text-xl font-semibold tracking-tight">Leaderboard</h1>
+        <LeaderboardTabs active="challenge" />
+        <p className="text-sm text-muted-foreground">
+          Je doet nog niet mee aan een challenge. Bekijk zolang de{" "}
+          <Link
+            href="/app/leaderboard/records"
+            className="text-accent-brand underline underline-offset-2"
+          >
+            records aller tijden
+          </Link>
+          .
+        </p>
       </div>
     );
   }
@@ -57,6 +68,8 @@ export default async function LeaderboardPage() {
           <h1 className="text-xl font-semibold tracking-tight">Leaderboard</h1>
           <p className="text-sm text-muted-foreground">{challenge.name}</p>
         </div>
+
+        <LeaderboardTabs active="challenge" />
 
         <div className="rounded-xl border border-border bg-card p-5 text-center">
           <p className="text-sm text-muted-foreground">De challenge begint over</p>
@@ -148,7 +161,9 @@ export default async function LeaderboardPage() {
         </Link>
       </div>
 
-      <div className="overflow-x-auto">
+      <LeaderboardTabs active="challenge" />
+
+      <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm tabular-nums">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted-foreground">
