@@ -4,6 +4,21 @@ Keuzes die ik onderweg heb gemaakt, met motivatie. Zie PLAN.md §12.7.
 
 ## Fase 0
 
+**Gebruikersnaam max. 24 tekens i.p.v. 20 (expliciete keuze van de opdrachtgever).**
+Spec zegt "3–20 tekens"; op 2026-08-22 gevraagd om ruimte voor
+`professional_risktaker` (22 tekens). Geen per-gebruiker uitzondering
+gemaakt (dat kan niet — de lengte zit in een tabelbrede DB-check-constraint),
+in plaats daarvan de limiet voor iedereen verhoogd naar 24. DB-constraint,
+Zod-validatie en de onboarding-UI zijn samen aangepast.
+
+**`/auth/confirm` moet zowel PKCE `?code=` als `?token_hash=&type=` links afhandelen.**
+Pas ontdekt bij écht testen tegen het live Supabase-project: dit project
+gebruikt de PKCE-auth-flow, dus de magic-link e-mail bevat `?code=`, niet het
+`token_hash`-formaat dat de route eerst alleen afhandelde — waardoor elke
+échte linkklik naar `/login?error=invalid_link` liep. Zie ook
+`project_auth_followups` in memory voor de nog openstaande bug rond de
+handmatig ingevoerde 6-cijferige code (die blijft falen, ook na deze fix).
+
 **Next.js 16 in plaats van 15.**
 `create-next-app@latest` installeerde 16.3.2 — de spec noemt versie 15,
 vermoedelijk simpelweg de laatste versie op het moment van schrijven. 16 is nu
