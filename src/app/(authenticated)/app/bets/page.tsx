@@ -27,11 +27,19 @@ export default async function BetsPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-semibold tracking-tight">Mijn bets</h1>
-        <Button asChild size="sm" className="h-11">
-          <Link href="/app/bets/proof">+ Bewijsbet</Link>
-        </Button>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/app/bets/field"
+            className="shrink-0 text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            Het veld
+          </Link>
+          <Button asChild size="sm" className="h-11">
+            <Link href="/app/bets/proof">+ Bewijsbet</Link>
+          </Button>
+        </div>
       </div>
 
       {myBets.length === 0 && (

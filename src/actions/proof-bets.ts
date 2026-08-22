@@ -7,6 +7,7 @@ import { z } from "zod";
 import { logActivity } from "@/lib/activity/log";
 import { db } from "@/lib/db";
 import { amsterdamLocalToUtc } from "@/lib/datetime";
+import { RateLimitError, assertBetRateLimit } from "@/lib/rate-limit";
 import { runPostSettlementChecks } from "@/lib/settlement/after-settlement";
 import { checkAndMarkBust, voidAndRefundBet } from "@/lib/settlement/execute";
 import { uploadProofScreenshot, validateScreenshotFile } from "@/lib/storage/screenshots";
@@ -95,6 +96,13 @@ export async function createProofBet(
   const stake = Math.round(stakeRaw * 100) / 100;
   const totalOdds = selections.reduce((acc, s) => acc * s.odds, 1);
   const potentialPayout = Math.round(stake * totalOdds * 100) / 100;
+
+  try {
+    await assertBetRateLimit(user.id);
+  } catch (err) {
+    if (err instanceof RateLimitError) return { error: err.message };
+    throw err;
+  }
 
   let betId: string;
   try {
@@ -213,14 +221,52 @@ export async function settleProofBetSelf(betId: string, status: "won" | "lost" |
   revalidatePath("/app/bets");
 }
 
-export async function flagBet(betId: string, reason: string) {
+export type FlagBetState = { error?: string; ok?: boolean };
+
+export async function flagBet(
+  betId: string,
+  _prevState: FlagBetState,
+  formData: FormData
+): Promise<FlagBetState> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  if (!reason.trim()) throw new Error("Geef een reden op.");
 
-  await db.insert(betFlags).values({ betId, flaggedBy: user.id, reason: reason.trim() });
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (reason.length < 5) return { error: "Geef kort aan wat er niet klopt (min. 5 tekens)." };
+
+  const bet = await db.query.bets.findFirst({
+    where: eq(bets.id, betId),
+    columns: { id: true, userId: true, challengeId: true },
+  });
+  if (!bet) return { error: "Bet niet gevonden." };
+  if (bet.userId === user.id) return { error: "Je kunt je eigen bet niet betwisten." };
+
+  // Only someone playing the same challenge has standing to dispute a bet.
+  const participant = await db.query.challengeParticipants.findFirst({
+    where: and(
+      eq(challengeParticipants.challengeId, bet.challengeId),
+      eq(challengeParticipants.userId, user.id)
+    ),
+    columns: { userId: true },
+  });
+  if (!participant) return { error: "Je doet niet mee aan deze challenge." };
+
+  const existing = await db.query.betFlags.findFirst({
+    where: and(
+      eq(betFlags.betId, betId),
+      eq(betFlags.flaggedBy, user.id),
+      eq(betFlags.status, "open")
+    ),
+    columns: { id: true },
+  });
+  if (existing) return { error: "Je hebt deze bet al betwist — een admin kijkt ernaar." };
+
+  await db.insert(betFlags).values({ betId, flaggedBy: user.id, reason });
+
   revalidatePath("/app/bets");
+  revalidatePath("/app/bets/field");
+  return { ok: true };
 }

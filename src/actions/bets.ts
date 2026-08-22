@@ -4,6 +4,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { RateLimitError, assertBetRateLimit } from "@/lib/rate-limit";
 import { bets, betSelections, challengeParticipants, events, markets, outcomes } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
@@ -76,6 +77,13 @@ export async function placeSportsbookBet(
     (min, r) => (r.eventStartsAt < min ? r.eventStartsAt : min),
     rows[0].eventStartsAt
   );
+
+  try {
+    await assertBetRateLimit(user.id);
+  } catch (err) {
+    if (err instanceof RateLimitError) return { error: err.message };
+    throw err;
+  }
 
   try {
     await db.transaction(async (tx) => {

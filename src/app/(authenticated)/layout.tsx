@@ -1,6 +1,7 @@
 import { and, count, eq, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { UnpaidBuyInBanner } from "@/components/challenges/unpaid-buy-in-banner";
 import { BottomNav } from "@/components/nav/bottom-nav";
 import { Sidebar } from "@/components/nav/sidebar";
 import { NotificationBell } from "@/components/notifications/notification-bell";
@@ -37,6 +38,7 @@ export default async function AuthenticatedLayout({
           </Link>
           <NotificationBell unreadCount={unread.n} />
         </header>
+        <UnpaidBuyInBanner userId={user.id} />
         <main className="flex-1 pb-20 md:pb-0">{children}</main>
       </div>
       <BottomNav username={profile.username} />
