@@ -10,6 +10,11 @@ import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Home" };
 
+const money = new Intl.NumberFormat("nl-NL", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
 export default async function AppHomePage() {
   const supabase = await createClient();
   const {
@@ -17,19 +22,18 @@ export default async function AppHomePage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  // `all` is every challenge the player is in (the list below); `active` is
-  // the one the header switcher points at, which drives the feed.
+  // `active` is the challenge the header switcher points at; it drives the
+  // timeline. Other participations show as compact links underneath.
   const { active, all: participations } = await getActiveParticipation(user.id);
   const activeParticipation = active?.status === "active" ? active : null;
+  const otherParticipations = participations.filter(
+    (p) => p.challengeId !== active?.challengeId
+  );
 
-  return (
-    <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Welkom terug</h1>
-        <p className="text-sm text-muted-foreground">Hier zie je je saldo, rank en de laatste activiteit.</p>
-      </div>
-
-      {participations.length === 0 ? (
+  if (participations.length === 0) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
+        <h1 className="text-xl font-semibold tracking-tight">Welkom bij League of Gamblers</h1>
         <Card>
           <CardHeader>
             <CardTitle>Je doet nog nergens aan mee</CardTitle>
@@ -43,58 +47,83 @@ export default async function AppHomePage() {
             </Button>
           </div>
         </Card>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-3">
-            <Button asChild variant="outline" className="h-11">
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl space-y-5 px-4 py-6">
+      {active && (
+        <div className="rounded-lg border border-border p-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <Link
+                href={`/app/challenge/${active.challenge.slug}`}
+                className="text-lg font-semibold tracking-tight hover:underline"
+              >
+                {active.challenge.name}
+              </Link>
+              {active.status === "active" ? (
+                <p className="text-sm text-muted-foreground">
+                  Saldo{" "}
+                  <span className="font-medium tabular-nums text-foreground">
+                    €{money.format(active.balance)}
+                  </span>
+                </p>
+              ) : active.paidBuyIn ? (
+                <p className="text-sm text-muted-foreground">Nog niet gestart</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">Je inleg is nog niet geregistreerd</p>
+              )}
+            </div>
+            <div className="shrink-0 text-right">
+              {active.status === "active" && (
+                <Countdown label="Nog" target={active.challenge.endAt.toISOString()} />
+              )}
+              <Link
+                href="/app/bets"
+                className="text-xs text-muted-foreground underline underline-offset-2"
+              >
+                Mijn bets
+              </Link>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Button asChild variant="outline" size="sm" className="h-11">
               <Link href="/app/sportsbook">Sportsbook</Link>
             </Button>
-            <Button asChild variant="outline" className="h-11">
+            <Button asChild variant="outline" size="sm" className="h-11">
               <Link href="/app/bets/proof">Bewijsbet</Link>
             </Button>
           </div>
-          <div className="space-y-3">
-            {participations.map((p) => (
-              <Card key={p.challengeId}>
-                <CardHeader>
-                  <div className="flex items-center justify-between gap-2">
-                    <CardTitle>
-                      <Link href={`/app/challenge/${p.challenge.slug}`} className="hover:underline">
-                        {p.challenge.name}
-                      </Link>
-                    </CardTitle>
-                    <Link
-                      href="/app/bets"
-                      className="text-xs text-muted-foreground underline underline-offset-2"
-                    >
-                      Mijn bets
-                    </Link>
-                  </div>
-                  <CardDescription>
-                    {p.status === "joined" && !p.paidBuyIn
-                      ? "Je inleg is nog niet geregistreerd"
-                      : `Saldo: €${p.balance.toLocaleString("nl-NL")}`}
-                  </CardDescription>
-                  {p.status === "active" && (
-                    <Countdown label="Nog" target={p.challenge.endAt.toISOString()} />
-                  )}
-                </CardHeader>
-              </Card>
-            ))}
-          </div>
+        </div>
+      )}
 
-          {activeParticipation && (
-            <>
-              <BetOfTheDay challengeId={activeParticipation.challengeId} />
-              <section className="space-y-2">
-                <h2 className="text-sm font-medium text-muted-foreground">Activiteit</h2>
-                <ActivityFeed
-                  challengeId={activeParticipation.challengeId}
-                  currentUserId={user.id}
-                />
-              </section>
-            </>
-          )}
+      {otherParticipations.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Ook actief in:{" "}
+          {otherParticipations.map((p, i) => (
+            <span key={p.challengeId}>
+              {i > 0 && ", "}
+              <Link
+                href={`/app/challenge/${p.challenge.slug}`}
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                {p.challenge.name}
+              </Link>
+            </span>
+          ))}{" "}
+          — wissel via de kiezer bovenin.
+        </p>
+      )}
+
+      {activeParticipation && (
+        <>
+          <BetOfTheDay challengeId={activeParticipation.challengeId} />
+          <section className="space-y-3">
+            <h2 className="text-sm font-medium text-muted-foreground">Het veld</h2>
+            <ActivityFeed challengeId={activeParticipation.challengeId} currentUserId={user.id} />
+          </section>
         </>
       )}
     </div>

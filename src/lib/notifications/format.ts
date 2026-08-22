@@ -40,6 +40,12 @@ export function formatNotification(notification: Notification): FormattedNotific
         body: null,
         href: payload.username ? `/app/profile/${payload.username}` : null,
       };
+    case "feed_reply":
+      return {
+        title: `${payload.username ?? "Iemand"} reageerde op je bericht`,
+        body: payload.text ? String(payload.text) : null,
+        href: "/app",
+      };
     default:
       return { title: notification.type, body: null, href: null };
   }

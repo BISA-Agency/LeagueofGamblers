@@ -71,6 +71,13 @@
       "when": 1787404131594,
       "tag": "0009_messy_magik",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787404867954,
+      "tag": "0010_gorgeous_fixer",
+      "breakpoints": true
     }
   ]
 }

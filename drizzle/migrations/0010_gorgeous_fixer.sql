@@ -1,0 +1,2 @@
+ALTER TABLE "activity_feed" ADD COLUMN "parent_id" uuid;--> statement-breakpoint
+ALTER TABLE "activity_feed" ADD CONSTRAINT "activity_feed_parent_id_activity_feed_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."activity_feed"("id") ON DELETE cascade ON UPDATE no action;

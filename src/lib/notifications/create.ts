@@ -1,7 +1,11 @@
 import { db } from "@/lib/db";
 import { notifications } from "@drizzle/schema";
 
-export type NotificationType = "rank_update" | "mission_completed" | "new_follower";
+export type NotificationType =
+  | "rank_update"
+  | "mission_completed"
+  | "new_follower"
+  | "feed_reply";
 
 export type NewNotificationInput = {
   userId: string;

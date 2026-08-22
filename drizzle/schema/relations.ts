@@ -149,6 +149,12 @@ export const activityFeedRelations = relations(activityFeed, ({ one, many }) => 
   challenge: one(challenges, { fields: [activityFeed.challengeId], references: [challenges.id] }),
   user: one(profiles, { fields: [activityFeed.userId], references: [profiles.id] }),
   reactions: many(feedReactions),
+  parent: one(activityFeed, {
+    fields: [activityFeed.parentId],
+    references: [activityFeed.id],
+    relationName: "thread",
+  }),
+  replies: many(activityFeed, { relationName: "thread" }),
 }));
 
 export const feedReactionsRelations = relations(feedReactions, ({ one }) => ({

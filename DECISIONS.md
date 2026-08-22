@@ -2,6 +2,44 @@
 
 Keuzes die ik onderweg heb gemaakt, met motivatie. Zie PLAN.md §12.7.
 
+## Feedback-ronde na Fase 2 (2026-08-22)
+
+**Open bets tellen niet als verlies.** Bij plaatsen gaat de inzet van het
+saldo af, dus `saldo − startsaldo` liet geld in open bets als verlies zien.
+Overal waar W/V getoond wordt (leaderboard, head-to-head, wrapped,
+weekwinnaar) wordt de open inzet nu teruggeteld. De ránking blijft op kaal
+saldo — dat is de §5.2-regel ("hoogste saldo wint"), en inzetten die nog
+kunnen verdampen horen daar niet in mee.
+
+**Missies zijn gesplitst in twee soorten.** Het schema kon dit al
+(`challenge_id` null = challenge-loos), maar het onderscheid bestond
+nergens. Nu: League of Gamblers-missies zijn carrière-breed, één keer ooit
+te behalen en geven alleen XP; challenge-missies horen bij één challenge en
+zijn de enige die geld kunnen uitkeren (uit het missiebudget van die
+challenge). De completion-check voor LoG-missies kijkt over challenges heen
+— voorheen zou "Eerste winst" in elke nieuwe challenge opnieuw uitbetalen.
+Tijdgebonden types (profit_day e.d.) kunnen geen LoG-missie zijn: ze lezen
+een challenge-saldo.
+
+**Chat zit ín de activity feed, niet ernaast.** Chatberichten zijn
+activity_feed-rijen met type `chat`; een `parent_id` (één niveau diep, een
+reply op een reply klapt terug naar dezelfde thread) maakt van elk
+tijdlijn-item een gespreksstarter. Daardoor kun je direct onder iemands
+verloren bet reageren — het gevraagde "elkaars bets zien en erover praten"
+— en werken de bestaande emoji-reacties automatisch ook op chatberichten.
+Een aparte chattabel had twee tijdlijnen opgeleverd die naast elkaar
+gemerged moesten worden. Reply → in-app-notificatie voor de threadstarter.
+Max 280 tekens, max 10 berichten/minuut (in de database geteld).
+
+**Land als ISO-code, vlag als emoji.** Geen vlag-assets: twee regional
+indicator-codepoints vormen de vlag, `Intl.DisplayNames` levert de
+Nederlandse naam. De lijst is bewust gecureerd (~50 landen) — een dropdown
+met 250 landen maakt het normale geval slechter; uitbreiden is één code in
+`lib/countries.ts`.
+
+**Bookmaker weg uit het bewijsbet-formulier.** Op verzoek — de screenshot
+toont de bookmaker toch al. Kolom blijft bestaan voor oude rijen.
+
 ## Fase 1 — gaten dichten (na Fase 2)
 
 **Challenge afsluiten is een admin-actie, geen cron.**
