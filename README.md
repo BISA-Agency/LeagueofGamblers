@@ -93,13 +93,24 @@ Na een wijziging aan `public/icon.svg`:
 npm run icons:generate
 ```
 
-## Later (Fase 1+)
+## Cron (Vercel)
 
-- `ODDS_API_KEY` — The Odds API, gratis tier (500 credits/maand). Nog niet
-  gebruikt.
-- `CRON_SECRET` — beveiligt de `/api/cron/*` routes zodra die bestaan.
-- Vercel-deploy + Vercel Cron voor de wekelijkse odds-import, dagelijkse
-  uitslagen en snapshots — nog niet ingericht.
+`vercel.json` registreert drie cron-routes, beveiligd met `CRON_SECRET`
+(zet die env var in je Vercel-project — Vercel stuurt 'm dan automatisch mee
+als `Authorization: Bearer ...` header, precies wat de routes verwachten):
+
+- `/api/cron/status-transitions` — elk uur: challenges open→live/live→settling
+  op datum.
+- `/api/cron/results` — dagelijks 06:00 UTC: uitslagen ophalen + auto-settlen.
+- `/api/cron/odds-import` — wekelijks maandag 08:00 UTC (≈ 10:00
+  Europe/Amsterdam in de zomer, 09:00 in de winter — Vercel cron kent geen
+  tijdzones, dus dit verschuift 1 uur rond de klokwissel).
+
+Lokaal testen zonder Vercel: `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/status-transitions`.
+
+Nog niet gebouwd: een cron voor tijdgebonden missies (`profit_day`,
+`survive`, ...) — die missietypes zijn pas Fase 2-scope, dus die route zou nu
+niets te doen hebben.
 
 ## Testen
 
