@@ -6,23 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MISSION_TYPE_OPTIONS } from "@/lib/missions/admin-fields";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 const initialState: CreateMissionState = {};
 
-const TYPES = [
-  { value: "win_odds_min", label: "Win met minimale odds", paramLabel: "Minimale odds (bijv. 20)" },
-  { value: "win_streak", label: "Winstreak", paramLabel: "Aantal op rij (bijv. 5)" },
-  { value: "combi_win", label: "Combi winnen", paramLabel: "Minimaal aantal selecties (bijv. 4)" },
-  { value: "manual", label: "Handmatig (admin kent toe)", paramLabel: null },
-];
-
 export function NewMissionForm({ challengeId }: { challengeId: string }) {
   const action = createMission.bind(null, challengeId);
   const [state, formAction, pending] = useActionState(action, initialState);
-  const [type, setType] = useState("win_odds_min");
-  const selectedType = TYPES.find((t) => t.value === type)!;
+  const [type, setType] = useState(MISSION_TYPE_OPTIONS[0].value);
+  const selectedType = MISSION_TYPE_OPTIONS.find((t) => t.value === type)!;
 
   return (
     <form action={formAction} className="space-y-4">
@@ -41,7 +35,7 @@ export function NewMissionForm({ challengeId }: { challengeId: string }) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {TYPES.map((t) => (
+            {MISSION_TYPE_OPTIONS.map((t) => (
               <SelectItem key={t.value} value={t.value}>
                 {t.label}
               </SelectItem>
@@ -49,10 +43,21 @@ export function NewMissionForm({ challengeId }: { challengeId: string }) {
           </SelectContent>
         </Select>
       </div>
-      {selectedType.paramLabel && (
-        <div className="space-y-2">
-          <Label htmlFor="paramValue">{selectedType.paramLabel}</Label>
-          <Input id="paramValue" name="paramValue" type="number" step="0.01" required className="h-11 tabular-nums" />
+      {selectedType.params.length > 0 && (
+        <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${selectedType.params.length}, 1fr)` }}>
+          {selectedType.params.map((field) => (
+            <div key={field.key} className="space-y-2">
+              <Label htmlFor={`param_${field.key}`}>{field.label}</Label>
+              <Input
+                id={`param_${field.key}`}
+                name={`param_${field.key}`}
+                type={field.type === "number" ? "number" : "text"}
+                step={field.type === "number" ? "0.01" : undefined}
+                required
+                className="h-11 tabular-nums"
+              />
+            </div>
+          ))}
         </div>
       )}
       <div className="space-y-2">

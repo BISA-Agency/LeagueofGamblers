@@ -7,6 +7,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { awardMission } from "@/lib/missions/engine";
+import { MISSION_TYPE_OPTIONS } from "@/lib/missions/admin-fields";
 import { missionCompletions, missions, type MissionAppliesTo } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
@@ -18,12 +19,6 @@ async function requireAdmin() {
   if (!user || !isAdminEmail(user.email)) redirect("/login");
   return user;
 }
-
-const PARAM_KEY_BY_TYPE: Record<string, string> = {
-  win_odds_min: "minOdds",
-  win_streak: "count",
-  combi_win: "minSelections",
-};
 
 export type CreateMissionState = { error?: string };
 
@@ -38,7 +33,6 @@ export async function createMission(
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const appliesTo = String(formData.get("appliesTo") ?? "both") as MissionAppliesTo;
-  const paramValue = formData.get("paramValue");
   const rewardAmountRaw = formData.get("rewardAmount");
   const rewardXpRaw = formData.get("rewardXp");
   const maxWinnersRaw = formData.get("maxWinners");
@@ -48,8 +42,15 @@ export async function createMission(
   if (!title || title.length < 3) return { error: "Titel moet minimaal 3 tekens zijn." };
   if (!description) return { error: "Omschrijving is verplicht." };
 
-  const paramKey = PARAM_KEY_BY_TYPE[type];
-  const params = paramKey && paramValue ? { [paramKey]: Number(paramValue) } : {};
+  const typeOption = MISSION_TYPE_OPTIONS.find((t) => t.value === type);
+  if (!typeOption) return { error: "Onbekend missietype." };
+
+  const params: Record<string, string | number> = {};
+  for (const field of typeOption.params) {
+    const raw = formData.get(`param_${field.key}`);
+    if (raw === null || raw === "") return { error: `${field.label} is verplicht.` };
+    params[field.key] = field.type === "number" ? Number(raw) : String(raw);
+  }
 
   await db.insert(missions).values({
     challengeId,
