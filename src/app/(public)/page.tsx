@@ -63,15 +63,18 @@ export default function LandingPage() {
           <span className="text-lg font-semibold tracking-tight">
             League of <span className="text-accent-brand">Gamblers</span>
           </span>
-          <nav className="flex items-center gap-1 sm:gap-3">
+          <nav className="flex items-center gap-1 sm:gap-2">
             <Link
               href="/rules"
               className="hidden h-11 items-center px-3 text-sm text-muted-foreground hover:text-foreground sm:flex"
             >
               Spelregels
             </Link>
-            <Button asChild size="sm" className="h-11">
+            <Button asChild size="sm" variant="ghost" className="h-11">
               <Link href="/login">Inloggen</Link>
+            </Button>
+            <Button asChild size="sm" className="h-11">
+              <Link href="/login?mode=register">Account maken</Link>
             </Button>
           </nav>
         </div>
@@ -99,13 +102,13 @@ export default function LandingPage() {
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row md:justify-start">
                 <Button asChild size="lg" className="h-12 text-base">
-                  <Link href="/login">
+                  <Link href="/login?mode=register">
                     {hero.primaryCta}
                     <ArrowRight className="size-4" />
                   </Link>
                 </Button>
                 <Button asChild size="lg" variant="outline" className="h-12 text-base">
-                  <Link href="/rules">{hero.secondaryCta}</Link>
+                  <Link href="/login">{hero.secondaryCta}</Link>
                 </Button>
               </div>
               <p className="mt-4 text-xs text-muted-foreground">{hero.note}</p>
@@ -285,7 +288,7 @@ export default function LandingPage() {
             <p className="mt-4 text-muted-foreground text-pretty">{finalCta.body}</p>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Button asChild size="lg" className="h-12 text-base">
-                <Link href="/login">
+                <Link href="/login?mode=register">
                   {finalCta.primary}
                   <ArrowRight className="size-4" />
                 </Link>

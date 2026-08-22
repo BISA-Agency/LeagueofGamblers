@@ -11,9 +11,10 @@ import { JoinButton } from "./join-button";
 export const metadata: Metadata = { title: "Challenges" };
 
 const STATUS_LABEL: Record<string, string> = {
-  open: "Open voor inschrijving",
+  open: "Open",
   live: "Bezig",
   settling: "Wordt afgerond",
+  finished: "Afgelopen",
 };
 
 const money = new Intl.NumberFormat("nl-NL", {
@@ -35,8 +36,10 @@ export default async function ChallengesPage() {
 
   const [allChallenges, myParticipations, prizeTiers] = await Promise.all([
     db.query.challenges.findMany({
-      where: (c, { inArray }) => inArray(c.status, ["open", "live", "settling"]),
-      orderBy: (c, { asc }) => asc(c.startAt),
+      // Everything except drafts: what's running, what you can still join,
+      // and what's already been decided.
+      where: (c, { ne }) => ne(c.status, "draft"),
+      orderBy: (c, { desc }) => desc(c.startAt),
       with: { participants: { with: { user: { columns: { username: true, avatarUrl: true } } } } },
     }),
     user
@@ -49,20 +52,50 @@ export default async function ChallengesPage() {
 
   const joinedIds = new Set(myParticipations.map((p) => p.challengeId));
 
+  const groups = [
+    {
+      key: "open",
+      title: "Open voor inschrijving",
+      hint: "Meld je aan voordat de challenge begint.",
+      items: allChallenges.filter((c) => c.status === "open"),
+    },
+    {
+      key: "running",
+      title: "Nu bezig",
+      hint: "Deze lopen — inschrijving is gesloten.",
+      items: allChallenges.filter((c) => c.status === "live" || c.status === "settling"),
+    },
+    {
+      key: "done",
+      title: "Afgelopen",
+      hint: null,
+      items: allChallenges.filter((c) => c.status === "finished"),
+    },
+  ].filter((g) => g.items.length > 0);
+
   return (
-    <div className="mx-auto max-w-2xl space-y-5 px-4 py-6">
+    <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Challenges</h1>
         <p className="text-sm text-muted-foreground">
-          Doe mee met een lopende of binnenkort startende challenge.
+          Alles wat loopt, binnenkort begint of al is afgelopen.
         </p>
       </div>
 
-      {allChallenges.length === 0 && (
-        <p className="text-sm text-muted-foreground">Er zijn nog geen open challenges.</p>
+      {groups.length === 0 && (
+        <p className="text-sm text-muted-foreground">Er zijn nog geen challenges.</p>
       )}
 
-      {allChallenges.map((challenge) => {
+      {groups.map((group) => (
+        <section key={group.key} className="space-y-3">
+          <div>
+            <h2 className="text-sm font-medium text-muted-foreground">
+              {group.title} ({group.items.length})
+            </h2>
+            {group.hint && <p className="text-xs text-muted-foreground/70">{group.hint}</p>}
+          </div>
+
+          {group.items.map((challenge) => {
         const joined = joinedIds.has(challenge.id);
         const stats = getChallengeStats(
           challenge,
@@ -78,11 +111,11 @@ export default async function ChallengesPage() {
             <div className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h2 className="truncate text-lg font-semibold tracking-tight">
+                  <h3 className="truncate text-lg font-semibold tracking-tight">
                     <Link href={`/c/${challenge.slug}`} className="hover:underline">
                       {challenge.name}
                     </Link>
-                  </h2>
+                  </h3>
                   <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
                     <CalendarDays className="size-3.5 shrink-0" />
                     <span className="tabular-nums">
@@ -147,13 +180,19 @@ export default async function ChallengesPage() {
                   </span>
                   <JoinButton challengeId={challenge.id} />
                 </>
-              ) : (
-                <span className="text-sm text-muted-foreground">Inschrijving gesloten</span>
-              )}
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    {challenge.status === "finished"
+                      ? "Afgelopen"
+                      : "Inschrijving gesloten"}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+        </section>
+      ))}
     </div>
   );
 }

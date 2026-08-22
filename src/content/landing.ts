@@ -6,9 +6,9 @@ export const hero = {
   title: "€10.000 virtueel.\nEén maand.\nHoogste saldo wint de pot.",
   subtitle:
     "Zet je vriendengroep tegen elkaar op in een maand vol bets, trash talk en één winnaar. Je speelt met virtueel geld — de inleg regel je onderling.",
-  primaryCta: "Start je eigen challenge",
-  secondaryCta: "Bekijk de spelregels",
-  note: "Gratis · geen creditcard · inloggen met alleen je e-mail",
+  primaryCta: "Gratis account maken",
+  secondaryCta: "Ik heb al een account",
+  note: "Geen wachtwoord nodig — je logt in met een code per e-mail",
 };
 
 export const stats = [
@@ -204,8 +204,8 @@ export const faq = {
 
 export const finalCta = {
   title: "Klaar om je vriendengroep wakker te schudden?",
-  body: "Maak een challenge, stuur de link rond en kijk wie er over een maand nog praat.",
-  primary: "Start je eigen challenge",
+  body: "Maak een account, stuur de link rond en kijk wie er over een maand nog praat.",
+  primary: "Gratis account maken",
   secondary: "Eerst de regels lezen",
 };
 

@@ -20,12 +20,12 @@ export function BottomNav({ username }: { username: string }) {
               <Link
                 href={item.href}
                 className={cn(
-                  "flex h-full min-h-11 flex-col items-center justify-center gap-1 text-[11px]",
+                  "flex h-full min-h-11 flex-col items-center justify-center gap-1 px-0.5 text-[10px] leading-none",
                   active ? "text-accent-brand" : "text-muted-foreground"
                 )}
               >
-                <Icon className="size-5" />
-                {item.label}
+                <Icon className="size-5 shrink-0" />
+                <span className="max-w-full truncate">{item.shortLabel ?? item.label}</span>
               </Link>
             </li>
           );
