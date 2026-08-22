@@ -12,6 +12,8 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
     "db:seed-sportsbook": "tsx scripts/seed-sportsbook.ts",
+    "db:seed-demo-state": "tsx scripts/seed-demo-state.ts",
+    "screenshots": "tsx scripts/screenshots.ts",
     "db:apply-sql": "tsx scripts/apply-sql.ts",
     "icons:generate": "node scripts/generate-icons.mjs"
   },

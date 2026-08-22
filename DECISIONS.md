@@ -2,6 +2,41 @@
 
 Keuzes die ik onderweg heb gemaakt, met motivatie. Zie PLAN.md §12.7.
 
+## Fase 2b — Landingspagina (2026-08-22)
+
+**Eerst een demo-toestand, dan pas screenshots.** `scripts/seed-demo-state.ts`
+zet veertien dagen bethistorie neer met een vaste seed: uiteenlopende
+saldo's, dagsnapshots (zodat de veldgrafiek en sparklines echte curves
+tonen), een tijdlijn met chatthreads en een paar badges. Screenshots van een
+lege app verkopen niets; dit is ook meteen de snelste manier om zelf een
+challenge halverwege te bekijken.
+
+**Twee interactieve blokken in plaats van alleen plaatjes.** De spec vroeg om
+screenshots, maar wat overtuigt is zelf iets doen: een speelbare bet slip
+(combi bouwen, winst ziet meebewegen, dezelfde regel dat twee selecties uit
+één wedstrijd niet kan) en een potcalculator. Die calculator roept de échte
+`calculatePrizeSplit` aan, dus het bedrag op de landingspagina kan niet
+uiteenlopen met wat de app straks uitkeert.
+
+**Alleen de actieve tab rendert zijn screenshot.** next/image laadt lazy, dus
+afbeeldingen in verborgen tabpanelen werden sowieso nooit opgehaald — vijf
+telefoonscreenshots eager laden is die milliseconde niet waard. Het frame
+houdt een vaste beeldverhouding, zodat wisselen niets verschuift (CLS 0).
+
+**Twee echte bugs die de Lighthouse-run boven water haalde.** De middleware
+matcher sloot statische bestanden niet uit: `/robots.txt` werd naar `/login`
+geredirect, en — vervelender — de image-optimizer haalde
+`/screenshots/*.png` via de app op en kreeg diezelfde login-redirect terug,
+waardoor de hero-afbeelding in productie een 400 gaf. De matcher negeert nu
+alles met een bestandsextensie. Daarna: performance 90, toegankelijkheid
+100, best practices 100, SEO 100.
+
+**Vlaggen op Windows.** De landvlaggen zijn regional-indicator-emoji. iOS en
+Android tonen een vlag, Windows toont bewust de twee letters (NL). Dat is
+een platformkeuze van Microsoft, geen bug; een eigen SVG-vlaggenset is die
+afhankelijkheid niet waard voor een detail dat op de doelgroep-telefoons
+gewoon klopt.
+
 ## Feedback-ronde na Fase 2 (2026-08-22)
 
 **Open bets tellen niet als verlies.** Bij plaatsen gaat de inzet van het
