@@ -2,6 +2,7 @@ import { and, desc, eq, isNull, ne, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   bets,
+  challengeParticipants,
   missionCompletions,
   missions,
   payments,
@@ -104,9 +105,18 @@ export async function evaluateMissionsForSettledBet(betId: string) {
       if (winnerCount >= mission.maxWinners) continue;
     }
 
-    const ctx: MissionCheckContext = { bet, recentSettledBets: [] };
+    const ctx: MissionCheckContext = { bet, recentSettledBets: [], currentBalance: null };
     if (definition.needsHistory) {
       ctx.recentSettledBets = await getRecentSettledBets(bet);
+    }
+    if (definition.needsBalance) {
+      const participant = await db.query.challengeParticipants.findFirst({
+        where: and(
+          eq(challengeParticipants.challengeId, bet.challengeId),
+          eq(challengeParticipants.userId, bet.userId)
+        ),
+      });
+      ctx.currentBalance = participant?.balance ?? null;
     }
 
     if (definition.check(ctx, mission.params)) {
@@ -120,5 +130,6 @@ async function getRecentSettledBets(bet: Bet, limit = 50) {
     where: and(eq(bets.userId, bet.userId), eq(bets.challengeId, bet.challengeId), ne(bets.status, "open")),
     orderBy: desc(bets.settledAt),
     limit,
+    with: { selections: true },
   });
 }

@@ -2,19 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LevelProgressBar } from "@/components/profile/level-progress-bar";
 import { cn } from "@/lib/utils";
 import { getNavItems, isNavItemActive } from "./nav-items";
 
-export function Sidebar({ username }: { username: string }) {
+export function Sidebar({ username, xp }: { username: string; xp: number }) {
   const pathname = usePathname();
   const items = getNavItems(username);
 
   return (
     <aside className="hidden w-60 shrink-0 border-r border-border md:flex md:flex-col">
-      <div className="px-5 py-6">
+      <div className="space-y-4 px-5 py-6">
         <Link href="/app" className="text-lg font-semibold tracking-tight">
           League of <span className="text-accent-brand">Gamblers</span>
         </Link>
+        <LevelProgressBar xp={xp} />
       </div>
       <nav className="flex-1 px-3">
         <ul className="space-y-1">

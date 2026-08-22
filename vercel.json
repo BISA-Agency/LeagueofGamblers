@@ -2,6 +2,7 @@
   "crons": [
     { "path": "/api/cron/status-transitions", "schedule": "0 * * * *" },
     { "path": "/api/cron/results", "schedule": "0 6 * * *" },
-    { "path": "/api/cron/odds-import", "schedule": "0 8 * * 1" }
+    { "path": "/api/cron/odds-import", "schedule": "0 8 * * 1" },
+    { "path": "/api/cron/snapshots", "schedule": "5 22 * * *" }
   ]
 }

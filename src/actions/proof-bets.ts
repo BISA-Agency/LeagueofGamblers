@@ -115,6 +115,7 @@ export async function createProofBet(
           kind: "proof",
           type: selections.length > 1 ? "combi" : "single",
           stake,
+          wasAllIn: stake === participant.balance,
           totalOdds,
           potentialPayout,
           eventStart: earliestStart,

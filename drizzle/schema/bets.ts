@@ -1,4 +1,4 @@
-import { numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { money } from "./_helpers";
 import { challenges } from "./challenges";
 import { profiles } from "./profiles";
@@ -46,6 +46,10 @@ export const bets = pgTable("bets", {
   kind: betKindEnum("kind").notNull(),
   type: betTypeEnum("type").notNull(),
   stake: money("stake").notNull(),
+  // Captured at placement time (stake === balance right before it was
+  // deducted) — needed for the all_in_win mission type, which can't be
+  // reconstructed later since balance isn't kept as a historical ledger.
+  wasAllIn: boolean("was_all_in").notNull().default(false),
   totalOdds: numeric("total_odds", { precision: 10, scale: 3, mode: "number" }).notNull(),
   potentialPayout: money("potential_payout").notNull(),
   status: betStatusEnum("status").notNull().default("open"),

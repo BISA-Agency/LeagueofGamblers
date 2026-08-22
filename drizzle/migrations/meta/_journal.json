@@ -36,6 +36,20 @@
       "when": 1787369105614,
       "tag": "0004_yielding_wolf_cub",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787369374603,
+      "tag": "0005_flimsy_madripoor",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787369548455,
+      "tag": "0006_true_daredevil",
+      "breakpoints": true
     }
   ]
 }

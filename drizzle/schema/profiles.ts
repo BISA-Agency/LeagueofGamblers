@@ -15,8 +15,10 @@ export const profiles = pgTable(
     statusText: text("status_text"),
     favoriteClub: text("favorite_club"),
     favoriteSport: text("favorite_sport"),
+    // Level/title are derived from xp (see lib/levels.ts), not stored — a
+    // stored column would drift out of sync with xp the moment level
+    // thresholds change.
     xp: integer("xp").notNull().default(0),
-    level: integer("level").notNull().default(1),
     rulesAcceptedAt: timestamp("rules_accepted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

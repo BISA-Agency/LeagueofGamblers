@@ -57,19 +57,25 @@ export default async function AppHomePage() {
           <div className="space-y-3">
             {participations.map((p) => (
               <Card key={p.challengeId}>
-                <CardHeader>
-                  <div className="flex items-center justify-between gap-2">
-                    <CardTitle>{p.challenge.name}</CardTitle>
-                    <Link href="/app/bets" className="text-xs text-muted-foreground underline underline-offset-2">
-                      Mijn bets
-                    </Link>
-                  </div>
-                  <CardDescription>
-                    {p.status === "joined" && !p.paidBuyIn
-                      ? "Je inleg is nog niet geregistreerd"
-                      : `Saldo: €${p.balance.toLocaleString("nl-NL")}`}
-                  </CardDescription>
-                </CardHeader>
+                <Link href={`/app/challenge/${p.challenge.slug}`}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between gap-2">
+                      <CardTitle>{p.challenge.name}</CardTitle>
+                      <Link
+                        href="/app/bets"
+                        className="text-xs text-muted-foreground underline underline-offset-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Mijn bets
+                      </Link>
+                    </div>
+                    <CardDescription>
+                      {p.status === "joined" && !p.paidBuyIn
+                        ? "Je inleg is nog niet geregistreerd"
+                        : `Saldo: €${p.balance.toLocaleString("nl-NL")}`}
+                    </CardDescription>
+                  </CardHeader>
+                </Link>
               </Card>
             ))}
           </div>

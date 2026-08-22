@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BadgeIcon } from "@/components/badges/badge-icon";
+import { LevelProgressBar } from "@/components/profile/level-progress-bar";
 import { UserAvatar } from "@/components/profile/user-avatar";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
@@ -62,6 +63,8 @@ export default async function ProfilePage({
         )}
       </div>
 
+      <LevelProgressBar xp={profile.xp} />
+
       {profile.bio && <p className="text-sm">{profile.bio}</p>}
 
       {profile.badges.length > 0 && (
@@ -93,12 +96,6 @@ export default async function ProfilePage({
         <div>
           <dt className="text-muted-foreground">Lid sinds</dt>
           <dd>{memberSinceFormatter.format(profile.createdAt)}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Level</dt>
-          <dd className="tabular-nums">
-            {profile.level} · {profile.xp} XP
-          </dd>
         </div>
         {activeParticipation && (
           <>

@@ -101,6 +101,7 @@ export async function placeSportsbookBet(
           kind: "sportsbook",
           type: rows.length > 1 ? "combi" : "single",
           stake,
+          wasAllIn: stake === participant.balance,
           totalOdds,
           potentialPayout,
           eventStart: earliestStart,
