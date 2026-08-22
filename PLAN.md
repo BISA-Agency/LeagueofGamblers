@@ -122,20 +122,20 @@ league-of-gamblers/
 
 ## 2. Fase 0 — Fundament (dag 1–2)
 
-- [ ] Next.js 15 project scaffolden (App Router, TypeScript strict, Tailwind, ESLint)
-- [ ] shadcn/ui installeren + basis-componenten (button, input, card, sheet, dialog, tabs, badge, avatar, skeleton)
-- [ ] Design tokens: dark theme (zinc-950/neutral-950), accentkleur als theme-token met **twee varianten (lime/goud)** wisselbaar via config, rood voor verlies, Geist/Inter font, `tabular-nums` utility
-- [ ] Git repo initialiseren, eerste commit, `.gitignore`
-- [ ] Supabase project koppelen (env vars), Drizzle config + eerste migratie-pipeline werkend
-- [ ] `profiles` schema + Supabase Auth (magic link/OTP) + middleware voor sessie-refresh
-- [ ] Onboarding-flow: gebruikersnaam (citext uniek, regex, niet wijzigbaar tijdens lopende challenge), avatar (upload of gegenereerd), favoriete club/sport, regels-checkbox → `rules_accepted_at`
-- [ ] `/rules`-pagina, v1-tekst (NL, wordt later aangevuld naarmate features klaar zijn)
-- [ ] Navigatie: bottom nav (mobiel, 5 items) + sidebar (desktop), responsive shell in `(app)/layout.tsx`
-- [ ] `challenges` + `challenge_participants` schema, admin CRUD (minimaal), open-challenges lijst + joinen
-- [ ] PWA manifest + LoG favicon/icons
-- [ ] Seed-script v1 (profiles + challenge + participants, uitgebreid per volgende fases)
-- [ ] `.env.example`, README met Supabase/Vercel/cron setup-stappen
-- [ ] Getest op 375px en 1440px
+- [x] Next.js scaffolden (App Router, TypeScript strict, Tailwind, ESLint) — 16.3.2 i.p.v. 15, zie DECISIONS.md
+- [x] shadcn/ui installeren + basis-componenten (button, input, card, sheet, dialog, tabs, badge, avatar, skeleton, ...)
+- [x] Design tokens: dark theme (enige thema), accentkleur als theme-token met **twee varianten (lime/goud)** wisselbaar via `NEXT_PUBLIC_ACCENT_THEME`, profit/loss-tokens, Geist font, globale `tabular-nums`
+- [x] Git repo initialiseren, eerste commits, `.gitignore`
+- [x] Drizzle config + eerste migratie-pipeline werkend (schema + migratie klaar; nog niet uitgevoerd tegen een echte Supabase-database — dat kan pas met jouw projectgegevens)
+- [x] `profiles` schema + Supabase Auth (magic link/OTP) + middleware voor sessie-refresh
+- [x] Onboarding-flow: gebruikersnaam (citext uniek, regex), gegenereerde avatar (echte upload volgt in Fase 1), favoriete club/sport, regels-checkbox → `rules_accepted_at`
+- [x] `/rules`-pagina, v1-tekst (NL)
+- [x] Navigatie: bottom nav (mobiel, 5 items) + sidebar (desktop), responsive shell
+- [x] `challenges` + `challenge_participants` schema, admin CRUD (minimaal), open-challenges lijst + joinen
+- [x] PWA manifest + LoG favicon/icons
+- [x] Seed-script v1 (profiles + challenge + participants) — nog niet uitgevoerd, vereist een echt Supabase-project
+- [x] `.env.example`, README met Supabase/cron setup-stappen
+- [~] Getest op 375px en 1440px — publieke pagina's (landing, regels, login) geverifieerd met Playwright-screenshots, build + lint groen. Pagina's achter login/DB (onboarding, app/*, admin/*) kon ik nog niet visueel testen zonder een echt Supabase-project — zie bericht.
 
 ## 3. Fase 1 — MVP (klaar vóór 1 september 2026)
 
