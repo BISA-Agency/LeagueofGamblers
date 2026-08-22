@@ -19,9 +19,9 @@ export default async function AdminDashboardPage() {
       <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {STATUSES.map((status) => (
-          <Card key={status}>
+          <Card key={status} className="min-w-0">
             <CardHeader className="gap-0">
-              <CardDescription className="capitalize">{status}</CardDescription>
+              <CardDescription className="truncate text-xs capitalize">{status}</CardDescription>
               <CardTitle className="text-2xl tabular-nums">{byStatus[status] ?? 0}</CardTitle>
             </CardHeader>
           </Card>
