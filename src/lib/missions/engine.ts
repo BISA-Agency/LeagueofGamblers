@@ -1,6 +1,7 @@
 import { and, desc, eq, isNull, ne, or, sql } from "drizzle-orm";
 import { logActivity } from "@/lib/activity/log";
 import { db } from "@/lib/db";
+import { createNotification } from "@/lib/notifications/create";
 import {
   bets,
   challengeParticipants,
@@ -72,6 +73,11 @@ export async function awardMission(
   }
 
   await logActivity(challengeId, userId, "mission_completed", { title: mission.title });
+  await createNotification({
+    userId,
+    type: "mission_completed",
+    payload: { title: mission.title, reward: mission.rewardAmount },
+  });
 }
 
 /**

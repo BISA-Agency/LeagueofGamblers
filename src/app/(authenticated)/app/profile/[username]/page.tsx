@@ -1,12 +1,13 @@
-import { eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BadgeIcon } from "@/components/badges/badge-icon";
+import { FollowButton } from "@/components/profile/follow-button";
 import { LevelProgressBar } from "@/components/profile/level-progress-bar";
 import { UserAvatar } from "@/components/profile/user-avatar";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
-import { bets, profiles } from "@drizzle/schema";
+import { bets, follows, profiles } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
 const memberSinceFormatter = new Intl.DateTimeFormat("nl-NL", {
@@ -35,6 +36,16 @@ export default async function ProfilePage({
   } = await supabase.auth.getUser();
   const isOwnProfile = user?.id === profile.id;
 
+  const [[followerCount], [followingCount], existingFollow] = await Promise.all([
+    db.select({ n: count() }).from(follows).where(eq(follows.followingId, profile.id)),
+    db.select({ n: count() }).from(follows).where(eq(follows.followerId, profile.id)),
+    user && !isOwnProfile
+      ? db.query.follows.findFirst({
+          where: and(eq(follows.followerId, user.id), eq(follows.followingId, profile.id)),
+        })
+      : Promise.resolve(undefined),
+  ]);
+
   const activeParticipation = profile.participations.find((p) => p.status === "active");
   const myBets = activeParticipation
     ? await db.query.bets.findMany({
@@ -56,12 +67,26 @@ export default async function ProfilePage({
             <p className="truncate text-sm text-muted-foreground">{profile.statusText}</p>
           )}
         </div>
-        {isOwnProfile && (
+        {isOwnProfile ? (
           <Button asChild variant="outline" size="sm" className="h-11">
             <Link href="/app/profile/edit">Bewerken</Link>
           </Button>
+        ) : (
+          user && (
+            <FollowButton
+              targetUserId={profile.id}
+              targetUsername={profile.username}
+              isFollowing={Boolean(existingFollow)}
+            />
+          )
         )}
       </div>
+
+      <p className="text-sm text-muted-foreground">
+        <span className="tabular-nums font-medium text-foreground">{followerCount.n}</span> volgers
+        {" · "}
+        <span className="tabular-nums font-medium text-foreground">{followingCount.n}</span> volgend
+      </p>
 
       <LevelProgressBar xp={profile.xp} />
 

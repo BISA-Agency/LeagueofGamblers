@@ -59,28 +59,29 @@ export default async function AppHomePage() {
           <div className="space-y-3">
             {participations.map((p) => (
               <Card key={p.challengeId}>
-                <Link href={`/app/challenge/${p.challenge.slug}`}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between gap-2">
-                      <CardTitle>{p.challenge.name}</CardTitle>
-                      <Link
-                        href="/app/bets"
-                        className="text-xs text-muted-foreground underline underline-offset-2"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Mijn bets
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle>
+                      <Link href={`/app/challenge/${p.challenge.slug}`} className="hover:underline">
+                        {p.challenge.name}
                       </Link>
-                    </div>
-                    <CardDescription>
-                      {p.status === "joined" && !p.paidBuyIn
-                        ? "Je inleg is nog niet geregistreerd"
-                        : `Saldo: €${p.balance.toLocaleString("nl-NL")}`}
-                    </CardDescription>
-                    {p.status === "active" && (
-                      <Countdown label="Nog" target={p.challenge.endAt.toISOString()} />
-                    )}
-                  </CardHeader>
-                </Link>
+                    </CardTitle>
+                    <Link
+                      href="/app/bets"
+                      className="text-xs text-muted-foreground underline underline-offset-2"
+                    >
+                      Mijn bets
+                    </Link>
+                  </div>
+                  <CardDescription>
+                    {p.status === "joined" && !p.paidBuyIn
+                      ? "Je inleg is nog niet geregistreerd"
+                      : `Saldo: €${p.balance.toLocaleString("nl-NL")}`}
+                  </CardDescription>
+                  {p.status === "active" && (
+                    <Countdown label="Nog" target={p.challenge.endAt.toISOString()} />
+                  )}
+                </CardHeader>
               </Card>
             ))}
           </div>

@@ -2,6 +2,33 @@
 
 Keuzes die ik onderweg heb gemaakt, met motivatie. Zie PLAN.md §12.7.
 
+## Fase 2
+
+**Notificaties: drie types, geen `bet_settled`.**
+De spec vraagt expliciet om de dagelijkse rank-update (§5.9). Daarnaast
+sturen we `mission_completed` en `new_follower`. Een notificatie per
+afgerekende bet is bewust weggelaten: elke afrekening staat al in de
+activity feed, en met een weekendje voetbal zou de bel puur ruis worden.
+Kan later alsnog, het type-veld is gewoon `text`.
+
+**Rank-update wordt in de snapshot-cron gemaakt, niet in een eigen cron.**
+`runDailyRankSnapshots` berekent de ranking toch al; een tweede cron zou
+diezelfde sortering moeten herhalen en kan uit de pas lopen. De snapshot-
+upsert is idempotent maar notificaties zijn dat niet, dus er zit een
+expliciete guard in: draait de cron twee keer op dezelfde dag, dan krijgt
+niemand een tweede rank-update.
+
+**E-mailnotificaties (Resend) nog niet gebouwd.**
+De spec noemt ze "optioneel". In-app is er nu; e-mail vraagt om een
+opt-out-instelling per speler, anders is het bij een challenge van een maand
+gegarandeerd irritant. Dat is een aparte feature, geen bijproduct.
+
+**De ongelezen-teller staat in de `(authenticated)` layout.**
+Daardoor moet elke actie die notificaties leest/aanmaakt met
+`revalidatePath("/app", "layout")` invalideren — een page-scoped revalidate
+laat de badge op een verouderde stand staan. Dat is in de praktijk
+misgegaan bij "alles gelezen" en daarna gefixt.
+
 ## Fase 1
 
 **RLS is defense-in-depth, niet de primaire autorisatielaag.**

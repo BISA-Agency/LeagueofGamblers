@@ -1,6 +1,27 @@
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { challengeParticipants, challenges, rankSnapshots } from "@drizzle/schema";
+import { createNotifications } from "@/lib/notifications/create";
+import {
+  challengeParticipants,
+  challenges,
+  notifications,
+  rankSnapshots,
+} from "@drizzle/schema";
+
+/** Rank per user on the most recent snapshot day before `dateKey`, for the "+1 omhoog" delta. */
+async function previousRanks(challengeId: string, dateKey: string) {
+  const [latest] = await db
+    .select({ date: sql<string>`max(${rankSnapshots.date})` })
+    .from(rankSnapshots)
+    .where(and(eq(rankSnapshots.challengeId, challengeId), lt(rankSnapshots.date, dateKey)));
+
+  if (!latest?.date) return new Map<string, number>();
+
+  const rows = await db.query.rankSnapshots.findMany({
+    where: and(eq(rankSnapshots.challengeId, challengeId), eq(rankSnapshots.date, latest.date)),
+  });
+  return new Map(rows.map((r) => [r.userId, r.rank]));
+}
 
 /** Snapshots today's balance + rank for every paid, active participant of every live challenge (§5.5). */
 export async function runDailyRankSnapshots(date = new Date()) {
@@ -11,6 +32,7 @@ export async function runDailyRankSnapshots(date = new Date()) {
   });
 
   let written = 0;
+  let notified = 0;
 
   for (const challenge of liveChallenges) {
     const participants = await db.query.challengeParticipants.findMany({
@@ -22,6 +44,8 @@ export async function runDailyRankSnapshots(date = new Date()) {
       .sort((a, b) => b.balance - a.balance);
 
     if (ranked.length === 0) continue;
+
+    const previous = await previousRanks(challenge.id, dateKey);
 
     await db
       .insert(rankSnapshots)
@@ -43,9 +67,42 @@ export async function runDailyRankSnapshots(date = new Date()) {
       });
 
     written += ranked.length;
+
+    // The snapshot upsert is idempotent but notifications aren't, so a re-run
+    // on the same day must not send everyone a second rank update.
+    const alreadyNotified = await db.query.notifications.findMany({
+      where: and(
+        eq(notifications.type, "rank_update"),
+        inArray(
+          notifications.userId,
+          ranked.map((p) => p.userId)
+        ),
+        gte(notifications.createdAt, new Date(`${dateKey}T00:00:00.000Z`))
+      ),
+      columns: { userId: true },
+    });
+    const skip = new Set(alreadyNotified.map((n) => n.userId));
+
+    const pending = ranked
+      .map((p, i) => ({ participant: p, rank: i + 1 }))
+      .filter(({ participant }) => !skip.has(participant.userId))
+      .map(({ participant, rank }) => ({
+        userId: participant.userId,
+        type: "rank_update" as const,
+        payload: {
+          rank,
+          previousRank: previous.get(participant.userId) ?? null,
+          balance: participant.balance,
+          challengeName: challenge.name,
+          challengeSlug: challenge.slug,
+        },
+      }));
+
+    await createNotifications(pending);
+    notified += pending.length;
   }
 
-  return written;
+  return { written, notified };
 }
 
 export async function getSnapshotsForUsers(challengeId: string, userIds: string[], limitDays = 30) {

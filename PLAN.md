@@ -192,19 +192,19 @@ league-of-gamblers/
 
 ## 4. Fase 2 — Tijdens de eerste challenge
 
-- [ ] XP & levels (Rookie→Punter→Grinder→Sharp→Whale→Legend), level-progressbar
-- [ ] Activity feed + emoji-reacties op homepage
-- [ ] `rank_snapshots` cron (00:05) + sparkline per speler + veldgrafiek (recharts) op challenge-pagina
+- [x] XP & levels (Rookie→Punter→Grinder→Sharp→Whale→Legend), level-progressbar — level wordt afgeleid uit `xp` (`lib/levels.ts`), niet opgeslagen; balk staat op profiel + desktop-sidebar
+- [x] Activity feed + emoji-reacties op homepage
+- [x] `rank_snapshots` cron + sparkline per speler + veldgrafiek (recharts) op challenge-pagina — cron draait 22:05 UTC (≈ 00:05 Amsterdam, zie DST-kanttekening in DECISIONS.md)
 - [ ] Head-to-head (`/app/compare`)
-- [ ] Notificaties (in-app + optioneel Resend e-mail): dagelijkse rank-update
+- [x] Notificaties (in-app): dagelijkse rank-update via de snapshot-cron, plus `mission_completed` en `new_follower`; bel met ongelezen-teller in de header, `/app/notifications`. Resend-e-mail bewust nog niet (zie DECISIONS.md)
 - [ ] "Bet van de dag"-highlight
 - [ ] Weekmissies + weekwinnaar mini-ranking
 - [ ] Voorspelling side-game bij challenge-start
-- [ ] Overige missietypes: `profit_day`, `profit_week`, `volume`, `sport_win`, `survive`, `balance_reach`, `underdog`, `all_in_win`
+- [x] Overige missietypes: `profit_day`, `profit_week`, `volume`, `sport_win`, `survive`, `balance_reach`, `underdog`, `all_in_win` — tijdgebonden types via `/api/cron/missions`, rest via de per-bet engine
 - [ ] Wrapped-pagina (`/wrapped/[challengeId]/[username]`)
 - [ ] Deelbare OG-kaarten (`/api/og/*`): leaderboard, profiel, "ik won"
-- [ ] Midweek-import toggle (optioneel, default uit)
-- [ ] `follows`-tabel + volgen-knop op profiel
+- [x] Midweek-import toggle (optioneel, default uit) — `?midweek=1` op de bestaande import-cron, donderdag
+- [x] `follows`-tabel + volgen-knop op profiel, inclusief volgers/volgend-teller en een notificatie voor de gevolgde speler
 
 ## 5. Fase 2b — Landingspagina (einde project)
 
