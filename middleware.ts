@@ -2,6 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { updateSession } from "@/lib/supabase/middleware";
 
+// Next serves generated metadata images from hashed paths like
+// /opengraph-image-1c1a04 — no file extension, so the matcher below doesn't
+// skip them. They're share cards and icons: public by definition, and
+// redirecting them to /login means link previews show a login screen.
+const METADATA_ASSET = /(^|\/)(opengraph-image|twitter-image|icon|apple-icon)(-[a-z0-9]+)?$/i;
+
 function isPublicPath(pathname: string) {
   if (pathname === "/") return true;
   if (pathname.startsWith("/rules")) return true;
@@ -10,6 +16,7 @@ function isPublicPath(pathname: string) {
   if (pathname.startsWith("/wrapped/")) return true;
   if (pathname.startsWith("/api/")) return true;
   if (pathname.startsWith("/auth/")) return true;
+  if (METADATA_ASSET.test(pathname)) return true;
   return false;
 }
 
