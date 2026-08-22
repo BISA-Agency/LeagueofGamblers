@@ -40,14 +40,14 @@ export function OnboardingForm({
           placeholder="bijv. mo_sharp"
           required
           minLength={3}
-          maxLength={20}
+          maxLength={24}
           pattern="[a-z0-9_]+"
           value={username}
           onChange={(e) => setUsername(e.target.value.toLowerCase())}
           className="h-11"
         />
         <p className="text-xs text-muted-foreground">
-          3–20 tekens: kleine letters, cijfers en underscore (_). Niet meer wijzigbaar zodra
+          3–24 tekens: kleine letters, cijfers en underscore (_). Niet meer wijzigbaar zodra
           je in een lopende challenge zit.
         </p>
         {state.fieldErrors?.username && (

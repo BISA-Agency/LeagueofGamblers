@@ -22,7 +22,7 @@ export const profiles = pgTable(
   },
   (table) => [
     // Stored lowercase by the app (see lib/validation/profile.ts) so this check is always satisfied.
-    check("username_format", sql`${table.username} ~ '^[a-z0-9_]{3,20}$'`),
+    check("username_format", sql`${table.username} ~ '^[a-z0-9_]{3,24}$'`),
   ]
 );
 

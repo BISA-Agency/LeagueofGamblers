@@ -5,7 +5,7 @@ export const usernameSchema = z
   .trim()
   .toLowerCase()
   .min(3, "Gebruikersnaam moet minimaal 3 tekens zijn.")
-  .max(20, "Gebruikersnaam mag maximaal 20 tekens zijn.")
+  .max(24, "Gebruikersnaam mag maximaal 24 tekens zijn.")
   .regex(/^[a-z0-9_]+$/, "Alleen kleine letters, cijfers en underscore (_) zijn toegestaan.");
 
 export const onboardingSchema = z.object({
