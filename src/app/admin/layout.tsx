@@ -7,6 +7,7 @@ const ADMIN_NAV = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/challenges", label: "Challenges" },
   { href: "/admin/proof-bets", label: "Bewijsbetten" },
+  { href: "/admin/missions", label: "LoG-missies" },
   { href: "/admin/badges", label: "Badges" },
   { href: "/admin/payments", label: "Pot & betalingen" },
   { href: "/admin/prize-tiers", label: "Prize tiers" },

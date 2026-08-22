@@ -191,6 +191,54 @@ async function main() {
     if (!existing) await db.insert(missions).values(mission);
   }
 
+  console.log("League of Gamblers-missies aanmaken...");
+  // Career-wide XP missions (challengeId null): once ever, never money —
+  // money missions belong to a challenge and its missiebudget.
+  const generalMissions = [
+    {
+      title: "Eerste winst",
+      description: "Win je allereerste bet.",
+      type: "win_odds_min",
+      params: { minOdds: 1.01 },
+      rewardXp: 25,
+    },
+    {
+      title: "Dubbele cijfers",
+      description: "Win een bet met quotering ≥ 10.",
+      type: "win_odds_min",
+      params: { minOdds: 10 },
+      rewardXp: 100,
+    },
+    {
+      title: "Combi-debuut",
+      description: "Win je eerste combi (2+ selecties).",
+      type: "combi_win",
+      params: { minSelections: 2 },
+      rewardXp: 50,
+    },
+    {
+      title: "Drie op rij",
+      description: "Win 3 bets achter elkaar.",
+      type: "win_streak",
+      params: { count: 3 },
+      rewardXp: 75,
+    },
+    {
+      title: "Alles of niets",
+      description: "Win een all-in bet.",
+      type: "all_in_win",
+      params: {},
+      rewardXp: 150,
+    },
+  ];
+  for (const mission of generalMissions) {
+    const existing = await db.query.missions.findFirst({
+      where: (m, { and: andOp, eq: eqOp, isNull: isNullOp }) =>
+        andOp(isNullOp(m.challengeId), eqOp(m.title, mission.title)),
+    });
+    if (!existing) await db.insert(missions).values({ ...mission, challengeId: null });
+  }
+
   console.log("Voorbeeldbadges toekennen...");
   const firstBlood = await db.query.badges.findFirst({ where: (b, { eq }) => eq(b.slug, "first-blood") });
   const veteran = await db.query.badges.findFirst({ where: (b, { eq }) => eq(b.slug, "veteran") });

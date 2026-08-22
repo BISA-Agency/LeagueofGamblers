@@ -28,8 +28,13 @@ function parseLocalDateTime(value: FormDataEntryValue | null): Date | null {
 
 export type CreateMissionState = { error?: string };
 
+/**
+ * challengeId null creates a League of Gamblers mission (§missies-split):
+ * career-wide, once ever, XP-only. A challenge mission can also pay money
+ * out of that challenge's missiebudget.
+ */
 export async function createMission(
-  challengeId: string,
+  challengeId: string | null,
   _prevState: CreateMissionState,
   formData: FormData
 ): Promise<CreateMissionState> {
@@ -55,6 +60,12 @@ export async function createMission(
 
   const typeOption = MISSION_TYPE_OPTIONS.find((t) => t.value === type);
   if (!typeOption) return { error: "Onbekend missietype." };
+  if (challengeId === null && typeOption.challengeOnly) {
+    return { error: "Dit missietype heeft een challenge nodig (saldo/periode) en kan geen LoG-missie zijn." };
+  }
+  if (challengeId === null && rewardAmountRaw) {
+    return { error: "League of Gamblers-missies geven alleen XP — geldprijzen komen uit het missiebudget van een challenge." };
+  }
 
   const params: Record<string, string | number> = {};
   for (const field of typeOption.params) {
@@ -79,8 +90,9 @@ export async function createMission(
     validTo,
   });
 
-  revalidatePath(`/admin/challenges/${challengeId}/missions`);
-  redirect(`/admin/challenges/${challengeId}/missions`);
+  const target = challengeId ? `/admin/challenges/${challengeId}/missions` : "/admin/missions";
+  revalidatePath(target);
+  redirect(target);
 }
 
 export async function awardMissionManually(missionId: string, userId: string, challengeId: string) {

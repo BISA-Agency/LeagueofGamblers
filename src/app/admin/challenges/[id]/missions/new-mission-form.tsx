@@ -12,11 +12,15 @@ import { Textarea } from "@/components/ui/textarea";
 
 const initialState: CreateMissionState = {};
 
-export function NewMissionForm({ challengeId }: { challengeId: string }) {
+/** challengeId null = League of Gamblers-missie: XP-only, dus zonder geldveld
+ * en zonder de tijdgebonden types die een challenge-saldo nodig hebben. */
+export function NewMissionForm({ challengeId }: { challengeId: string | null }) {
+  const isGeneral = challengeId === null;
+  const typeOptions = MISSION_TYPE_OPTIONS.filter((t) => !isGeneral || !t.challengeOnly);
   const action = createMission.bind(null, challengeId);
   const [state, formAction, pending] = useActionState(action, initialState);
-  const [type, setType] = useState(MISSION_TYPE_OPTIONS[0].value);
-  const selectedType = MISSION_TYPE_OPTIONS.find((t) => t.value === type)!;
+  const [type, setType] = useState(typeOptions[0].value);
+  const selectedType = typeOptions.find((t) => t.value === type)!;
 
   return (
     <form action={formAction} className="space-y-4">
@@ -35,7 +39,7 @@ export function NewMissionForm({ challengeId }: { challengeId: string }) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {MISSION_TYPE_OPTIONS.map((t) => (
+            {typeOptions.map((t) => (
               <SelectItem key={t.value} value={t.value}>
                 {t.label}
               </SelectItem>
@@ -73,11 +77,13 @@ export function NewMissionForm({ challengeId }: { challengeId: string }) {
           </SelectContent>
         </Select>
       </div>
-      <div className="grid grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="rewardAmount">Geldprijs (€)</Label>
-          <Input id="rewardAmount" name="rewardAmount" type="number" step="0.01" min="0" className="h-11 tabular-nums" />
-        </div>
+      <div className={isGeneral ? "grid grid-cols-2 gap-4" : "grid grid-cols-3 gap-4"}>
+        {!isGeneral && (
+          <div className="space-y-2">
+            <Label htmlFor="rewardAmount">Geldprijs (€)</Label>
+            <Input id="rewardAmount" name="rewardAmount" type="number" step="0.01" min="0" className="h-11 tabular-nums" />
+          </div>
+        )}
         <div className="space-y-2">
           <Label htmlFor="rewardXp">XP</Label>
           <Input id="rewardXp" name="rewardXp" type="number" min="0" className="h-11 tabular-nums" />

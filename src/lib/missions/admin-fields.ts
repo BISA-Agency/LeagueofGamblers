@@ -2,7 +2,16 @@
 // so both agree on which params a type needs and how to parse them.
 export type MissionParamField = { key: string; label: string; type: "number" | "text" };
 
-export const MISSION_TYPE_OPTIONS: { value: string; label: string; params: MissionParamField[] }[] = [
+export type MissionTypeOption = {
+  value: string;
+  label: string;
+  params: MissionParamField[];
+  /** Time-bound types read a challenge's balance/period, so they can't exist
+   * as a cross-challenge League of Gamblers mission. */
+  challengeOnly?: boolean;
+};
+
+export const MISSION_TYPE_OPTIONS: MissionTypeOption[] = [
   {
     value: "win_odds_min",
     label: "Win met minimale odds",
@@ -44,11 +53,13 @@ export const MISSION_TYPE_OPTIONS: { value: string; label: string; params: Missi
     value: "profit_day",
     label: "Winst op één dag",
     params: [{ key: "minPercent", label: "Minimaal % winst", type: "number" }],
+    challengeOnly: true,
   },
   {
     value: "profit_week",
     label: "Winst in één week",
     params: [{ key: "minPercent", label: "Minimaal % winst", type: "number" }],
+    challengeOnly: true,
   },
   {
     value: "survive",
@@ -57,6 +68,7 @@ export const MISSION_TYPE_OPTIONS: { value: string; label: string; params: Missi
       { key: "minPercent", label: "Minimaal % van startsaldo", type: "number" },
       { key: "window", label: "Aantal dagen", type: "number" },
     ],
+    challengeOnly: true,
   },
   {
     value: "volume",
@@ -65,6 +77,7 @@ export const MISSION_TYPE_OPTIONS: { value: string; label: string; params: Missi
       { key: "count", label: "Aantal bets", type: "number" },
       { key: "window", label: "Aantal dagen", type: "number" },
     ],
+    challengeOnly: true,
   },
   { value: "manual", label: "Handmatig (admin kent toe)", params: [] },
 ];

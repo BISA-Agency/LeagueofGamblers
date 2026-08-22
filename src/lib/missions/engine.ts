@@ -22,14 +22,19 @@ async function isMissionActive(mission: Mission, now: Date) {
   return true;
 }
 
-async function alreadyCompleted(missionId: string, userId: string, challengeId: string) {
-  const existing = await db.query.missionCompletions.findFirst({
-    where: and(
-      eq(missionCompletions.missionId, missionId),
-      eq(missionCompletions.userId, userId),
-      eq(missionCompletions.challengeId, challengeId)
-    ),
-  });
+async function alreadyCompleted(mission: Mission, userId: string, challengeId: string) {
+  // A League of Gamblers mission (challengeId null) is career-wide: once
+  // completed in any challenge it stays completed. Challenge missions reset
+  // per challenge.
+  const scope =
+    mission.challengeId === null
+      ? and(eq(missionCompletions.missionId, mission.id), eq(missionCompletions.userId, userId))
+      : and(
+          eq(missionCompletions.missionId, mission.id),
+          eq(missionCompletions.userId, userId),
+          eq(missionCompletions.challengeId, challengeId)
+        );
+  const existing = await db.query.missionCompletions.findFirst({ where: scope });
   return !!existing;
 }
 
@@ -62,7 +67,10 @@ export async function awardMission(
       .onConflictDoNothing();
   }
 
-  if (mission.rewardAmount) {
+  // League of Gamblers missions are XP-only by design (§missies-split): money
+  // comes out of a challenge's missiebudget, which a cross-challenge mission
+  // doesn't have. The create-action refuses it too; this is the backstop.
+  if (mission.rewardAmount && mission.challengeId !== null) {
     await db.insert(payments).values({
       direction: "payout_mission",
       amount: mission.rewardAmount,
@@ -106,7 +114,7 @@ export async function evaluateMissionsForSettledBet(betId: string) {
 
     if (!(await isMissionActive(mission, now))) continue;
     if (mission.appliesTo !== "both" && mission.appliesTo !== bet.kind) continue;
-    if (!mission.repeatable && (await alreadyCompleted(mission.id, bet.userId, bet.challengeId))) {
+    if (!mission.repeatable && (await alreadyCompleted(mission, bet.userId, bet.challengeId))) {
       continue;
     }
     if (mission.maxWinners) {
