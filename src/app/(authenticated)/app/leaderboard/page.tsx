@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { UserAvatar } from "@/components/profile/user-avatar";
+import { UsernameWithFlag } from "@/components/profile/username-with-flag";
 import { LeaderboardAutoRefresh } from "@/components/leaderboard/auto-refresh";
 import { getActiveParticipation } from "@/lib/challenges/active";
 import { db } from "@/lib/db";
@@ -50,7 +51,11 @@ export default async function LeaderboardPage() {
       const won = settled.filter((b) => b.status === "won" || b.status === "half_won");
       const open = myBets.filter((b) => b.status === "open");
       const winrate = settled.length > 0 ? (won.length / settled.length) * 100 : 0;
-      const pl = p.balance - startingBalance;
+      // Placing a bet deducts the stake from the balance, so money sitting in
+      // an open bet would otherwise read as a loss. It isn't one yet — count
+      // it back until the bet actually settles.
+      const openStake = open.reduce((sum, b) => sum + b.stake, 0);
+      const pl = p.balance + openStake - startingBalance;
       const roi = startingBalance > 0 ? (pl / startingBalance) * 100 : 0;
 
       return {
@@ -118,7 +123,10 @@ export default async function LeaderboardPage() {
                         size={24}
                       />
                       <span className="truncate">
-                        {row.participant.user.username}
+                        <UsernameWithFlag
+                          username={row.participant.user.username}
+                          country={row.participant.user.country}
+                        />
                         {isBust && " 💀"}
                       </span>
                     </div>

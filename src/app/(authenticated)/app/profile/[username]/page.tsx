@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { BadgeIcon } from "@/components/badges/badge-icon";
 import { FollowButton } from "@/components/profile/follow-button";
 import { LevelProgressBar } from "@/components/profile/level-progress-bar";
+import { UsernameWithFlag } from "@/components/profile/username-with-flag";
 import { UserAvatar } from "@/components/profile/user-avatar";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
@@ -95,7 +96,9 @@ export default async function ProfilePage({
       <div className="flex items-center gap-4">
         <UserAvatar username={profile.username} avatarUrl={profile.avatarUrl} size={64} />
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-semibold">{profile.username}</h1>
+          <h1 className="truncate text-lg font-semibold">
+            <UsernameWithFlag username={profile.username} country={profile.country} />
+          </h1>
           {profile.statusText && (
             <p className="truncate text-sm text-muted-foreground">{profile.statusText}</p>
           )}

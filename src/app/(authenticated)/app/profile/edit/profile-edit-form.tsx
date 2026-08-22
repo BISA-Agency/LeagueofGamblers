@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { updateProfile, type ProfileEditState } from "@/actions/profile";
+import { CountrySelect } from "@/components/profile/country-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +13,13 @@ const initialState: ProfileEditState = {};
 export function ProfileEditForm({
   defaultValues,
 }: {
-  defaultValues: { bio: string; statusText: string; favoriteClub: string; favoriteSport: string };
+  defaultValues: {
+    bio: string;
+    statusText: string;
+    favoriteClub: string;
+    favoriteSport: string;
+    country: string | null;
+  };
 }) {
   const [state, formAction, pending] = useActionState(updateProfile, initialState);
 
@@ -38,6 +45,8 @@ export function ProfileEditForm({
         <Textarea id="bio" name="bio" maxLength={160} defaultValue={defaultValues.bio} rows={3} />
         {state.fieldErrors?.bio && <p className="text-sm text-loss">{state.fieldErrors.bio}</p>}
       </div>
+
+      <CountrySelect defaultValue={defaultValues.country} />
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">

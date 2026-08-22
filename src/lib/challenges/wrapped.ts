@@ -48,6 +48,7 @@ export async function getWrappedData(challengeId: string, username: string) {
   ]);
 
   const summary = summarizeBets(playerBets);
+  const effectiveBalance = me.balance + summary.openStake;
   const rank =
     [...participants].sort((a, b) => b.balance - a.balance).findIndex((p) => p.userId === profile.id) +
     1;
@@ -58,10 +59,12 @@ export async function getWrappedData(challengeId: string, username: string) {
     rank,
     playerCount: participants.length,
     balance: me.balance,
-    pl: me.balance - challenge.startingBalance,
+    // Open stakes count back: usually zero by wrap time, but the page is
+    // reachable during settling when a last bet may still be open.
+    pl: effectiveBalance - challenge.startingBalance,
     roi:
       challenge.startingBalance > 0
-        ? ((me.balance - challenge.startingBalance) / challenge.startingBalance) * 100
+        ? ((effectiveBalance - challenge.startingBalance) / challenge.startingBalance) * 100
         : 0,
     ...summary,
     badges: badges.map((b) => b.badge),

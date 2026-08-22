@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { challengeParticipants, challenges, rankSnapshots } from "@drizzle/schema";
+import { bets, challengeParticipants, challenges, rankSnapshots } from "@drizzle/schema";
 
 const amsterdamDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam" });
 
@@ -27,7 +27,7 @@ export type WeeklyStanding = {
 export async function getWeeklyStandings(challengeId: string): Promise<WeeklyStanding[]> {
   const weekStart = currentWeekStartKey();
 
-  const [challenge, participants, baseline] = await Promise.all([
+  const [challenge, participants, baseline, openBets] = await Promise.all([
     db.query.challenges.findFirst({ where: eq(challenges.id, challengeId) }),
     db.query.challengeParticipants.findMany({
       where: and(
@@ -39,17 +39,29 @@ export async function getWeeklyStandings(challengeId: string): Promise<WeeklySta
     db.query.rankSnapshots.findMany({
       where: and(eq(rankSnapshots.challengeId, challengeId), eq(rankSnapshots.date, weekStart)),
     }),
+    db.query.bets.findMany({
+      where: and(eq(bets.challengeId, challengeId), eq(bets.status, "open")),
+      columns: { userId: true, stake: true },
+    }),
   ]);
 
   if (!challenge) return [];
   const baselineByUser = new Map(baseline.map((s) => [s.userId, s.balance]));
+  // Stakes in open bets left the balance at placement but aren't losses yet.
+  const openStakeByUser = new Map<string, number>();
+  for (const b of openBets) {
+    openStakeByUser.set(b.userId, (openStakeByUser.get(b.userId) ?? 0) + b.stake);
+  }
 
   return participants
     .map((p) => ({
       userId: p.userId,
       username: p.user.username,
       avatarUrl: p.user.avatarUrl,
-      gain: p.balance - (baselineByUser.get(p.userId) ?? challenge.startingBalance),
+      gain:
+        p.balance +
+        (openStakeByUser.get(p.userId) ?? 0) -
+        (baselineByUser.get(p.userId) ?? challenge.startingBalance),
     }))
     .sort((a, b) => b.gain - a.gain);
 }

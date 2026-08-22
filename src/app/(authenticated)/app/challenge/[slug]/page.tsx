@@ -6,6 +6,7 @@ import { PredictionSection } from "@/components/challenges/prediction-section";
 import { FieldChart } from "@/components/charts/field-chart";
 import { Sparkline } from "@/components/charts/sparkline";
 import { UserAvatar } from "@/components/profile/user-avatar";
+import { UsernameWithFlag } from "@/components/profile/username-with-flag";
 import { Badge } from "@/components/ui/badge";
 import { getSnapshotsForUsers } from "@/lib/challenges/rank-snapshots";
 import { db } from "@/lib/db";
@@ -132,7 +133,7 @@ export default async function ChallengeDetailPage({
               <div className="flex min-w-0 items-center gap-2">
                 <UserAvatar username={p.user.username} avatarUrl={p.user.avatarUrl} size={28} />
                 <Link href={`/app/profile/${p.user.username}`} className="truncate text-sm hover:underline">
-                  {p.user.username}
+                  <UsernameWithFlag username={p.user.username} country={p.user.country} />
                 </Link>
               </div>
               <div className="flex items-center gap-3">

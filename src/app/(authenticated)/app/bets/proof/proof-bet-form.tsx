@@ -7,25 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 const initialState: ProofBetState = {};
-
-const BOOKMAKERS = [
-  { value: "toto", label: "Toto" },
-  { value: "unibet", label: "Unibet" },
-  { value: "bet365", label: "Bet365" },
-  { value: "holland_casino", label: "Holland Casino" },
-  { value: "jacks", label: "Jack's" },
-  { value: "betcity", label: "BetCity" },
-  { value: "overig", label: "Overig" },
-];
 
 export function ProofBetForm({ challengeId }: { challengeId: string }) {
   const action = createProofBet.bind(null, challengeId);
@@ -44,22 +27,6 @@ export function ProofBetForm({ challengeId }: { challengeId: string }) {
           <Label htmlFor="competition">Competitie (optioneel)</Label>
           <Input id="competition" name="competition" className="h-11" />
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="bookmaker">Bookmaker</Label>
-        <Select name="bookmaker" required>
-          <SelectTrigger id="bookmaker" className="h-11 w-full">
-            <SelectValue placeholder="Kies een bookmaker" />
-          </SelectTrigger>
-          <SelectContent>
-            {BOOKMAKERS.map((b) => (
-              <SelectItem key={b.value} value={b.value}>
-                {b.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       <div className="space-y-3">

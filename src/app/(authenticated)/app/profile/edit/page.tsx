@@ -27,6 +27,7 @@ export default async function ProfileEditPage() {
           statusText: profile.statusText ?? "",
           favoriteClub: profile.favoriteClub ?? "",
           favoriteSport: profile.favoriteSport ?? "",
+          country: profile.country,
         }}
       />
     </div>

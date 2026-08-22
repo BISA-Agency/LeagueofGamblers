@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CountrySelect } from "@/components/profile/country-select";
 import { GeneratedAvatar } from "@/components/profile/generated-avatar";
 
 const initialState: OnboardingState = {};
@@ -56,6 +57,8 @@ export function OnboardingForm({
           </p>
         )}
       </div>
+
+      <CountrySelect />
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">

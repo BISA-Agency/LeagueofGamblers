@@ -37,7 +37,10 @@ export async function createProofBet(
 
   const sport = String(formData.get("sport") ?? "").trim();
   const competition = String(formData.get("competition") ?? "").trim() || undefined;
-  const bookmaker = String(formData.get("bookmaker") ?? "") as Bookmaker;
+  // Bookmaker was dropped from the form (screenshot shows it anyway); the
+  // column stays nullable for old rows.
+  const bookmakerRaw = String(formData.get("bookmaker") ?? "").trim();
+  const bookmaker = bookmakerRaw ? (bookmakerRaw as Bookmaker) : null;
   const stakeRaw = Number(formData.get("stake"));
   const note = String(formData.get("note") ?? "").trim().slice(0, 140) || null;
   const screenshot = formData.get("screenshot");

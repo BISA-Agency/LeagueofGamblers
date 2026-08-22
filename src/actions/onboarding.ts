@@ -2,6 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { isKnownCountry } from "@/lib/countries";
 import { db } from "@/lib/db";
 import { profiles } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -31,6 +32,9 @@ export async function completeOnboarding(
       error: "Je moet de spelregels gelezen en geaccepteerd hebben om verder te gaan.",
     };
   }
+
+  const countryRaw = String(formData.get("country") ?? "").toUpperCase();
+  const country = countryRaw && isKnownCountry(countryRaw) ? countryRaw : null;
 
   const parsed = onboardingSchema.safeParse({
     username: formData.get("username"),
@@ -62,6 +66,7 @@ export async function completeOnboarding(
         username: parsed.data.username,
         favoriteClub: parsed.data.favoriteClub ?? null,
         favoriteSport: parsed.data.favoriteSport ?? null,
+        country,
         rulesAcceptedAt: new Date(),
       })
       .onConflictDoUpdate({
@@ -70,6 +75,7 @@ export async function completeOnboarding(
           username: parsed.data.username,
           favoriteClub: parsed.data.favoriteClub ?? null,
           favoriteSport: parsed.data.favoriteSport ?? null,
+          country,
           rulesAcceptedAt: new Date(),
         },
       });

@@ -23,6 +23,9 @@ export function profitOf(bet: Bet): number {
 export type BetSummary = {
   betsCount: number;
   openCount: number;
+  /** Money currently locked in open bets — deducted from balance at placement,
+   * but not lost, so P/L calculations must add it back. */
+  openStake: number;
   settledCount: number;
   wonCount: number;
   winrate: number;
@@ -72,6 +75,9 @@ export function summarizeBets(playerBets: BetWithSelections[]): BetSummary {
   return {
     betsCount: playerBets.length,
     openCount: playerBets.filter((b) => b.status === "open").length,
+    openStake: playerBets
+      .filter((b) => b.status === "open")
+      .reduce((sum, b) => sum + b.stake, 0),
     settledCount: settled.length,
     wonCount: won.length,
     winrate: settled.length > 0 ? (won.length / settled.length) * 100 : 0,

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ComparePicker } from "@/components/compare/compare-picker";
 import { FieldChart } from "@/components/charts/field-chart";
 import { UserAvatar } from "@/components/profile/user-avatar";
+import { UsernameWithFlag } from "@/components/profile/username-with-flag";
 import { getActiveParticipation } from "@/lib/challenges/active";
 import { getSnapshotsForUsers } from "@/lib/challenges/rank-snapshots";
 import { db } from "@/lib/db";
@@ -20,11 +21,14 @@ const money = new Intl.NumberFormat("nl-NL", {
 });
 
 function statsFor(playerBets: BetWithSelections[], balance: number, startingBalance: number) {
+  const summary = summarizeBets(playerBets);
+  // Stakes in open bets are deducted from the balance but not lost yet.
+  const pl = balance + summary.openStake - startingBalance;
   return {
-    ...summarizeBets(playerBets),
+    ...summary,
     balance,
-    pl: balance - startingBalance,
-    roi: startingBalance > 0 ? ((balance - startingBalance) / startingBalance) * 100 : 0,
+    pl,
+    roi: startingBalance > 0 ? (pl / startingBalance) * 100 : 0,
   };
 }
 
@@ -206,7 +210,11 @@ export default async function ComparePage({
             )}
           >
             <UserAvatar username={p.user.username} avatarUrl={p.user.avatarUrl} size={48} />
-            <span className="max-w-full truncate text-sm font-medium">{p.user.username}</span>
+            <UsernameWithFlag
+              username={p.user.username}
+              country={p.user.country}
+              className="max-w-full truncate text-sm font-medium"
+            />
             <span className="text-xs text-muted-foreground">
               {getLevelInfo(p.user.xp).title}
             </span>

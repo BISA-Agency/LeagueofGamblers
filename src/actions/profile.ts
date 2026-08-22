@@ -3,6 +3,7 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { isKnownCountry } from "@/lib/countries";
 import { db } from "@/lib/db";
 import { profiles } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -42,6 +43,9 @@ export async function updateProfile(
   const profile = await db.query.profiles.findFirst({ where: eq(profiles.id, user.id) });
   if (!profile) redirect("/onboarding");
 
+  const countryRaw = String(formData.get("country") ?? "").toUpperCase();
+  const country = countryRaw && isKnownCountry(countryRaw) ? countryRaw : null;
+
   await db
     .update(profiles)
     .set({
@@ -49,6 +53,7 @@ export async function updateProfile(
       statusText: parsed.data.statusText ?? null,
       favoriteClub: parsed.data.favoriteClub ?? null,
       favoriteSport: parsed.data.favoriteSport ?? null,
+      country,
     })
     .where(eq(profiles.id, user.id));
 
