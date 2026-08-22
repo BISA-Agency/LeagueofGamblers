@@ -80,6 +80,15 @@ FK-typering naar Supabase's eigen tabel). Dat `CREATE TABLE` is handmatig uit
 `drizzle/migrations/0000_*.sql` verwijderd — Supabase beheert die tabel al.
 Zie het commentaar bovenin dat migratiebestand.
 
+**`npm run db:migrate` gebruikt een eigen script, niet `drizzle-kit migrate`.**
+Getest tegen het echte Supabase-project: de `drizzle-kit migrate` CLI hangt/
+faalt stil (exit code 1, geen foutmelding) tegen Supabase's pgbouncer-pooler
+in transaction-mode. `scripts/migrate.ts` gebruikt drizzle-orm's eigen
+`migrate()` met `prepare: false` (dezelfde instelling als `src/lib/db`) en
+werkt wel betrouwbaar. `db:generate` (migraties genereren) gebruikt nog
+gewoon de officiële `drizzle-kit generate` CLI — alleen `migrate` (uitvoeren)
+had dit probleem.
+
 **Geldbedragen: `numeric(12,2)` in Postgres, `number` in TypeScript.**
 Drizzle's `mode: "number"` i.p.v. `"string"` — leesbaarder in code, en de
 precisie-afweging is verwaarloosbaar bij realistische inzetten/saldi (ruim
