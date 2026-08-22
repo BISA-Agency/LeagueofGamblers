@@ -41,3 +41,26 @@ export async function updateChallengeSportsbookSettings(
 
   revalidatePath(`/admin/challenges/${challengeId}`);
 }
+
+/**
+ * The two challenge knobs that had columns but no UI: the pot set aside for
+ * mission payouts, and whether a bust player may buy back in (§5.2, §13).
+ */
+export async function updateChallengeRules(challengeId: string, formData: FormData) {
+  await requireAdmin();
+
+  const budgetRaw = formData.get("missionBudget");
+  const missionBudget = budgetRaw === null || budgetRaw === "" ? 0 : Number(budgetRaw);
+  if (!Number.isFinite(missionBudget) || missionBudget < 0) return;
+
+  await db
+    .update(challenges)
+    .set({
+      missionBudget,
+      allowRebuy: formData.get("allowRebuy") === "on",
+      updatedAt: new Date(),
+    })
+    .where(eq(challenges.id, challengeId));
+
+  revalidatePath(`/admin/challenges/${challengeId}`);
+}

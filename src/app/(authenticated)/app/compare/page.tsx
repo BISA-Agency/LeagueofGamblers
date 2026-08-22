@@ -7,7 +7,8 @@ import { getActiveParticipation } from "@/lib/challenges/active";
 import { getSnapshotsForUsers } from "@/lib/challenges/rank-snapshots";
 import { db } from "@/lib/db";
 import { getLevelInfo } from "@/lib/levels";
-import { bets, challengeParticipants, type Bet } from "@drizzle/schema";
+import { summarizeBets, type BetWithSelections } from "@/lib/stats/bets";
+import { bets, challengeParticipants } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -18,40 +19,12 @@ const money = new Intl.NumberFormat("nl-NL", {
   maximumFractionDigits: 0,
 });
 
-/** What a settled bet actually returned to the player, minus what it cost. */
-function profitOf(bet: Bet): number {
-  switch (bet.status) {
-    case "won":
-      return bet.potentialPayout - bet.stake;
-    case "half_won":
-      return (bet.potentialPayout - bet.stake) / 2;
-    case "half_lost":
-      return -bet.stake / 2;
-    case "lost":
-      return -bet.stake;
-    default:
-      return 0;
-  }
-}
-
-function statsFor(playerBets: Bet[], balance: number, startingBalance: number) {
-  const settled = playerBets.filter((b) => b.status !== "open" && b.status !== "void");
-  const won = settled.filter((b) => b.status === "won" || b.status === "half_won");
-  const profits = settled.map(profitOf);
-
+function statsFor(playerBets: BetWithSelections[], balance: number, startingBalance: number) {
   return {
+    ...summarizeBets(playerBets),
     balance,
     pl: balance - startingBalance,
     roi: startingBalance > 0 ? ((balance - startingBalance) / startingBalance) * 100 : 0,
-    betsCount: playerBets.length,
-    openCount: playerBets.filter((b) => b.status === "open").length,
-    winrate: settled.length > 0 ? (won.length / settled.length) * 100 : 0,
-    avgOdds:
-      playerBets.length > 0
-        ? playerBets.reduce((sum, b) => sum + b.totalOdds, 0) / playerBets.length
-        : 0,
-    biggestWin: profits.length > 0 ? Math.max(0, ...profits) : 0,
-    totalStaked: playerBets.reduce((sum, b) => sum + b.stake, 0),
   };
 }
 
@@ -124,7 +97,10 @@ export default async function ComparePage({
   const right = participants.find((p) => p.user.username === bName)!;
 
   const [challengeBets, snapshots] = await Promise.all([
-    db.query.bets.findMany({ where: eq(bets.challengeId, challenge.id) }),
+    db.query.bets.findMany({
+      where: eq(bets.challengeId, challenge.id),
+      with: { selections: true },
+    }),
     getSnapshotsForUsers(challenge.id, [left.userId, right.userId]),
   ]);
 

@@ -2,7 +2,13 @@ import { desc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { reopenEvent, suspendEvent, voidEventAction } from "@/actions/admin/custom-events";
+import {
+  reopenEvent,
+  reopenMarket,
+  suspendEvent,
+  suspendMarket,
+  voidEventAction,
+} from "@/actions/admin/custom-events";
 import { runOddsImportPreview } from "@/actions/admin/odds-import";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,6 +46,7 @@ export default async function AdminSportsbookPage({
       where: eq(events.challengeId, id),
       orderBy: (e, { asc }) => asc(e.startsAt),
       limit: 20,
+      with: { markets: true },
     }),
     db.query.oddsImports.findMany({
       where: eq(oddsImports.challengeId, id),
@@ -142,6 +149,36 @@ export default async function AdminSportsbookPage({
                       Void (afgelast)
                     </Button>
                   </form>
+                </div>
+              )}
+
+              {event.status === "upcoming" && event.markets.length > 0 && (
+                <div className="space-y-1 border-t border-border/60 px-4 py-3">
+                  <p className="text-xs text-muted-foreground">Per markt</p>
+                  {event.markets.map((market) => (
+                    <div key={market.id} className="flex items-center justify-between gap-2">
+                      <span className="truncate text-xs">
+                        {market.label}
+                        {market.line !== null && ` ${market.line}`}
+                        {market.status !== "open" && (
+                          <span className="text-muted-foreground"> · {market.status}</span>
+                        )}
+                      </span>
+                      {market.status === "open" ? (
+                        <form action={suspendMarket.bind(null, market.id, id)}>
+                          <Button type="submit" size="sm" variant="ghost" className="h-8 text-xs">
+                            Schorsen
+                          </Button>
+                        </form>
+                      ) : market.status === "suspended" ? (
+                        <form action={reopenMarket.bind(null, market.id, id)}>
+                          <Button type="submit" size="sm" variant="ghost" className="h-8 text-xs">
+                            Heropenen
+                          </Button>
+                        </form>
+                      ) : null}
+                    </div>
+                  ))}
                 </div>
               )}
             </Card>

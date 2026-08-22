@@ -6,6 +6,7 @@ import { transitionChallengeToLive } from "@/actions/admin/challenge-lifecycle";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { challenges } from "@drizzle/schema";
+import { ChallengeRulesForm } from "./challenge-rules-form";
 import { FinishChallengeForm } from "./finish-challenge-form";
 import { SportsbookSettingsForm } from "./sportsbook-settings-form";
 
@@ -56,6 +57,15 @@ export default async function AdminChallengeDetailPage({
           <FinishChallengeForm challengeId={challenge.id} />
         </div>
       )}
+
+      <div className="rounded-lg border border-border p-4">
+        <h2 className="mb-4 text-sm font-medium text-muted-foreground">Spelregels</h2>
+        <ChallengeRulesForm
+          challengeId={challenge.id}
+          defaultMissionBudget={challenge.missionBudget}
+          defaultAllowRebuy={challenge.allowRebuy}
+        />
+      </div>
 
       <div className="rounded-lg border border-border p-4">
         <h2 className="mb-4 text-sm font-medium text-muted-foreground">Sportsbook-instellingen</h2>

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { EventList } from "@/components/sportsbook/event-list";
 import { getActiveParticipation } from "@/lib/challenges/active";
 import { db } from "@/lib/db";
-import { events } from "@drizzle/schema";
+import { events, markets } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Sportsbook" };
@@ -43,7 +43,11 @@ export default async function SportsbookPage() {
   const upcomingEvents = await db.query.events.findMany({
     where: and(eq(events.challengeId, participation.challengeId), eq(events.status, "upcoming")),
     orderBy: asc(events.startsAt),
-    with: { markets: { with: { outcomes: true } } },
+    // A suspended market must not be offered — placing on it fails server-side
+    // anyway, so showing a clickable price would only produce a dead end.
+    with: {
+      markets: { where: eq(markets.status, "open"), with: { outcomes: true } },
+    },
   });
 
   return (

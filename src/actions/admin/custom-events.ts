@@ -117,6 +117,34 @@ export async function reopenEvent(eventId: string, challengeId: string) {
   revalidatePath(`/admin/challenges/${challengeId}/sportsbook`);
 }
 
+/**
+ * Suspending the whole event blocks every market on it; this pulls a single
+ * market (say a shaky totals line) while the rest stays bettable.
+ */
+export async function suspendMarket(marketId: string, challengeId: string) {
+  const admin = await requireAdmin();
+  await db.update(markets).set({ status: "suspended" }).where(eq(markets.id, marketId));
+  await logAuditEvent({
+    actorId: admin.id,
+    action: "market.suspend",
+    entityType: "market",
+    entityId: marketId,
+  });
+  revalidatePath(`/admin/challenges/${challengeId}/sportsbook`);
+}
+
+export async function reopenMarket(marketId: string, challengeId: string) {
+  const admin = await requireAdmin();
+  await db.update(markets).set({ status: "open" }).where(eq(markets.id, marketId));
+  await logAuditEvent({
+    actorId: admin.id,
+    action: "market.reopen",
+    entityType: "market",
+    entityId: marketId,
+  });
+  revalidatePath(`/admin/challenges/${challengeId}/sportsbook`);
+}
+
 export async function voidEventAction(eventId: string, challengeId: string) {
   const admin = await requireAdmin();
   await voidEvent(eventId);

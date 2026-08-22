@@ -1,12 +1,14 @@
-import { eq, isNull, or } from "drizzle-orm";
+import { and, desc, eq, isNull, or } from "drizzle-orm";
 import type { Metadata } from "next";
 import { WeeklyStandings } from "@/components/missions/weekly-standings";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { db } from "@/lib/db";
 import { getActiveParticipation } from "@/lib/challenges/active";
 import { getWeeklyStandings } from "@/lib/challenges/week";
-import { missions, type Mission } from "@drizzle/schema";
+import { getMissionProgress, type MissionProgressContext } from "@/lib/missions/progress";
+import { bets, missions, type Mission } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Missies" };
@@ -45,13 +47,24 @@ export default async function MissionsPage() {
     );
   }
 
-  const [allMissions, standings] = await Promise.all([
+  const [allMissions, standings, myBets] = await Promise.all([
     db.query.missions.findMany({
       where: or(isNull(missions.challengeId), eq(missions.challengeId, participation.challengeId)),
       with: { completions: { with: { user: true } } },
     }),
     getWeeklyStandings(participation.challengeId),
+    db.query.bets.findMany({
+      where: and(eq(bets.challengeId, participation.challengeId), eq(bets.userId, user.id)),
+      orderBy: desc(bets.settledAt),
+      with: { selections: true },
+    }),
   ]);
+
+  const progressContext: MissionProgressContext = {
+    bets: myBets,
+    currentBalance: participation.balance,
+    startingBalance: participation.challenge.startingBalance,
+  };
 
   const now = new Date();
   const visible = allMissions.filter(
@@ -84,6 +97,10 @@ export default async function MissionsPage() {
             const myCompletion = mission.completions.find((c) => c.userId === user.id);
             const full =
               mission.maxWinners !== null && mission.completions.length >= mission.maxWinners;
+            const progress =
+              myCompletion || section.key === "expired"
+                ? null
+                : getMissionProgress(mission, progressContext);
 
             return (
               <Card key={mission.id} className={section.key === "expired" ? "opacity-60" : undefined}>
@@ -101,6 +118,14 @@ export default async function MissionsPage() {
                     <CardDescription>
                       Loopt tot {deadlineFormatter.format(mission.validTo)}
                     </CardDescription>
+                  )}
+                  {progress && (
+                    <div className="space-y-1 pt-1">
+                      <Progress value={(progress.current / progress.target) * 100} />
+                      <p className="text-xs tabular-nums text-muted-foreground">
+                        {progress.current} / {progress.target}
+                      </p>
+                    </div>
                   )}
                   <CardDescription className="tabular-nums">
                     {[

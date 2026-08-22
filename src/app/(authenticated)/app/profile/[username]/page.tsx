@@ -1,4 +1,4 @@
-import { and, count, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,6 +9,7 @@ import { UserAvatar } from "@/components/profile/user-avatar";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { getLevelInfo } from "@/lib/levels";
+import { summarizeBets } from "@/lib/stats/bets";
 import { bets, follows, profiles } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
@@ -73,14 +74,20 @@ export default async function ProfilePage({
   ]);
 
   const activeParticipation = profile.participations.find((p) => p.status === "active");
+  // Scoped to the active challenge — these numbers are shown under that
+  // challenge's heading, so pulling in bets from other challenges would make
+  // the winrate mean something different from what the label says.
   const myBets = activeParticipation
     ? await db.query.bets.findMany({
-        where: eq(bets.userId, profile.id),
+        where: and(
+          eq(bets.userId, profile.id),
+          eq(bets.challengeId, activeParticipation.challengeId)
+        ),
+        orderBy: desc(bets.settledAt),
+        with: { selections: true },
       })
     : [];
-  const settled = myBets.filter((b) => b.status !== "open");
-  const won = settled.filter((b) => b.status === "won" || b.status === "half_won");
-  const winrate = settled.length > 0 ? (won.length / settled.length) * 100 : 0;
+  const stats = summarizeBets(myBets);
   const totalWarnings = profile.participations.reduce((sum, p) => sum + p.warnings, 0);
 
   return (
@@ -148,21 +155,66 @@ export default async function ProfilePage({
           <dt className="text-muted-foreground">Lid sinds</dt>
           <dd>{memberSinceFormatter.format(profile.createdAt)}</dd>
         </div>
-        {activeParticipation && (
-          <>
+      </dl>
+
+      {activeParticipation && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            {activeParticipation.challenge.name}
+          </h2>
+          <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
             <div>
-              <dt className="text-muted-foreground">Saldo ({activeParticipation.challenge.name})</dt>
-              <dd className="tabular-nums">€{activeParticipation.balance.toLocaleString("nl-NL")}</dd>
+              <dt className="text-muted-foreground">Saldo</dt>
+              <dd className="tabular-nums">
+                €{activeParticipation.balance.toLocaleString("nl-NL")}
+              </dd>
             </div>
             <div>
               <dt className="text-muted-foreground">Winrate</dt>
               <dd className="tabular-nums">
-                {winrate.toFixed(0)}% ({won.length}/{settled.length})
+                {stats.winrate.toFixed(0)}% ({stats.wonCount}/{stats.settledCount})
               </dd>
             </div>
-          </>
-        )}
-      </dl>
+            <div>
+              <dt className="text-muted-foreground">Bets</dt>
+              <dd className="tabular-nums">
+                {stats.betsCount}
+                {stats.openCount > 0 && ` (${stats.openCount} open)`}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Langste winreeks</dt>
+              <dd className="tabular-nums">{stats.longestWinStreak}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Gem. quotering</dt>
+              <dd className="tabular-nums">{stats.avgOdds.toFixed(2)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Hoogste gewonnen</dt>
+              <dd className="tabular-nums">
+                {stats.highestWonOdds > 0 ? stats.highestWonOdds.toFixed(2) : "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Enkel / combi</dt>
+              <dd className="tabular-nums">
+                {stats.singleCount} / {stats.combiCount}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Grootste winst</dt>
+              <dd className="tabular-nums text-profit">
+                {stats.biggestWin > 0 ? `+€${stats.biggestWin.toLocaleString("nl-NL")}` : "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Totaal ingezet</dt>
+              <dd className="tabular-nums">€{stats.totalStaked.toLocaleString("nl-NL")}</dd>
+            </div>
+          </dl>
+        </section>
+      )}
 
       {totalWarnings > 0 && (
         <p className="text-sm text-loss">

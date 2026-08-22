@@ -7,7 +7,7 @@ import { MarketSection } from "@/components/sportsbook/market-section";
 import { TeamBadge } from "@/components/sportsbook/team-badge";
 import { db } from "@/lib/db";
 import { formatEventTime } from "@/lib/format-event-time";
-import { events } from "@drizzle/schema";
+import { events, markets } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Wedstrijd" };
@@ -27,7 +27,9 @@ export default async function EventDetailPage({
 
   const event = await db.query.events.findFirst({
     where: eq(events.id, eventId),
-    with: { markets: { with: { outcomes: true } } },
+    with: {
+      markets: { where: eq(markets.status, "open"), with: { outcomes: true } },
+    },
   });
   if (!event) notFound();
 
