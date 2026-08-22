@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Ticket } from "lucide-react";
 import { useBetSlip } from "@/lib/betslip/context";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -16,9 +17,10 @@ export function BetSlipSheet({ challengeId, balance }: { challengeId: string; ba
     <div className="fixed inset-x-0 bottom-20 z-40 flex justify-center md:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <Button className="h-11 shadow-lg" size="lg">
+          <Button className="h-12 gap-2 rounded-full bg-accent-brand px-5 text-accent-brand-foreground shadow-lg shadow-accent-brand/30 hover:bg-accent-brand/90">
+            <Ticket className="size-4" />
             Bet slip
-            <span className="ml-1 flex size-5 items-center justify-center rounded-full bg-background/20 text-xs tabular-nums">
+            <span className="flex size-5 items-center justify-center rounded-full bg-accent-brand-foreground/15 text-xs tabular-nums">
               {selections.length}
             </span>
           </Button>

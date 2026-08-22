@@ -30,7 +30,11 @@ export function OutcomeButton({
   return (
     <button
       type="button"
-      onClick={() =>
+      onClick={(e) => {
+        // Outcome buttons are sometimes nested inside a card-level <Link> to
+        // the match page — stop that navigation from firing too.
+        e.preventDefault();
+        e.stopPropagation();
         addSelection({
           outcomeId,
           eventId,
@@ -41,8 +45,8 @@ export function OutcomeButton({
           marketLabel,
           selectionLabel: label,
           odds,
-        })
-      }
+        });
+      }}
       className={cn(
         "flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-md border px-2 py-2 text-center transition-colors",
         selected
