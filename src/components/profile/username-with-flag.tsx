@@ -12,7 +12,9 @@ export function UsernameWithFlag({
   className?: string;
 }) {
   return (
-    <span className={cn("inline-flex items-center gap-1.5", className)}>
+    // min-w-0 so the truncating child can actually shrink inside a flex
+    // parent — without it a long username pushes past its container.
+    <span className={cn("inline-flex min-w-0 max-w-full items-center gap-1.5", className)}>
       <span className="truncate">{username}</span>
       <CountryFlag code={country} />
     </span>

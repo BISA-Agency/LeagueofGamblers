@@ -6,7 +6,23 @@ import { LevelProgressBar } from "@/components/profile/level-progress-bar";
 import { cn } from "@/lib/utils";
 import { getNavItems, isNavItemActive } from "./nav-items";
 
-export function Sidebar({ username, xp }: { username: string; xp: number }) {
+const money = new Intl.NumberFormat("nl-NL", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+export function Sidebar({
+  username,
+  xp,
+  balance,
+  challengeName,
+}: {
+  username: string;
+  xp: number;
+  /** Null when the player isn't in a challenge yet. */
+  balance: number | null;
+  challengeName: string | null;
+}) {
   const pathname = usePathname();
   const items = getNavItems(username);
 
@@ -16,6 +32,18 @@ export function Sidebar({ username, xp }: { username: string; xp: number }) {
         <Link href="/app" className="text-lg font-semibold tracking-tight">
           League of <span className="text-accent-brand">Gamblers</span>
         </Link>
+
+        {balance !== null && (
+          <div className="rounded-lg border border-border bg-card px-3 py-2">
+            <p className="truncate text-[11px] text-muted-foreground">
+              {challengeName ?? "Saldo"}
+            </p>
+            <p className="text-xl font-semibold tabular-nums text-accent-brand">
+              €{money.format(balance)}
+            </p>
+          </div>
+        )}
+
         <LevelProgressBar xp={xp} />
       </div>
       <nav className="flex-1 px-3">

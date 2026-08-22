@@ -3,8 +3,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { UserAvatar } from "@/components/profile/user-avatar";
 import { UsernameWithFlag } from "@/components/profile/username-with-flag";
+import { Countdown } from "@/components/challenges/countdown";
 import { LeaderboardAutoRefresh } from "@/components/leaderboard/auto-refresh";
 import { getActiveParticipation } from "@/lib/challenges/active";
+import { hasStarted } from "@/lib/challenges/stats";
 import { db } from "@/lib/db";
 import { bets, challengeParticipants } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -42,7 +44,62 @@ export default async function LeaderboardPage() {
     db.query.bets.findMany({ where: eq(bets.challengeId, participation.challengeId) }),
   ]);
 
-  const startingBalance = participation.challenge.startingBalance;
+  const challenge = participation.challenge;
+  const startingBalance = challenge.startingBalance;
+
+  // Balances are only handed out when the challenge goes live, so ranking
+  // before that showed everyone at -€10.000. There's nothing to rank yet
+  // either — show who's in instead.
+  if (!hasStarted(challenge.status)) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-5 px-4 py-6">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Leaderboard</h1>
+          <p className="text-sm text-muted-foreground">{challenge.name}</p>
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-5 text-center">
+          <p className="text-sm text-muted-foreground">De challenge begint over</p>
+          <Countdown label="" target={challenge.startAt.toISOString()} />
+          <p className="mt-3 text-sm text-muted-foreground">
+            Iedereen start dan met €{moneyFormatter.format(startingBalance)}. Zodra de eerste
+            bets zijn afgerekend verschijnt hier de stand.
+          </p>
+        </div>
+
+        <section className="space-y-2">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            Aan de start ({participants.length})
+          </h2>
+          <div className="divide-y divide-border rounded-lg border border-border">
+            {participants.map((p) => (
+              <div key={p.userId} className="flex items-center gap-3 p-3">
+                <UserAvatar
+                  username={p.user.username}
+                  avatarUrl={p.user.avatarUrl}
+                  size={28}
+                />
+                <Link
+                  href={`/app/profile/${p.user.username}`}
+                  className="min-w-0 flex-1 truncate text-sm hover:underline"
+                >
+                  <UsernameWithFlag username={p.user.username} country={p.user.country} />
+                </Link>
+                <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                  €{moneyFormatter.format(startingBalance)}
+                </span>
+              </div>
+            ))}
+            {participants.length === 0 && (
+              <p className="p-4 text-sm text-muted-foreground">
+                Nog niemand met een betaalde inleg.
+              </p>
+            )}
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   const rows = participants
     .map((p) => {

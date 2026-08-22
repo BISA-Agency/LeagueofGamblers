@@ -2,9 +2,12 @@ import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChallengeStatsPanel } from "@/components/challenges/challenge-stats";
+import { UserAvatar } from "@/components/profile/user-avatar";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
-import { calculatePrizeSplit, type PrizeTierRow } from "@/lib/settlement/payouts";
+import { getChallengeStats } from "@/lib/challenges/stats";
+import type { PrizeTierRow } from "@/lib/settlement/payouts";
 import { challengeParticipants, challenges } from "@drizzle/schema";
 
 const dateFormatter = new Intl.DateTimeFormat("nl-NL", {
@@ -46,65 +49,62 @@ export default async function PublicChallengePage({
   const [participants, prizeTierRows] = await Promise.all([
     db.query.challengeParticipants.findMany({
       where: eq(challengeParticipants.challengeId, challenge.id),
+      with: { user: { columns: { username: true, avatarUrl: true, country: true } } },
     }),
     db.query.prizeTiers.findMany(),
   ]);
-  const paidCount = participants.filter((p) => p.paidBuyIn).length;
-  const pot = paidCount * challenge.buyInAmount;
-
-  const tiers = ((challenge.prizeSplitOverride as PrizeTierRow[] | null) ?? prizeTierRows) as PrizeTierRow[];
-  const split = calculatePrizeSplit(paidCount, pot, tiers);
+  const stats = getChallengeStats(challenge, participants, prizeTierRows as PrizeTierRow[]);
 
   return (
     <main className="mx-auto max-w-xl px-6 py-14">
       <p className="text-sm font-medium text-accent-brand">League of Gamblers</p>
-      <h1 className="mt-2 text-3xl font-semibold tracking-tight">{challenge.name}</h1>
-      <p className="mt-2 text-muted-foreground">
+      <h1 className="mt-2 text-3xl font-semibold tracking-tight text-balance">{challenge.name}</h1>
+      <p className="mt-2 tabular-nums text-muted-foreground">
         {dateFormatter.format(challenge.startAt)} – {dateFormatter.format(challenge.endAt)}
       </p>
 
       {challenge.descriptionMd && (
-        <p className="mt-6 whitespace-pre-wrap text-sm">{challenge.descriptionMd}</p>
+        <p className="mt-6 whitespace-pre-wrap text-sm text-muted-foreground text-pretty">
+          {challenge.descriptionMd}
+        </p>
       )}
 
-      <div className="mt-8 grid grid-cols-3 gap-4 rounded-lg border border-border p-4 text-sm">
-        <div>
-          <p className="text-muted-foreground">Spelers</p>
-          <p className="text-lg font-semibold tabular-nums">{participants.length}</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Inleg</p>
-          <p className="text-lg font-semibold tabular-nums">
-            €{challenge.buyInAmount.toLocaleString("nl-NL")}
-          </p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Pot (betaald)</p>
-          <p className="text-lg font-semibold tabular-nums text-profit">
-            €{pot.toLocaleString("nl-NL")}
-          </p>
-        </div>
-      </div>
+      <ChallengeStatsPanel stats={stats} buyIn={challenge.buyInAmount} className="mt-8" />
 
-      {split.length > 0 && (
-        <div className="mt-6 rounded-lg border border-border p-4 text-sm">
-          <p className="mb-2 text-muted-foreground">
-            Met {paidCount} betaalde spelers is de pot €{pot.toLocaleString("nl-NL")}:
-          </p>
-          <p className="tabular-nums font-medium">
-            {split.map((s) => `#${s.rank} €${s.amount.toLocaleString("nl-NL")}`).join(" · ")}
-          </p>
+      {participants.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {participants.slice(0, 10).map((p) => (
+            <span
+              key={p.userId}
+              className="flex items-center gap-1.5 rounded-full border border-border py-1 pl-1 pr-2.5 text-xs"
+            >
+              <UserAvatar username={p.user.username} avatarUrl={p.user.avatarUrl} size={20} />
+              {p.user.username}
+            </span>
+          ))}
+          {participants.length > 10 && (
+            <span className="text-xs text-muted-foreground">
+              +{participants.length - 10} anderen
+            </span>
+          )}
         </div>
       )}
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-        <Button asChild size="lg" className="h-11">
-          <Link href="/login?next=/app/challenges">Doe mee</Link>
+        <Button asChild size="lg" className="h-12 text-base">
+          <Link href={`/login?next=${encodeURIComponent("/app/challenges")}`}>
+            Doe mee voor €{challenge.buyInAmount.toLocaleString("nl-NL")}
+          </Link>
         </Button>
-        <Button asChild size="lg" variant="outline" className="h-11">
+        <Button asChild size="lg" variant="outline" className="h-12 text-base">
           <Link href="/rules">Spelregels</Link>
         </Button>
       </div>
+
+      <p className="mt-4 text-xs text-muted-foreground">
+        Je speelt met €{challenge.startingBalance.toLocaleString("nl-NL")} virtueel geld. De
+        inleg regel je onderling met de organisator — de app verwerkt zelf geen betalingen.
+      </p>
     </main>
   );
 }

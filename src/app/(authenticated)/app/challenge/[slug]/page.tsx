@@ -2,7 +2,9 @@ import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChallengeStatsPanel } from "@/components/challenges/challenge-stats";
 import { PredictionSection } from "@/components/challenges/prediction-section";
+import { displayBalance, getChallengeStats, hasStarted } from "@/lib/challenges/stats";
 import { FieldChart } from "@/components/charts/field-chart";
 import { Sparkline } from "@/components/charts/sparkline";
 import { UserAvatar } from "@/components/profile/user-avatar";
@@ -10,7 +12,7 @@ import { UsernameWithFlag } from "@/components/profile/username-with-flag";
 import { Badge } from "@/components/ui/badge";
 import { getSnapshotsForUsers } from "@/lib/challenges/rank-snapshots";
 import { db } from "@/lib/db";
-import { calculatePrizeSplit, type PrizeTierRow } from "@/lib/settlement/payouts";
+import type { PrizeTierRow } from "@/lib/settlement/payouts";
 import { challenges } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
@@ -49,13 +51,18 @@ export default async function ChallengeDetailPage({
   } = await supabase.auth.getUser();
 
   const paid = challenge.participants.filter((p) => p.paidBuyIn);
-  const myUsername = paid.find((p) => p.userId === user?.id)?.user.username;
-  const pot = paid.length * challenge.buyInAmount;
+  const myUsername = challenge.participants.find((p) => p.userId === user?.id)?.user.username;
   const prizeTierRows = await db.query.prizeTiers.findMany();
-  const tiers = ((challenge.prizeSplitOverride as PrizeTierRow[] | null) ?? prizeTierRows) as PrizeTierRow[];
-  const split = calculatePrizeSplit(paid.length, pot, tiers);
+  const stats = getChallengeStats(
+    challenge,
+    challenge.participants,
+    prizeTierRows as PrizeTierRow[]
+  );
+  const started = hasStarted(challenge.status);
 
-  const ranked = [...paid].sort((a, b) => b.balance - a.balance);
+  const ranked = [...paid].sort(
+    (a, b) => displayBalance(b, challenge) - displayBalance(a, challenge)
+  );
   const snapshots = await getSnapshotsForUsers(
     challenge.id,
     ranked.map((p) => p.userId)
@@ -83,16 +90,10 @@ export default async function ChallengeDetailPage({
         <p className="whitespace-pre-wrap text-sm text-muted-foreground">{challenge.descriptionMd}</p>
       )}
 
+      <ChallengeStatsPanel stats={stats} buyIn={challenge.buyInAmount} />
+
       <section className="rounded-lg border border-border p-4 text-sm">
-        <p className="mb-2 text-muted-foreground">
-          {paid.length} betaalde spelers · pot €{pot.toLocaleString("nl-NL")}
-        </p>
-        {split.length > 0 && (
-          <p className="tabular-nums font-medium">
-            {split.map((s) => `#${s.rank} €${s.amount.toLocaleString("nl-NL")}`).join(" · ")}
-          </p>
-        )}
-        <div className="mt-2 flex gap-4">
+        <div className="flex gap-4">
           <Link href="/rules" className="text-accent-brand underline underline-offset-2">
             Spelregels
           </Link>
@@ -115,35 +116,57 @@ export default async function ChallengeDetailPage({
         />
       )}
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground">Verloop van het veld</h2>
-        <FieldChart
-          series={ranked.map((p) => ({
-            username: p.user.username,
-            points: snapshotsByUser.get(p.userId) ?? [],
-          }))}
-        />
-      </section>
+      {started && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground">Verloop van het veld</h2>
+          <FieldChart
+            series={ranked.map((p) => ({
+              username: p.user.username,
+              points: snapshotsByUser.get(p.userId) ?? [],
+            }))}
+          />
+        </section>
+      )}
 
       <section className="space-y-2">
-        <h2 className="text-sm font-medium text-muted-foreground">Deelnemers ({paid.length})</h2>
+        <h2 className="text-sm font-medium text-muted-foreground">
+          Deelnemers ({challenge.participants.length})
+        </h2>
         <div className="divide-y divide-border rounded-lg border border-border">
-          {ranked.map((p) => (
-            <div key={p.userId} className="flex items-center justify-between gap-3 p-3">
-              <div className="flex min-w-0 items-center gap-2">
-                <UserAvatar username={p.user.username} avatarUrl={p.user.avatarUrl} size={28} />
-                <Link href={`/app/profile/${p.user.username}`} className="truncate text-sm hover:underline">
-                  <UsernameWithFlag username={p.user.username} country={p.user.country} />
-                </Link>
+          {/* Paid players first and ranked; unpaid ones still show, because
+              they joined and the group can see who still owes. */}
+          {[...challenge.participants]
+            .sort((a, b) => {
+              if (a.paidBuyIn !== b.paidBuyIn) return a.paidBuyIn ? -1 : 1;
+              return displayBalance(b, challenge) - displayBalance(a, challenge);
+            })
+            .map((p) => (
+              <div key={p.userId} className="flex items-center justify-between gap-3 p-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <UserAvatar username={p.user.username} avatarUrl={p.user.avatarUrl} size={28} />
+                  <Link
+                    href={`/app/profile/${p.user.username}`}
+                    className="truncate text-sm hover:underline"
+                  >
+                    <UsernameWithFlag username={p.user.username} country={p.user.country} />
+                  </Link>
+                </div>
+                <div className="flex items-center gap-3">
+                  {started && p.paidBuyIn && (
+                    <Sparkline
+                      values={(snapshotsByUser.get(p.userId) ?? []).map((s) => s.balance)}
+                    />
+                  )}
+                  {p.paidBuyIn ? (
+                    <span className="tabular-nums text-sm font-medium">
+                      €{displayBalance(p, challenge).toLocaleString("nl-NL")}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-loss">inleg open</span>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Sparkline values={(snapshotsByUser.get(p.userId) ?? []).map((s) => s.balance)} />
-                <span className="tabular-nums text-sm font-medium">
-                  €{p.balance.toLocaleString("nl-NL")}
-                </span>
-              </div>
-            </div>
-          ))}
+            ))}
         </div>
       </section>
     </div>

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ChallengeSwitcher } from "@/components/challenges/challenge-switcher";
 import { UnpaidBuyInBanner } from "@/components/challenges/unpaid-buy-in-banner";
 import { getActiveParticipation } from "@/lib/challenges/active";
+import { displayBalance } from "@/lib/challenges/stats";
 import { BottomNav } from "@/components/nav/bottom-nav";
 import { Sidebar } from "@/components/nav/sidebar";
 import { NotificationBell } from "@/components/notifications/notification-bell";
@@ -35,7 +36,12 @@ export default async function AuthenticatedLayout({
 
   return (
     <div className="flex min-h-dvh">
-      <Sidebar username={profile.username} xp={profile.xp} />
+      <Sidebar
+        username={profile.username}
+        xp={profile.xp}
+        balance={active ? displayBalance(active, active.challenge) : null}
+        challengeName={active?.challenge.name ?? null}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-border bg-background/95 px-4 backdrop-blur supports-backdrop-filter:bg-background/80">
           <Link href="/app" className="text-base font-semibold tracking-tight md:invisible">
