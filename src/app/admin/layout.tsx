@@ -3,6 +3,15 @@ import { redirect } from "next/navigation";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { createClient } from "@/lib/supabase/server";
 
+const ADMIN_NAV = [
+  { href: "/admin", label: "Dashboard" },
+  { href: "/admin/challenges", label: "Challenges" },
+  { href: "/admin/proof-bets", label: "Bewijsbetten" },
+  { href: "/admin/badges", label: "Badges" },
+  { href: "/admin/payments", label: "Pot & betalingen" },
+  { href: "/admin/prize-tiers", label: "Prize tiers" },
+];
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
   const {
@@ -20,25 +29,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           Terug naar de app
         </Link>
       </header>
-      <nav className="mb-6 flex gap-4 border-b border-border pb-3 text-sm">
-        <Link href="/admin" className="text-muted-foreground hover:text-foreground">
-          Dashboard
-        </Link>
-        <Link href="/admin/challenges" className="text-muted-foreground hover:text-foreground">
-          Challenges
-        </Link>
-        <Link href="/admin/proof-bets" className="text-muted-foreground hover:text-foreground">
-          Bewijsbetten
-        </Link>
-        <Link href="/admin/badges" className="text-muted-foreground hover:text-foreground">
-          Badges
-        </Link>
-        <Link href="/admin/payments" className="text-muted-foreground hover:text-foreground">
-          Pot & betalingen
-        </Link>
-        <Link href="/admin/prize-tiers" className="text-muted-foreground hover:text-foreground">
-          Prize tiers
-        </Link>
+      {/* Wraps rather than forcing a fixed row — six links side by side were
+          480px wide and pushed every admin page into horizontal scroll on a
+          phone. */}
+      <nav className="mb-6 flex flex-wrap gap-x-4 gap-y-1 border-b border-border pb-3 text-sm">
+        {ADMIN_NAV.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="flex min-h-9 items-center text-muted-foreground hover:text-foreground"
+          >
+            {item.label}
+          </Link>
+        ))}
       </nav>
       {children}
     </div>

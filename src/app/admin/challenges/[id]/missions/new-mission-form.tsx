@@ -101,10 +101,10 @@ export function NewMissionForm({ challengeId }: { challengeId: string }) {
         Zet een einddatum om er een weekmissie van te maken; leeg laten betekent doorlopend.
       </p>
       <div className="flex gap-4">
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex min-h-9 items-center gap-2 text-sm">
           <Checkbox name="repeatable" /> Herhaalbaar
         </label>
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex min-h-9 items-center gap-2 text-sm">
           <Checkbox name="hidden" /> Verborgen (secret)
         </label>
       </div>

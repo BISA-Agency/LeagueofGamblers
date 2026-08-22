@@ -143,7 +143,9 @@ league-of-gamblers/
 - [x] Admin CRUD: statussen (open→live/live→settling auto via cron + handmatige override in de UI), sport/markt-selectie. Nog niet gebouwd: `draft→open` blijft puur handmatig (bewust, geen datumtrigger nodig), missiebudget-veld en rebuy-toggle hebben nog geen UI (kolommen bestaan al in het schema)
 - [x] `prize_tiers` tabel + beheer-UI, live potberekening en -weergave op de publieke challenge-pagina
 - [x] "Inleg betaald"-toggle per speler (admin); banner voor onbetaalde spelers en "alleen betaalde spelers tellen mee" **nog niet overal doorgevoerd** (leaderboard filtert al op `paidBuyIn`, maar er is nog geen zichtbare banner op de speler-kant)
-- [ ] Challenge-switcher (meerdere challenges tegelijk) — elke pagina pakt nu impliciet "de" actieve challenge van de speler; met >1 gelijktijdige challenge per speler is dit nog niet getest of gebouwd
+- [x] "Inleg betaald"-banner op de speler-kant: staat nu in de `(authenticated)` layout voor iedereen met een onbetaalde inleg in een open/live challenge
+- [x] Challenge-switcher (meerdere challenges tegelijk) — `getActiveParticipation` (cookie + relevantie-volgorde) wordt door alle acht "actieve challenge"-schermen gedeeld; switcher in de header verschijnt vanaf 2 challenges
+- [x] Missiebudget-veld en rebuy-toggle hebben nu een UI (Spelregels-blok op de admin challenge-pagina)
 
 **Sportsbook**
 - [x] `OddsProvider`-interface + `TheOddsApiProvider` (eu-regio, credits-tracking uit response headers, `/events` voor gratis listing + `/odds` voor de daadwerkelijke import) + aggregatie-strategie (hoogste/gemiddelde/referentie) via env var
@@ -152,33 +154,33 @@ league-of-gamblers/
 - [x] Wekelijkse import-flow: cron (maandag 08:00 UTC, zie `vercel.json`) + handmatige knop, preview-scherm (diff, credits), publiceren, auto-publish toggle per challenge
 - [x] Sportsbook-UI: events per sport, odds-knoppen, bet slip (bottom sheet mobiel / vast paneel desktop), combi's (geen zelfde-event combinaties), 10/25/50/all-in sneltoetsen
 - [x] Odds vastleggen bij plaatsen (nooit meer wijzigen — herimport laat bestaande `bet_selections` ongemoeid), event sluit server-side op `starts_at`
-- [x] Admin: event schorsen/heropenen/void, custom events toevoegen + settlement-queue. Markt-niveau schorsen (i.p.v. het hele event) is niet apart gebouwd — event-schorsen blokkeert al het plaatsen van nieuwe bets op dat event, wat voor Fase 1 volstaat
+- [x] Admin: event schorsen/heropenen/void, custom events toevoegen + settlement-queue, én markt-niveau schorsen/heropenen (per markt onder het event). Geschorste markten worden nu ook uit de speler-views gefilterd
 - [x] Automatische settlement via `getResults()` (h2h/totals/spreads, incl. Asian-handicap kwartlijnen → half_won/half_lost) + handmatige settlement-queue voor custom events
-- [ ] Bets verborgen voor medespelers tot `event_start` — RLS-policy staat er (defensief), maar er is nog geen "bekijk bets van andere spelers"-scherm gebouwd waarin dit daadwerkelijk getoond/getest wordt
+- [x] Bets verborgen voor medespelers tot `event_start` — `/app/bets/field` toont de bets van het veld en dwingt de regel af in de query zelf (`eventStart <= now`), niet alleen in RLS
 
 **Bewijsbet**
 - [x] `/app/bets/proof` formulier (dynamische selecties voor combi's) + uitklapbare uitleg (tekstueel; geen geannoteerde voorbeeldafbeelding — die zou een los gemaakt asset vereisen)
 - [x] Screenshot-upload naar Supabase Storage (privé bucket, max 5MB, jpg/png/webp/heic), verplicht, alleen als signed URL server-side vrijgegeven na autorisatie-check
 - [x] Server-side: `placed_at < event_start` check, stake ≤ balance
 - [x] Controle-queue admin (screenshot groot, goedkeuren/afkeuren + reden, sanctie: waarschuwing/saldo-correctie/diskwalificatie)
-- [x] Flag-systeem (actie bestaat, `bet_flags`-tabel + RLS) — er is nog geen speler-UI om een flag *in te dienen* op een bet
-- [x] Zelf-settlement door speler (won/lost/void). "Betwistbaar" = dezelfde flag-actie; nog geen aparte betwist-UI
+- [x] Flag-systeem: `bet_flags` + RLS + "Betwisten"-knop op elke bet van het veld. De actie weigert zelf-flaggen, niet-deelnemers en dubbele flags
+- [x] Zelf-settlement door speler (won/lost/void). "Betwistbaar" = dezelfde flag-actie, nu via de betwist-knop op `/app/bets/field`
 
 **Fairness & audit**
 - [x] `audit_log` + helper (`lib/audit.ts`), aangeroepen vanuit de admin-mutaties die tot nu toe gebouwd zijn (import publiceren, custom events, bewijsbet-controle, sancties, betalingen, missies/badges toekennen)
 - [x] RLS policies op alle 19 tabellen + Storage — zie §7-notitie in DECISIONS.md over hoe dit zich verhoudt tot de geprivilegieerde Drizzle-verbinding die de app zelf gebruikt
-- [ ] Rate limiting op bet-plaatsing — nog niet gebouwd
+- [x] Rate limiting op bet-plaatsing — in de database geteld (serverless heeft geen gedeeld geheugen): 3s burst-venster + max 12 bets per minuut, op zowel sportsbook- als bewijsbetten
 
 **Leaderboard, profiel, gamification-basis**
 - [x] Leaderboard met de kolommen uit §5.5 min. de trend-pijl (die heeft `rank_snapshots` nodig, Fase 2-scope) — 30s polling i.p.v. Supabase Realtime-subscriptions
-- [x] Profiel: badges-vitrine, XP/level, sancties-telling, saldo/winrate voor de actieve challenge. Uitgebreidere stats (streaks, gem. odds, enkel/combi-verhouding, etc.) nog niet gebouwd
+- [x] Profiel: badges-vitrine, XP/level, sancties-telling, volgers, en per actieve challenge saldo/winrate/bets/langste winreeks/gem. quotering/hoogste gewonnen odds/enkel-combi/grootste winst/totaal ingezet (`lib/stats/bets.ts`, gedeeld met head-to-head en wrapped)
 - [x] Missie-engine (`lib/missions/engine.ts`, registry-patroon) + types `win_odds_min`, `win_streak`, `combi_win`; `manual` bewust zonder auto-checker
-- [x] Badges: seed-set (§5.8, alle 14) + handmatige toekenning + automatische toekenning via missies. Losstaande badge-triggers (bijv. "Bust" bij saldo €0, "Sharp" bij winrate-drempel) zijn nog niet los geautomatiseerd — alleen wat via een missie loopt wordt nu toegekend
-- [x] `/app/missions` — toont behaald/niet-behaald en wie 'm al heeft; geen proportionele voortgangsbalk (zou een aparte progress-functie per missietype vereisen)
+- [x] Badges: seed-set (§5.8, alle 14) + handmatige toekenning + automatische triggers. Per bet: first-blood, longshot, combi-king, all-in, hot-streak, sharp, bust, scout. Bij challenge-einde: challenge-winner, podium, iron-bankroll, comeback, veteran. Bij bewijsbet-goedkeuring: clean-sheet
+- [x] `/app/missions` — behaald/niet-behaald, wie 'm al heeft, en een voortgangsbalk voor de telbare missietypes (`lib/missions/progress.ts`). Pass/fail-types krijgen bewust geen balk
 
 **Betalingen (fase 1 = alleen administratie)**
 - [x] `payments`-tabel + `PaymentProvider`-interface + `CashProvider`
-- [x] `/app/pay` inleg-info (cash), admin "te betalen"-lijst voor missie-uitkeringen. Prijsuitbetaling-aan-het-einde (met automatische `payments`-records bij `settling→finished`) is **nog niet gebouwd** — die transitie zelf ontbreekt nog
+- [x] `/app/pay` inleg-info (cash), admin "openstaande uitbetalingen"-lijst. Prijsuitbetaling bij `settling→finished` is gebouwd: admin-actie (geen cron, want het schrijft echte-geld-records), weigert zolang er open bets zijn, zet `finalRank` vast en maakt `payout_prize`-records op `pending`
 
 **Admin dashboard**
 - [x] Overzicht: challenge-statussen, bewijsbetten in wachtrij, open flags, te betalen bedragen, laatste import + resterende credits
@@ -188,7 +190,7 @@ league-of-gamblers/
 
 **Seed & QA**
 - [x] Seed-script v2: 8 demo-spelers, staffel, alle 14 badges, 3 missies, 2 voorbeeld-toekenningen. Geen gefabriceerde bet-historie (zie DECISIONS.md voor de afweging)
-- [~] Getest: geen volledige 375px/1440px-pas over élke pagina, wel end-to-end tegen de echte database geverifieerd (inloggen, onboarding, challenge joinen, admin importeren/custom event/settlen, sportsbook-bet plaatsen → uitbetalen, leaderboard, missies, badges, profiel, pay, admin-overzichten) — zie DECISIONS.md
+- [x] Getest: volledige 375px/1440px-pas over alle 31 pagina's (Playwright, controleert horizontale overflow + tap-targets + JS-fouten). 1440px was schoon; op 375px liepen alle admin-pagina's over (nav wrapte niet) en waren de Select-triggers 32px — beide gefixt. Daarnaast end-to-end tegen de echte database geverifieerd (inloggen, onboarding, joinen, importeren/custom event/settlen, bet plaatsen → uitbetalen, challenge afsluiten + prijzen, leaderboard, missies, badges, profiel, pay, admin-overzichten)
 
 ## 4. Fase 2 — Tijdens de eerste challenge
 

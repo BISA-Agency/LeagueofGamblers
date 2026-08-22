@@ -29,9 +29,14 @@ export default async function AdminBadgesPage() {
           Alle badges ({allBadges.length})
         </h2>
         {allBadges.map((badge) => (
-          <div key={badge.id} className="flex items-center gap-3 rounded-lg border border-border p-4">
+          <div
+            key={badge.id}
+            className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-4"
+          >
             <BadgeIcon icon={badge.icon} rarity={badge.rarity} size={40} />
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 basis-40">
+              {/* basis-40 lets the award form drop to its own line on a phone
+                  instead of squeezing the row past the viewport. */}
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium">{badge.name}</p>
                 <Badge variant="secondary" className="capitalize">

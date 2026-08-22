@@ -36,7 +36,7 @@ export function ChallengeRulesForm({
         </p>
       </div>
 
-      <label className="flex items-center gap-2 text-sm">
+      <label className="flex min-h-9 items-center gap-2 text-sm">
         <Checkbox name="allowRebuy" defaultChecked={defaultAllowRebuy} />
         Rebuy toestaan (een speler die bust is mag opnieuw inleggen)
       </label>

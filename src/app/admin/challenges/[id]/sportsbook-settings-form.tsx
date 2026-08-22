@@ -33,7 +33,7 @@ export function SportsbookSettingsForm({
         <Label>Sporten</Label>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {Object.entries(DEFAULT_SPORT_KEYS).map(([key, apiKey]) => (
-            <label key={key} className="flex items-center gap-2 text-sm">
+            <label key={key} className="flex min-h-9 items-center gap-2 text-sm">
               <Checkbox
                 name="sportKeys"
                 value={apiKey}
@@ -47,9 +47,9 @@ export function SportsbookSettingsForm({
 
       <div className="space-y-2">
         <Label>Markten</Label>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
           {MARKET_OPTIONS.map((m) => (
-            <label key={m.value} className="flex items-center gap-2 text-sm">
+            <label key={m.value} className="flex min-h-9 items-center gap-2 text-sm">
               <Checkbox
                 name="marketTypes"
                 value={m.value}
@@ -62,12 +62,12 @@ export function SportsbookSettingsForm({
       </div>
 
       <div className="space-y-2">
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex min-h-9 items-center gap-2 text-sm">
           <Checkbox name="autoPublishImports" defaultChecked={defaultAutoPublish} />
           Wekelijkse import automatisch publiceren (zonder preview te bekijken)
         </label>
 
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex min-h-9 items-center gap-2 text-sm">
           <Checkbox name="midweekImportEnabled" defaultChecked={defaultMidweekImport} />
           Extra midweek-import op donderdag (naast de maandagimport)
         </label>

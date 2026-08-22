@@ -2,6 +2,47 @@
 
 Keuzes die ik onderweg heb gemaakt, met motivatie. Zie PLAN.md §12.7.
 
+## Fase 1 — gaten dichten (na Fase 2)
+
+**Challenge afsluiten is een admin-actie, geen cron.**
+`settling→finished` schrijft `payout_prize`-records: echt geld. Dat wil je
+niet 's nachts automatisch laten gebeuren terwijl er misschien nog een bet
+open staat. De actie weigert dan ook zolang er open bets zijn, want de
+eindstand kan dan nog schuiven. De records komen op `pending` binnen; ze
+afvinken blijft een aparte stap, net als bij missie-uitkeringen.
+
+**Iron Bankroll wordt beoordeeld op dagsnapshots, niet op een echte
+low-water mark.** We houden geen saldo-grootboek bij, dus een dip die
+binnen dezelfde dag hersteld werd zien we niet. Bewust: een badge is geen
+boekhouding, en een grootboek toevoegen alleen hiervoor is niet de moeite.
+
+**`user_badges` had geen unique constraint.** Alle `onConflictDoNothing()`
+in de toekenningspaden waren daardoor no-ops — dezelfde badge kon meerdere
+keren toegekend worden. Migratie 0008 ruimt eventuele duplicaten op en zet
+de constraint erop (`NULLS NOT DISTINCT`, zodat challenge-loze badges ook
+maar één keer kunnen).
+
+**Rate limiting telt in de database.** Elke request kan op een andere
+serverless-instance landen, dus een teller in het geheugen handhaaft niets.
+Het echte risico is geen aanvaller maar een dubbele tap op een trage
+verbinding; vandaar een burst-venster van 3 seconden plus een cap van 12
+per minuut.
+
+**Voortgangsbalken alleen voor telbare missies.** `win_streak`, `sport_win`,
+`balance_reach` en `volume` hebben een zinnige tussenstand. De rest is
+pass/fail — een balk die op 0% blijft staan tot hij naar 100% springt zegt
+minder dan geen balk.
+
+**Selecthoogte zat vast op 32px.** shadcn's `SelectTrigger` schrijft zijn
+hoogte als `data-[size=default]:h-8`. tailwind-merge ziet dat niet als
+conflict met een gewone `h-11`, dus per-instance overrides verloren het
+stilletjes. Nu staat de hoogte in het component zelf, op 44px.
+
+**Overgebleven "kleine tap-targets" in de responsive-pas zijn geen bugs.**
+Wat de audit nog meldt zijn inline tekstlinks (inhoudsopgave op /rules, het
+woordmerk, "Mijn bets") en Radix' verborgen 1px native `<select>` voor
+form-integratie. Die horen niet op 44px.
+
 ## Fase 2
 
 **Notificaties: drie types, geen `bet_settled`.**

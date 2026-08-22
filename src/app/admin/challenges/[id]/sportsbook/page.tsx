@@ -61,7 +61,7 @@ export default async function AdminSportsbookPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold tracking-tight">Sportsbook — {challenge.name}</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button asChild size="sm" variant="outline" className="h-11">
             <Link href={`/admin/challenges/${id}/sportsbook/settle`}>Settlement-queue</Link>
           </Button>

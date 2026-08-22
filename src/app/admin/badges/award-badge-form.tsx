@@ -19,7 +19,7 @@ export function AwardBadgeForm({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Select value={userId} onValueChange={setUserId}>
-        <SelectTrigger className="h-9 w-40">
+        <SelectTrigger className="h-9 w-36">
           <SelectValue placeholder="Kies speler" />
         </SelectTrigger>
         <SelectContent>
