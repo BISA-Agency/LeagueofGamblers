@@ -1,0 +1,1 @@
+ALTER TABLE "challenges" ADD COLUMN "midweek_import_enabled" boolean DEFAULT false NOT NULL;

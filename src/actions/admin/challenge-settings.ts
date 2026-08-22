@@ -26,10 +26,17 @@ export async function updateChallengeSportsbookSettings(
   const sportKeys = formData.getAll("sportKeys").map(String);
   const marketTypes = formData.getAll("marketTypes").map(String);
   const autoPublish = formData.get("autoPublishImports") === "on";
+  const midweekImport = formData.get("midweekImportEnabled") === "on";
 
   await db
     .update(challenges)
-    .set({ sportKeys, markets: marketTypes, autoPublishImports: autoPublish, updatedAt: new Date() })
+    .set({
+      sportKeys,
+      markets: marketTypes,
+      autoPublishImports: autoPublish,
+      midweekImportEnabled: midweekImport,
+      updatedAt: new Date(),
+    })
     .where(eq(challenges.id, challengeId));
 
   revalidatePath(`/admin/challenges/${challengeId}`);

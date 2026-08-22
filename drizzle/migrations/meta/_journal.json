@@ -50,6 +50,13 @@
       "when": 1787369548455,
       "tag": "0006_true_daredevil",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787370867299,
+      "tag": "0007_awesome_blue_shield",
+      "breakpoints": true
     }
   ]
 }

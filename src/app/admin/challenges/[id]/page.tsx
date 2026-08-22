@@ -57,6 +57,7 @@ export default async function AdminChallengeDetailPage({
           defaultSportKeys={challenge.sportKeys}
           defaultMarkets={challenge.markets}
           defaultAutoPublish={challenge.autoPublishImports}
+          defaultMidweekImport={challenge.midweekImportEnabled}
         />
       </div>
     </div>

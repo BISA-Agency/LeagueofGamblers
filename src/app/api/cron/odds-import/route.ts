@@ -5,10 +5,17 @@ import { db } from "@/lib/db";
 import { createImportPreview, publishImportRow } from "@/lib/odds-provider/run-import";
 import { challenges } from "@drizzle/schema";
 
-/** Weekly odds import (§5.3) — Vercel Cron default: Monday 10:00 Europe/Amsterdam. */
+/**
+ * Odds import (§5.3) — Vercel Cron default: Monday 08:00 UTC for the main
+ * weekly run, everyone gets that one. The optional Thursday mini-import
+ * hits this same route with ?midweek=1, which narrows the run to only
+ * challenges that opted into midweekImportEnabled.
+ */
 export async function GET(request: NextRequest) {
   const authError = requireCronSecret(request);
   if (authError) return authError;
+
+  const isMidweekRun = request.nextUrl.searchParams.get("midweek") === "1";
 
   const activeChallenges = await db.query.challenges.findMany({
     where: inArray(challenges.status, ["open", "live"]),
@@ -18,6 +25,7 @@ export async function GET(request: NextRequest) {
 
   for (const challenge of activeChallenges) {
     if (challenge.sportKeys.length === 0) continue;
+    if (isMidweekRun && !challenge.midweekImportEnabled) continue;
     try {
       const { importRow } = await createImportPreview(challenge.id, null);
       let published = false;

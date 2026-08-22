@@ -17,11 +17,13 @@ export function SportsbookSettingsForm({
   defaultSportKeys,
   defaultMarkets,
   defaultAutoPublish,
+  defaultMidweekImport,
 }: {
   challengeId: string;
   defaultSportKeys: string[];
   defaultMarkets: string[];
   defaultAutoPublish: boolean;
+  defaultMidweekImport: boolean;
 }) {
   const action = updateChallengeSportsbookSettings.bind(null, challengeId);
 
@@ -59,10 +61,17 @@ export function SportsbookSettingsForm({
         </div>
       </div>
 
-      <label className="flex items-center gap-2 text-sm">
-        <Checkbox name="autoPublishImports" defaultChecked={defaultAutoPublish} />
-        Wekelijkse import automatisch publiceren (zonder preview te bekijken)
-      </label>
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox name="autoPublishImports" defaultChecked={defaultAutoPublish} />
+          Wekelijkse import automatisch publiceren (zonder preview te bekijken)
+        </label>
+
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox name="midweekImportEnabled" defaultChecked={defaultMidweekImport} />
+          Extra midweek-import op donderdag (naast de maandagimport)
+        </label>
+      </div>
 
       <Button type="submit" size="sm" className="h-11">
         Opslaan

@@ -48,6 +48,8 @@ export const challenges = pgTable(
       .default(sql`'{}'::text[]`),
     allowRebuy: boolean("allow_rebuy").notNull().default(false),
     autoPublishImports: boolean("auto_publish_imports").notNull().default(false),
+    // Optional Thursday mini-import alongside the main Monday one (§5.3, default off).
+    midweekImportEnabled: boolean("midweek_import_enabled").notNull().default(false),
     // Fase 3 prep only — no wallet logic in fase 1 (§6).
     walletAddress: text("wallet_address"),
     createdBy: uuid("created_by").references(() => profiles.id),
