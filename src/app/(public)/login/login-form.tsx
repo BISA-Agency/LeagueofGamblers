@@ -59,7 +59,7 @@ export function LoginForm({ next }: { next: string }) {
           <input type="hidden" name="next" value={next} />
           <input type="hidden" name="email" value={email} />
           <p className="text-sm text-muted-foreground">
-            We hebben een link én een 6-cijferige code gestuurd naar{" "}
+            We hebben een link én een inlogcode gestuurd naar{" "}
             <span className="text-foreground">{email}</span>. Klik op de link in de e-mail,
             of vul de code hieronder in.
           </p>
@@ -70,11 +70,15 @@ export function LoginForm({ next }: { next: string }) {
               name="token"
               inputMode="numeric"
               autoComplete="one-time-code"
-              maxLength={6}
-              placeholder="123456"
+              // Supabase's OTP length is a project setting (6–10). This was
+              // capped at 6 while the project issues 8, so the code was
+              // silently truncated and every attempt failed. Cap at the
+              // maximum instead of guessing the current setting.
+              maxLength={10}
+              placeholder="12345678"
               required
               autoFocus
-              className="h-11"
+              className="h-11 tracking-widest"
             />
           </div>
           {verifyState.status === "error" && (

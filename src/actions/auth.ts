@@ -31,6 +31,7 @@ export async function requestLoginCode(
   });
 
   if (error) {
+    console.error(`signInWithOtp mislukt voor ${email}: ${error.status} ${error.message}`);
     return { status: "error", message: "Versturen mislukt. Probeer het opnieuw." };
   }
 
@@ -42,17 +43,23 @@ export async function verifyLoginCode(
   formData: FormData
 ): Promise<AuthActionState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const token = String(formData.get("token") ?? "").trim();
+  // Codes get pasted out of mail clients with stray spaces or a dash in them.
+  const token = String(formData.get("token") ?? "").replace(/\D/g, "");
   const next = String(formData.get("next") ?? "/app");
 
   if (!token) {
-    return { status: "error", message: "Vul de 6-cijferige code in.", email };
+    return { status: "error", message: "Vul je inlogcode in.", email };
   }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
 
   if (error) {
+    // Log the real reason: swallowing it is what made the truncated-code bug
+    // take so long to find. The user still gets a friendly message.
+    console.error(
+      `verifyOtp mislukt voor ${email}: ${error.status} ${error.code ?? ""} ${error.message}`
+    );
     return { status: "error", message: "Onjuiste of verlopen code. Probeer het opnieuw.", email };
   }
 

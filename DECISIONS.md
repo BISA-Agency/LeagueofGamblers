@@ -2,6 +2,29 @@
 
 Keuzes die ik onderweg heb gemaakt, met motivatie. Zie PLAN.md §12.7.
 
+## De OTP-code-bug, opgelost (2026-08-22)
+
+Wekenlang stond dit als "magic link werkt, ingetypte code niet, oorzaak
+onbekend". De oorzaak bleek banaal: **dit Supabase-project geeft codes van 8
+cijfers uit, terwijl het invoerveld `maxLength={6}` had.** De browser kapte
+elke code stil af op zes tekens, dus de server kreeg altijd een ongeldige
+token en gaf `403 Token has expired or is invalid`. De link werkte omdat
+daar niets getypt hoeft te worden — precies het patroon dat het zo
+verwarrend maakte.
+
+Niet teruggezet naar 8: de codelengte is een projectinstelling in Supabase
+(6–10 tekens). Het veld staat nu op het maximum van 10, zodat het blijft
+werken als die instelling ooit wijzigt. De tekst zegt niet langer
+"6-cijferige code".
+
+**Wat het opsporen zo lang liet duren, is ook gefixt.** De inlogactie ving de
+Supabase-fout op en verving hem door één vriendelijke zin, dus de échte
+statuscode en melding waren nergens te zien. Die worden nu server-side
+gelogd; de gebruiker ziet nog steeds de vriendelijke melding.
+
+Meegenomen: codes worden uit mailclients geplakt mét spaties of een
+streepje, dus niet-cijfers gaan er server-side uit voor verificatie.
+
 ## Eerste echte Odds API-run (2026-08-22)
 
 De koppeling was gebouwd op de documentatie en had nog nooit met de echte
