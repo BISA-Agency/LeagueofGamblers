@@ -1,10 +1,11 @@
 import { eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BadgeIcon } from "@/components/badges/badge-icon";
 import { UserAvatar } from "@/components/profile/user-avatar";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
-import { profiles } from "@drizzle/schema";
+import { bets, profiles } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
 const memberSinceFormatter = new Intl.DateTimeFormat("nl-NL", {
@@ -20,6 +21,10 @@ export default async function ProfilePage({
   const { username } = await params;
   const profile = await db.query.profiles.findFirst({
     where: eq(profiles.username, username.toLowerCase()),
+    with: {
+      badges: { with: { badge: true } },
+      participations: { with: { challenge: true } },
+    },
   });
   if (!profile) notFound();
 
@@ -28,6 +33,17 @@ export default async function ProfilePage({
     data: { user },
   } = await supabase.auth.getUser();
   const isOwnProfile = user?.id === profile.id;
+
+  const activeParticipation = profile.participations.find((p) => p.status === "active");
+  const myBets = activeParticipation
+    ? await db.query.bets.findMany({
+        where: eq(bets.userId, profile.id),
+      })
+    : [];
+  const settled = myBets.filter((b) => b.status !== "open");
+  const won = settled.filter((b) => b.status === "won" || b.status === "half_won");
+  const winrate = settled.length > 0 ? (won.length / settled.length) * 100 : 0;
+  const totalWarnings = profile.participations.reduce((sum, p) => sum + p.warnings, 0);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
@@ -48,6 +64,19 @@ export default async function ProfilePage({
 
       {profile.bio && <p className="text-sm">{profile.bio}</p>}
 
+      {profile.badges.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          {profile.badges.map((ub) => (
+            <div key={ub.id} className="flex flex-col items-center gap-1" title={ub.badge.description}>
+              <BadgeIcon icon={ub.badge.icon} rarity={ub.badge.rarity} size={44} />
+              <span className="max-w-16 truncate text-center text-[10px] text-muted-foreground">
+                {ub.badge.name}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <dl className="grid grid-cols-2 gap-4 text-sm">
         {profile.favoriteClub && (
           <div>
@@ -67,13 +96,31 @@ export default async function ProfilePage({
         </div>
         <div>
           <dt className="text-muted-foreground">Level</dt>
-          <dd className="tabular-nums">{profile.level}</dd>
+          <dd className="tabular-nums">
+            {profile.level} · {profile.xp} XP
+          </dd>
         </div>
+        {activeParticipation && (
+          <>
+            <div>
+              <dt className="text-muted-foreground">Saldo ({activeParticipation.challenge.name})</dt>
+              <dd className="tabular-nums">€{activeParticipation.balance.toLocaleString("nl-NL")}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Winrate</dt>
+              <dd className="tabular-nums">
+                {winrate.toFixed(0)}% ({won.length}/{settled.length})
+              </dd>
+            </div>
+          </>
+        )}
       </dl>
 
-      <p className="text-xs text-muted-foreground">
-        Statistieken, badges en bet-historie volgen in een volgende fase.
-      </p>
+      {totalWarnings > 0 && (
+        <p className="text-sm text-loss">
+          {totalWarnings} waarschuwing{totalWarnings !== 1 ? "en" : ""}
+        </p>
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
+import { calculatePrizeSplit, type PrizeTierRow } from "@/lib/settlement/payouts";
 import { challengeParticipants, challenges } from "@drizzle/schema";
 
 const dateFormatter = new Intl.DateTimeFormat("nl-NL", {
@@ -21,11 +22,17 @@ export default async function PublicChallengePage({
   const challenge = await db.query.challenges.findFirst({ where: eq(challenges.slug, slug) });
   if (!challenge) notFound();
 
-  const participants = await db.query.challengeParticipants.findMany({
-    where: eq(challengeParticipants.challengeId, challenge.id),
-  });
+  const [participants, prizeTierRows] = await Promise.all([
+    db.query.challengeParticipants.findMany({
+      where: eq(challengeParticipants.challengeId, challenge.id),
+    }),
+    db.query.prizeTiers.findMany(),
+  ]);
   const paidCount = participants.filter((p) => p.paidBuyIn).length;
   const pot = paidCount * challenge.buyInAmount;
+
+  const tiers = ((challenge.prizeSplitOverride as PrizeTierRow[] | null) ?? prizeTierRows) as PrizeTierRow[];
+  const split = calculatePrizeSplit(paidCount, pot, tiers);
 
   return (
     <main className="mx-auto max-w-xl px-6 py-14">
@@ -57,6 +64,17 @@ export default async function PublicChallengePage({
           </p>
         </div>
       </div>
+
+      {split.length > 0 && (
+        <div className="mt-6 rounded-lg border border-border p-4 text-sm">
+          <p className="mb-2 text-muted-foreground">
+            Met {paidCount} betaalde spelers is de pot €{pot.toLocaleString("nl-NL")}:
+          </p>
+          <p className="tabular-nums font-medium">
+            {split.map((s) => `#${s.rank} €${s.amount.toLocaleString("nl-NL")}`).join(" · ")}
+          </p>
+        </div>
+      )}
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
         <Button asChild size="lg" className="h-11">

@@ -33,6 +33,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <Link href="/admin/badges" className="text-muted-foreground hover:text-foreground">
           Badges
         </Link>
+        <Link href="/admin/payments" className="text-muted-foreground hover:text-foreground">
+          Pot & betalingen
+        </Link>
+        <Link href="/admin/prize-tiers" className="text-muted-foreground hover:text-foreground">
+          Prize tiers
+        </Link>
       </nav>
       {children}
     </div>
