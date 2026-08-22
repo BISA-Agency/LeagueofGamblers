@@ -2,6 +2,63 @@
 
 Keuzes die ik onderweg heb gemaakt, met motivatie. Zie PLAN.md §12.7.
 
+## Fase 1
+
+**RLS is defense-in-depth, niet de primaire autorisatielaag.**
+De app zelf praat met Postgres via een geprivilegieerde Drizzle-verbinding
+(zie `src/lib/db`) en handhaaft autorisatie in servercode (welke challenge,
+welke speler, is het admin-email). RLS-policies (§7, `supabase/migrations/
+0001_rls_policies.sql`) zijn dus vooral een vangnet voor het
+anon/authenticated PostgREST-pad dat Supabase automatisch aanbiedt, en om
+Supabase's eigen "RLS disabled"-lintwaarschuwingen weg te nemen — niet de
+plek waar "bets pas zichtbaar na event_start" script echt afgedwongen wordt
+(dat gebeurt in de queries van de UI zelf).
+
+**Combi-afrekening bij half_won/half_lost-selecties: vereenvoudigd.**
+Een quart-lijn (Aziatische handicap, bijv. -0.25) wordt correct afgerekend
+als gemiddelde van de twee aangrenzende hele/halve lijnen (zie
+`lib/settlement/markets.ts`). Zit zo'n selectie in een **combi** met andere
+selecties, dan telt half_lost als verlies en half_won als winst tegen de
+volledige odds van die selectie — een echte gesplitste uitbetaling (zoals
+bookmakers doen) is niet gebouwd. Voor een MVP van een vriendengroep is dit
+een acceptabele vereenvoudiging; Aziatische handicaps in combi's zijn sowieso
+een randgeval.
+
+**Prijsuitbetaling aan het einde van een challenge: nog niet gebouwd.**
+De `settling → finished`-overgang (eindstand bepalen, staffel toepassen,
+`payments`-records met `direction: payout_prize` aanmaken) ontbreekt nog.
+Gegeven dat de demo-challenge en de eerste echte challenge (start
+2026-09-01, 30 dagen) nog niet aflopen, is dit bewust naar later verschoven
+— wel een reëel gat dat vóór eind september dicht moet zijn.
+
+**Losstaande badge-triggers (Bust, Sharp, Iron Bankroll, ...) nog niet geautomatiseerd.**
+Alleen badges die via een missie lopen worden nu automatisch toegekend
+(`awardMission` vanuit `lib/missions/engine.ts`). De badges die aan een
+losse gebeurtenis hangen (saldo op €0 → Bust, winrate-drempel → Sharp, etc.)
+hebben nog geen eigen trigger — voorlopig alleen handmatig toe te kennen via
+`/admin/badges`.
+
+**Seed-script v2 fabriceert geen bet-historie.**
+Wel geseed: staffel, alle 14 badges, 3 missies, 2 voorbeeld-toekenningen.
+Realistische afgeronde bets met correcte odds/uitslagen/saldo-consistentie
+namaken kost meer tijd dan het oplevert vergeleken met gewoon de app zelf
+gebruiken (via de admin custom-event-flow) om echte bet-historie te
+genereren — wat ik ook gedaan heb om de volledige flow te verifiëren (zie
+onder).
+
+**Getest: end-to-end tegen de échte Supabase-database, niet een volledige
+375px/1440px-pas per pagina.**
+Gegeven de omvang van Fase 1 heb ik de kernflows end-to-end geverifieerd met
+Playwright tegen het live project (inloggen als speler én als admin via
+Supabase's admin-API, geen productie-mail nodig): onboarding, challenge
+joinen, admin importeert/maakt een custom event/settelt 'm, speler plaatst
+een sportsbook-bet en wordt na settlement uitbetaald (saldo-mutatie
+geverifieerd in de database), leaderboard/missies/badges/profiel/pay/
+admin-overzichten renderen zonder consolefouten op zowel mobiel (375px) als
+desktop (1440px). Geen page-by-page visuele regressiepas over elke losse
+admin-subpagina — bij twijfel over een specifieke pagina, vraag het en dan
+check ik 'm gericht.
+
 ## Fase 0
 
 **Gebruikersnaam max. 24 tekens i.p.v. 20 (expliciete keuze van de opdrachtgever).**

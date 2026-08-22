@@ -140,55 +140,55 @@ league-of-gamblers/
 ## 3. Fase 1 — MVP (klaar vóór 1 september 2026)
 
 **Challenges & pot**
-- [ ] Admin CRUD volledig: statussen (`draft→open→live→settling→finished`, auto via cron + handmatige override), sport/markt-selectie, missiebudget, rebuy-toggle
-- [ ] `prize_tiers` tabel + beheer-UI, live potberekening en -weergave op challenge-pagina
-- [ ] "Inleg betaald"-toggle per speler (admin), banner voor onbetaalde spelers, alleen betaalde spelers op leaderboard/pot
-- [ ] Challenge-switcher (meerdere challenges tegelijk)
+- [x] Admin CRUD: statussen (open→live/live→settling auto via cron + handmatige override in de UI), sport/markt-selectie. Nog niet gebouwd: `draft→open` blijft puur handmatig (bewust, geen datumtrigger nodig), missiebudget-veld en rebuy-toggle hebben nog geen UI (kolommen bestaan al in het schema)
+- [x] `prize_tiers` tabel + beheer-UI, live potberekening en -weergave op de publieke challenge-pagina
+- [x] "Inleg betaald"-toggle per speler (admin); banner voor onbetaalde spelers en "alleen betaalde spelers tellen mee" **nog niet overal doorgevoerd** (leaderboard filtert al op `paidBuyIn`, maar er is nog geen zichtbare banner op de speler-kant)
+- [ ] Challenge-switcher (meerdere challenges tegelijk) — elke pagina pakt nu impliciet "de" actieve challenge van de speler; met >1 gelijktijdige challenge per speler is dit nog niet getest of gebouwd
 
 **Sportsbook**
-- [ ] `OddsProvider`-interface + `TheOddsApiProvider` (EU-regio, credits-tracking uit response headers)
-- [ ] `ManualProvider` voor admin custom events
-- [ ] `events` / `markets` / `outcomes` / `odds_imports` schema
-- [ ] Wekelijkse import-flow: cron (ma 10:00 Europe/Amsterdam) + handmatige knop, preview-scherm (diff, credits-schatting), publiceren, auto-publish toggle
-- [ ] Sportsbook-UI: events per sport/dag, odds-knoppen, bet slip (bottom sheet mobiel / vast paneel desktop), combi's (geen zelfde-event combinaties), 10/25/50/all-in sneltoetsen
-- [ ] Odds vastleggen bij plaatsen (nooit meer wijzigen), event sluit server-side op `starts_at`
-- [ ] Admin: event/markt schorsen of void, custom events toevoegen/bewerken/settelen
-- [ ] Automatische settlement via `getResults()` (h2h/totals/spreads) + handmatige settlement-queue
-- [ ] Bets verborgen voor medespelers tot `event_start` (RLS + UI)
+- [x] `OddsProvider`-interface + `TheOddsApiProvider` (eu-regio, credits-tracking uit response headers, `/events` voor gratis listing + `/odds` voor de daadwerkelijke import) + aggregatie-strategie (hoogste/gemiddelde/referentie) via env var
+- [x] `ManualProvider` voor admin custom events
+- [x] `events` / `markets` / `outcomes` / `odds_imports` schema, met een unique-constraint op `(challenge_id, external_id)` zodat een herimport upsert i.p.v. dupliceert
+- [x] Wekelijkse import-flow: cron (maandag 08:00 UTC, zie `vercel.json`) + handmatige knop, preview-scherm (diff, credits), publiceren, auto-publish toggle per challenge
+- [x] Sportsbook-UI: events per sport, odds-knoppen, bet slip (bottom sheet mobiel / vast paneel desktop), combi's (geen zelfde-event combinaties), 10/25/50/all-in sneltoetsen
+- [x] Odds vastleggen bij plaatsen (nooit meer wijzigen — herimport laat bestaande `bet_selections` ongemoeid), event sluit server-side op `starts_at`
+- [x] Admin: event schorsen/heropenen/void, custom events toevoegen + settlement-queue. Markt-niveau schorsen (i.p.v. het hele event) is niet apart gebouwd — event-schorsen blokkeert al het plaatsen van nieuwe bets op dat event, wat voor Fase 1 volstaat
+- [x] Automatische settlement via `getResults()` (h2h/totals/spreads, incl. Asian-handicap kwartlijnen → half_won/half_lost) + handmatige settlement-queue voor custom events
+- [ ] Bets verborgen voor medespelers tot `event_start` — RLS-policy staat er (defensief), maar er is nog geen "bekijk bets van andere spelers"-scherm gebouwd waarin dit daadwerkelijk getoond/getest wordt
 
 **Bewijsbet**
-- [ ] `/app/bets/proof` formulier + uitklapbare uitleg met voorbeeldscreenshot
-- [ ] Screenshot-upload naar Supabase Storage (max 5MB, jpg/png/webp/heic), verplicht
-- [ ] Server-side: `placed_at < event_start` check, stake ≤ balance
-- [ ] Controle-queue admin (screenshot groot, goedkeuren/afkeuren + reden, sanctie: waarschuwing/saldo-correctie/diskwalificatie)
-- [ ] Flag-systeem voor medespelers
-- [ ] Zelf-settlement door speler (won/lost/void), betwistbaar, admin overrule
+- [x] `/app/bets/proof` formulier (dynamische selecties voor combi's) + uitklapbare uitleg (tekstueel; geen geannoteerde voorbeeldafbeelding — die zou een los gemaakt asset vereisen)
+- [x] Screenshot-upload naar Supabase Storage (privé bucket, max 5MB, jpg/png/webp/heic), verplicht, alleen als signed URL server-side vrijgegeven na autorisatie-check
+- [x] Server-side: `placed_at < event_start` check, stake ≤ balance
+- [x] Controle-queue admin (screenshot groot, goedkeuren/afkeuren + reden, sanctie: waarschuwing/saldo-correctie/diskwalificatie)
+- [x] Flag-systeem (actie bestaat, `bet_flags`-tabel + RLS) — er is nog geen speler-UI om een flag *in te dienen* op een bet
+- [x] Zelf-settlement door speler (won/lost/void). "Betwistbaar" = dezelfde flag-actie; nog geen aparte betwist-UI
 
 **Fairness & audit**
-- [ ] `audit_log` + helper (`lib/audit.ts`) aangeroepen vanuit elke admin-mutatie en elke bet-override
-- [ ] RLS policies: eigen data schrijven, challenge-scoped lezen, bets/screenshots pas leesbaar na `event_start`, admin via service role
-- [ ] Rate limiting (technisch, ~30 req/min) op bet-plaatsing endpoints
+- [x] `audit_log` + helper (`lib/audit.ts`), aangeroepen vanuit de admin-mutaties die tot nu toe gebouwd zijn (import publiceren, custom events, bewijsbet-controle, sancties, betalingen, missies/badges toekennen)
+- [x] RLS policies op alle 19 tabellen + Storage — zie §7-notitie in DECISIONS.md over hoe dit zich verhoudt tot de geprivilegieerde Drizzle-verbinding die de app zelf gebruikt
+- [ ] Rate limiting op bet-plaatsing — nog niet gebouwd
 
 **Leaderboard, profiel, gamification-basis**
-- [ ] Leaderboard met kolommen uit §5.5, Supabase Realtime + polling-fallback, sticky eigen rij op mobiel
-- [ ] Profiel basis: stats (ROI, P/L, winrate, streaks, etc.), bet-historie, sancties zichtbaar
-- [ ] Missie-engine (`lib/missions/engine.ts`) + types: `win_odds_min`, `win_streak`, `combi_win`, `manual`
-- [ ] Badges: seed-set (§5.8) + toekenningslogica bij settlement/challenge-einde
-- [ ] `/app/missions` met voortgangsbalk
+- [x] Leaderboard met de kolommen uit §5.5 min. de trend-pijl (die heeft `rank_snapshots` nodig, Fase 2-scope) — 30s polling i.p.v. Supabase Realtime-subscriptions
+- [x] Profiel: badges-vitrine, XP/level, sancties-telling, saldo/winrate voor de actieve challenge. Uitgebreidere stats (streaks, gem. odds, enkel/combi-verhouding, etc.) nog niet gebouwd
+- [x] Missie-engine (`lib/missions/engine.ts`, registry-patroon) + types `win_odds_min`, `win_streak`, `combi_win`; `manual` bewust zonder auto-checker
+- [x] Badges: seed-set (§5.8, alle 14) + handmatige toekenning + automatische toekenning via missies. Losstaande badge-triggers (bijv. "Bust" bij saldo €0, "Sharp" bij winrate-drempel) zijn nog niet los geautomatiseerd — alleen wat via een missie loopt wordt nu toegekend
+- [x] `/app/missions` — toont behaald/niet-behaald en wie 'm al heeft; geen proportionele voortgangsbalk (zou een aparte progress-functie per missietype vereisen)
 
 **Betalingen (fase 1 = alleen administratie)**
-- [ ] `payments`-tabel + `PaymentProvider`-interface + `CashProvider`
-- [ ] `/app/pay` inleg-info (cash), admin "te betalen"-lijst voor missies/prijzen
+- [x] `payments`-tabel + `PaymentProvider`-interface + `CashProvider`
+- [x] `/app/pay` inleg-info (cash), admin "te betalen"-lijst voor missie-uitkeringen. Prijsuitbetaling-aan-het-einde (met automatische `payments`-records bij `settling→finished`) is **nog niet gebouwd** — die transitie zelf ontbreekt nog
 
 **Admin dashboard**
-- [ ] Overzicht: pending controles, flags, te settelen custom events, te betalen missies, resterende credits, recente activiteit
+- [x] Overzicht: challenge-statussen, bewijsbetten in wachtrij, open flags, te betalen bedragen, laatste import + resterende credits
 
 **Cron**
-- [ ] `/api/cron/odds-import`, `/results`, `/snapshots`, `/status-transitions` — alle beveiligd met `CRON_SECRET`, Vercel Cron config
+- [x] `/api/cron/odds-import`, `/results`, `/status-transitions` — beveiligd met `CRON_SECRET`, `vercel.json` aangemaakt. `/api/cron/missions` (tijdgebonden missietypes) bewust nog niet gebouwd — die missietypes zijn Fase 2-scope. `/snapshots` is Fase 2 (`rank_snapshots`-tabel bestaat nog niet)
 
 **Seed & QA**
-- [ ] Seed-script v2: 8 demo-spelers (6 betaald/2 onbetaald), demo-events met odds (geen echte API-call), mix open/gesettelde sportsbook- en bewijsbets, 3 missies, toegekende badges
-- [ ] Handmatige test-pass op 375px en 1440px voor elke pagina uit §9 (app-gedeelte)
+- [x] Seed-script v2: 8 demo-spelers, staffel, alle 14 badges, 3 missies, 2 voorbeeld-toekenningen. Geen gefabriceerde bet-historie (zie DECISIONS.md voor de afweging)
+- [~] Getest: geen volledige 375px/1440px-pas over élke pagina, wel end-to-end tegen de echte database geverifieerd (inloggen, onboarding, challenge joinen, admin importeren/custom event/settlen, sportsbook-bet plaatsen → uitbetalen, leaderboard, missies, badges, profiel, pay, admin-overzichten) — zie DECISIONS.md
 
 ## 4. Fase 2 — Tijdens de eerste challenge
 
