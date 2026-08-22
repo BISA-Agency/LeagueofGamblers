@@ -195,7 +195,7 @@ league-of-gamblers/
 - [x] XP & levels (Rookie→Punter→Grinder→Sharp→Whale→Legend), level-progressbar — level wordt afgeleid uit `xp` (`lib/levels.ts`), niet opgeslagen; balk staat op profiel + desktop-sidebar
 - [x] Activity feed + emoji-reacties op homepage
 - [x] `rank_snapshots` cron + sparkline per speler + veldgrafiek (recharts) op challenge-pagina — cron draait 22:05 UTC (≈ 00:05 Amsterdam, zie DST-kanttekening in DECISIONS.md)
-- [ ] Head-to-head (`/app/compare`)
+- [x] Head-to-head (`/app/compare`) — twee spelers naast elkaar, h2h-score over de meetbare kolommen, gedeeld saldoverloop; bereikbaar vanaf het leaderboard
 - [x] Notificaties (in-app): dagelijkse rank-update via de snapshot-cron, plus `mission_completed` en `new_follower`; bel met ongelezen-teller in de header, `/app/notifications`. Resend-e-mail bewust nog niet (zie DECISIONS.md)
 - [ ] "Bet van de dag"-highlight
 - [ ] Weekmissies + weekwinnaar mini-ranking

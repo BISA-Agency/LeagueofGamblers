@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { UserAvatar } from "@/components/profile/user-avatar";
 import { LeaderboardAutoRefresh } from "@/components/leaderboard/auto-refresh";
 import { db } from "@/lib/db";
@@ -74,9 +75,17 @@ export default async function LeaderboardPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
       <LeaderboardAutoRefresh />
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold tracking-tight">Leaderboard</h1>
-        <p className="text-sm text-muted-foreground">{participation.challenge.name}</p>
+      <div className="mb-4 flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Leaderboard</h1>
+          <p className="text-sm text-muted-foreground">{participation.challenge.name}</p>
+        </div>
+        <Link
+          href="/app/compare"
+          className="shrink-0 text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
+        >
+          Head-to-head
+        </Link>
       </div>
 
       <div className="overflow-x-auto">
