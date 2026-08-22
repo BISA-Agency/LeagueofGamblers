@@ -33,6 +33,21 @@ export async function requestLoginCode(
 
   if (error) {
     console.error(`signInWithOtp mislukt voor ${email}: ${error.status} ${error.message}`);
+
+    // Supabase allows roughly one login mail per minute per address. Telling
+    // someone to "probeer het opnieuw" there sends them straight into the
+    // same wall — and clicking twice is exactly what people do when the mail
+    // doesn't arrive instantly.
+    if (error.status === 429 || error.code === "over_email_send_rate_limit") {
+      const seconds = Number(/after (\d+) seconds/.exec(error.message)?.[1]);
+      return {
+        status: "error",
+        message: Number.isFinite(seconds)
+          ? `Je hebt net al een code aangevraagd. Wacht ${seconds} seconden en probeer het dan opnieuw.`
+          : "Je hebt net al een code aangevraagd. Wacht een minuutje en probeer het dan opnieuw.",
+      };
+    }
+
     return { status: "error", message: "Versturen mislukt. Probeer het opnieuw." };
   }
 
