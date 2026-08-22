@@ -1,4 +1,5 @@
 import { Users } from "lucide-react";
+import { PrizePodium } from "@/components/challenges/prize-podium";
 import type { ChallengeStats } from "@/lib/challenges/stats";
 import { cn } from "@/lib/utils";
 
@@ -6,8 +7,6 @@ const money = new Intl.NumberFormat("nl-NL", {
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
-
-const RANK_LABEL = ["Winnaar", "Tweede", "Derde"];
 
 /**
  * Players and pot, side by side, with the pot as the loudest number on the
@@ -59,23 +58,17 @@ export function ChallengeStatsPanel({
         </div>
       </div>
 
-      {showSplit && stats.split.length > 0 && (
-        <div className="mt-4 grid gap-2 border-t border-border pt-4 sm:grid-cols-3">
-          {stats.split.map((entry) => (
-            <div key={entry.rank} className="flex items-baseline justify-between sm:block sm:text-center">
-              <p className="text-xs text-muted-foreground">
-                {RANK_LABEL[entry.rank - 1] ?? `#${entry.rank}`}
-              </p>
-              <p className="text-lg font-semibold tabular-nums">€{money.format(entry.amount)}</p>
-            </div>
-          ))}
+      {showSplit && (
+        <div className="mt-5 border-t border-border pt-5">
+          <PrizePodium split={stats.split} />
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            {stats.paidCount === 0
+              ? `De pot groeit zodra spelers hun inleg betalen — €${money.format(buyIn)} per persoon.`
+              : stats.split.length <= 1
+                ? "Bij 2 tot 6 spelers pakt de winnaar alles. Vanaf 7 spelers komt er ook voor plek 2 en 3 iets vrij."
+                : "Verdeling over de top 3 — groeit mee met elke betaalde speler."}
+          </p>
         </div>
-      )}
-
-      {stats.paidCount === 0 && (
-        <p className="mt-4 border-t border-border pt-4 text-xs text-muted-foreground">
-          De pot groeit zodra spelers hun inleg betalen — €{money.format(buyIn)} per persoon.
-        </p>
       )}
     </div>
   );
