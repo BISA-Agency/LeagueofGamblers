@@ -31,11 +31,21 @@ waardoor de hero-afbeelding in productie een 400 gaf. De matcher negeert nu
 alles met een bestandsextensie. Daarna: performance 90, toegankelijkheid
 100, best practices 100, SEO 100.
 
-**Vlaggen op Windows.** De landvlaggen zijn regional-indicator-emoji. iOS en
-Android tonen een vlag, Windows toont bewust de twee letters (NL). Dat is
-een platformkeuze van Microsoft, geen bug; een eigen SVG-vlaggenset is die
-afhankelijkheid niet waard voor een detail dat op de doelgroep-telefoons
-gewoon klopt.
+**Vlaggen zijn SVG's, geen emoji.** Eerst gebouwd met
+regional-indicator-emoji, maar Windows toont die bewust als twee letters
+(NL) — geen bug, een keuze van Microsoft, maar het oogt kapot naast een
+gebruikersnaam. Nu komen de vlaggen uit `public/flags/<code>.svg`.
+`country-flag-icons` blijft een devDependency: `npm run flags` kopieert
+alleen de ~50 landen die we aanbieden (26 KB totaal) en de SVG's zijn het
+artefact dat in de repo staat, dus er is geen runtime-afhankelijkheid.
+Bewust een gewone `<img>`: door de image-optimizer routeren kost een
+round-trip en levert bij 500 bytes niets op.
+
+**Lighthouse-cijfers zijn van een warme server.** Drie opeenvolgende runs
+geven performance 93; de allereerste run na `next start` gaf 87 omdat de
+afbeeldingen dan nog on-demand geoptimaliseerd worden. Op Vercel cachet de
+edge die varianten na het eerste verzoek, dus dat is een koude-start-
+artefact en geen structureel cijfer.
 
 ## Feedback-ronde na Fase 2 (2026-08-22)
 

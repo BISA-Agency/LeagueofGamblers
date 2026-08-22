@@ -1,4 +1,5 @@
 import { TrendingUp } from "lucide-react";
+import { CountryFlag } from "@/components/profile/country-flag";
 import { PhoneFrame } from "./phone-frame";
 
 /**
@@ -7,9 +8,9 @@ import { PhoneFrame } from "./phone-frame";
  * stays crisp at any size and can be reworded without a new capture.
  */
 const STANDINGS = [
-  { rank: 1, name: "sam_underdog", flag: "🇳🇱", balance: "€16.646", delta: "+66%" },
-  { rank: 2, name: "mo_sharp", flag: "🇲🇦", balance: "€15.277", delta: "+53%" },
-  { rank: 3, name: "noor_streak", flag: "🇳🇱", balance: "€13.641", delta: "+36%" },
+  { rank: 1, name: "sam_underdog", country: "NL", balance: "€16.646", delta: "+66%" },
+  { rank: 2, name: "mo_sharp", country: "MA", balance: "€15.277", delta: "+53%" },
+  { rank: 3, name: "noor_streak", country: "NL", balance: "€13.641", delta: "+36%" },
 ];
 
 export function HeroVisual() {
@@ -40,8 +41,9 @@ export function HeroVisual() {
               className="flex items-center gap-2 rounded-md px-1 py-1.5 text-sm"
             >
               <span className="w-4 text-center text-xs text-muted-foreground">{row.rank}</span>
-              <span className="min-w-0 flex-1 truncate">
-                {row.name} <span aria-hidden>{row.flag}</span>
+              <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                <span className="truncate">{row.name}</span>
+                <CountryFlag code={row.country} />
               </span>
               <span className="shrink-0 font-medium tabular-nums">{row.balance}</span>
               <span className="w-12 shrink-0 text-right text-xs tabular-nums text-profit">

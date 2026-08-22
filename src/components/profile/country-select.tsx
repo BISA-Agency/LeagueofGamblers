@@ -1,6 +1,7 @@
 "use client";
 
 import { COUNTRY_OPTIONS } from "@/lib/countries";
+import { CountryFlag } from "@/components/profile/country-flag";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -21,7 +22,10 @@ export function CountrySelect({ defaultValue }: { defaultValue?: string | null }
         <SelectContent>
           {COUNTRY_OPTIONS.map((c) => (
             <SelectItem key={c.code} value={c.code}>
-              {c.flag} {c.name}
+              <span className="flex items-center gap-2">
+                <CountryFlag code={c.code} />
+                {c.name}
+              </span>
             </SelectItem>
           ))}
         </SelectContent>

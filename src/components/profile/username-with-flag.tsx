@@ -1,4 +1,5 @@
-import { countryFlag, countryName } from "@/lib/countries";
+import { CountryFlag } from "./country-flag";
+import { cn } from "@/lib/utils";
 
 /** "professional_risktaker 🇳🇱" — the flag rides along wherever a username shows. */
 export function UsernameWithFlag({
@@ -10,15 +11,10 @@ export function UsernameWithFlag({
   country: string | null | undefined;
   className?: string;
 }) {
-  const flag = countryFlag(country);
   return (
-    <span className={className}>
-      {username}
-      {flag && (
-        <span title={countryName(country!)} className="ml-1">
-          {flag}
-        </span>
-      )}
+    <span className={cn("inline-flex items-center gap-1.5", className)}>
+      <span className="truncate">{username}</span>
+      <CountryFlag code={country} />
     </span>
   );
 }
