@@ -1,4 +1,5 @@
 import { and, desc, eq, isNull, ne, or, sql } from "drizzle-orm";
+import { logActivity } from "@/lib/activity/log";
 import { db } from "@/lib/db";
 import {
   bets,
@@ -69,6 +70,8 @@ export async function awardMission(
       status: "pending",
     });
   }
+
+  await logActivity(challengeId, userId, "mission_completed", { title: mission.title });
 }
 
 /**

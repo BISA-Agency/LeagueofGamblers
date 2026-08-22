@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ActivityFeed } from "@/components/activity/activity-feed";
+import { Countdown } from "@/components/challenges/countdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/db";
@@ -21,13 +23,13 @@ export default async function AppHomePage() {
     with: { challenge: true },
   });
 
+  const activeParticipation = participations.find((p) => p.status === "active");
+
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Welkom terug</h1>
-        <p className="text-sm text-muted-foreground">
-          Hier komt straks je activiteit, saldo en rank.
-        </p>
+        <p className="text-sm text-muted-foreground">Hier zie je je saldo, rank en de laatste activiteit.</p>
       </div>
 
       {participations.length === 0 ? (
@@ -74,11 +76,21 @@ export default async function AppHomePage() {
                         ? "Je inleg is nog niet geregistreerd"
                         : `Saldo: €${p.balance.toLocaleString("nl-NL")}`}
                     </CardDescription>
+                    {p.status === "active" && (
+                      <Countdown label="Nog" target={p.challenge.endAt.toISOString()} />
+                    )}
                   </CardHeader>
                 </Link>
               </Card>
             ))}
           </div>
+
+          {activeParticipation && (
+            <section className="space-y-2">
+              <h2 className="text-sm font-medium text-muted-foreground">Activiteit</h2>
+              <ActivityFeed challengeId={activeParticipation.challengeId} currentUserId={user.id} />
+            </section>
+          )}
         </>
       )}
     </div>

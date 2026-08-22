@@ -1,4 +1,5 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { logActivity } from "@/lib/activity/log";
 import { db } from "@/lib/db";
 import { evaluateMissionsForSettledBet } from "@/lib/missions/engine";
 import {
@@ -107,8 +108,14 @@ export async function finalizeBetIfComplete(betId: string) {
 
   if (activeSelections.length === 0) {
     await voidAndRefundBet(betId);
+    await checkAndMarkBust(bet.challengeId, bet.userId);
   } else if (activeSelections.some((s) => s.result === "lost" || s.result === "half_lost")) {
     await db.update(bets).set({ status: "lost", settledAt: new Date() }).where(eq(bets.id, betId));
+    await logActivity(bet.challengeId, bet.userId, "bet_lost", {
+      stake: bet.stake,
+      selection: activeSelections[0]?.selectionLabel,
+    });
+    await checkAndMarkBust(bet.challengeId, bet.userId);
   } else {
     const recomputedOdds = activeSelections.reduce((acc, s) => acc * s.odds, 1);
     const payout = Math.round(bet.stake * recomputedOdds * 100) / 100;
@@ -128,9 +135,35 @@ export async function finalizeBetIfComplete(betId: string) {
           )
         );
     });
+    await logActivity(bet.challengeId, bet.userId, "bet_won", {
+      payout,
+      odds: recomputedOdds,
+      selection: activeSelections[0]?.selectionLabel,
+      eventName: bet.selections[0]?.eventName,
+    });
   }
 
   await evaluateMissionsForSettledBet(betId);
+}
+
+/** Marks a participant bust (§5.2) once their balance hits 0 with no open bets left — they keep betting-blocked from then on. */
+export async function checkAndMarkBust(challengeId: string, userId: string) {
+  const participant = await db.query.challengeParticipants.findFirst({
+    where: and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, userId)),
+  });
+  if (!participant || participant.status !== "active" || participant.balance > 0) return;
+
+  const openBetCount = await db.$count(
+    bets,
+    and(eq(bets.challengeId, challengeId), eq(bets.userId, userId), eq(bets.status, "open"))
+  );
+  if (openBetCount > 0) return;
+
+  await db
+    .update(challengeParticipants)
+    .set({ status: "bust" })
+    .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, userId)));
+  await logActivity(challengeId, userId, "bust", {});
 }
 
 export async function voidAndRefundBet(betId: string) {

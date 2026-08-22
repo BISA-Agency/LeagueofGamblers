@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { logActivity } from "@/lib/activity/log";
 import { db } from "@/lib/db";
 import { challenges, events, markets, oddsImports, outcomes } from "@drizzle/schema";
 import { getOddsApiProvider } from "./index";
@@ -130,6 +131,12 @@ export async function publishImportRow(importId: string) {
   }
 
   await db.update(oddsImports).set({ status: "published" }).where(eq(oddsImports.id, importId));
+
+  if (importRow.challengeId) {
+    await logActivity(importRow.challengeId, null, "odds_published", {
+      eventsCount: payload.events.length,
+    });
+  }
 
   return payload;
 }

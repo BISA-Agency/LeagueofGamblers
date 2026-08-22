@@ -4,10 +4,11 @@ import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { logActivity } from "@/lib/activity/log";
 import { db } from "@/lib/db";
 import { amsterdamLocalToUtc } from "@/lib/datetime";
 import { evaluateMissionsForSettledBet } from "@/lib/missions/engine";
-import { voidAndRefundBet } from "@/lib/settlement/execute";
+import { checkAndMarkBust, voidAndRefundBet } from "@/lib/settlement/execute";
 import { uploadProofScreenshot, validateScreenshotFile } from "@/lib/storage/screenshots";
 import { betFlags, betSelections, bets, challengeParticipants, type Bookmaker } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -177,6 +178,7 @@ export async function settleProofBetSelf(betId: string, status: "won" | "lost" |
 
   if (status === "void") {
     await voidAndRefundBet(betId);
+    await checkAndMarkBust(bet.challengeId, bet.userId);
   } else if (status === "won") {
     await db.transaction(async (tx) => {
       await tx
@@ -193,12 +195,18 @@ export async function settleProofBetSelf(betId: string, status: "won" | "lost" |
           )
         );
     });
+    await logActivity(bet.challengeId, bet.userId, "bet_won", {
+      payout: bet.potentialPayout,
+      odds: bet.totalOdds,
+    });
     await evaluateMissionsForSettledBet(betId);
   } else {
     await db
       .update(bets)
       .set({ status: "lost", settledAt: new Date(), settlementSource: "Zelf gesetteld door speler" })
       .where(eq(bets.id, betId));
+    await logActivity(bet.challengeId, bet.userId, "bet_lost", { stake: bet.stake });
+    await checkAndMarkBust(bet.challengeId, bet.userId);
     await evaluateMissionsForSettledBet(betId);
   }
 
