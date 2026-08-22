@@ -199,7 +199,7 @@ league-of-gamblers/
 - [x] Notificaties (in-app): dagelijkse rank-update via de snapshot-cron, plus `mission_completed` en `new_follower`; bel met ongelezen-teller in de header, `/app/notifications`. Resend-e-mail bewust nog niet (zie DECISIONS.md)
 - [x] "Bet van de dag"-highlight — grootste winnende bet van de afgelopen 24u, boven de activity feed
 - [x] Weekmissies + weekwinnaar mini-ranking — missies met een einddatum vallen onder "Deze week", weekwinnaar = meeste winst sinds maandag (Amsterdamse week, baseline uit de maandagsnapshot)
-- [ ] Voorspelling side-game bij challenge-start
+- [x] Voorspelling side-game bij challenge-start — stemmen kan alleen zolang de challenge `open` staat; zodra hij live gaat liggen de stemmen vast en worden ze getoond op de challenge-pagina
 - [x] Overige missietypes: `profit_day`, `profit_week`, `volume`, `sport_win`, `survive`, `balance_reach`, `underdog`, `all_in_win` — tijdgebonden types via `/api/cron/missions`, rest via de per-bet engine
 - [ ] Wrapped-pagina (`/wrapped/[challengeId]/[username]`)
 - [ ] Deelbare OG-kaarten (`/api/og/*`): leaderboard, profiel, "ik won"

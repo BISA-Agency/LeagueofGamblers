@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PredictionSection } from "@/components/challenges/prediction-section";
 import { FieldChart } from "@/components/charts/field-chart";
 import { Sparkline } from "@/components/charts/sparkline";
 import { UserAvatar } from "@/components/profile/user-avatar";
@@ -10,6 +11,7 @@ import { getSnapshotsForUsers } from "@/lib/challenges/rank-snapshots";
 import { db } from "@/lib/db";
 import { calculatePrizeSplit, type PrizeTierRow } from "@/lib/settlement/payouts";
 import { challenges } from "@drizzle/schema";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Challenge" };
 
@@ -39,6 +41,11 @@ export default async function ChallengeDetailPage({
     with: { participants: { with: { user: true } } },
   });
   if (!challenge) notFound();
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const paid = challenge.participants.filter((p) => p.paidBuyIn);
   const pot = paid.length * challenge.buyInAmount;
@@ -87,6 +94,14 @@ export default async function ChallengeDetailPage({
           Spelregels
         </Link>
       </section>
+
+      {user && (
+        <PredictionSection
+          challenge={challenge}
+          players={paid.map((p) => ({ userId: p.userId, username: p.user.username }))}
+          currentUserId={user.id}
+        />
+      )}
 
       <section className="space-y-3">
         <h2 className="text-sm font-medium text-muted-foreground">Verloop van het veld</h2>
