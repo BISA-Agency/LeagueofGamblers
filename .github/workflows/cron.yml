@@ -1,0 +1,81 @@
+# Scheduled jobs live here instead of vercel.json: Vercel's Hobby plan only
+# allows daily crons, and status-transitions has to run hourly to flip a
+# challenge live at its actual start time.
+#
+# Needs two repository secrets (Settings -> Secrets and variables -> Actions):
+#   APP_URL      https://<your-project>.vercel.app   (no trailing slash)
+#   CRON_SECRET  the same value as the CRON_SECRET env var in Vercel
+#
+# Times are UTC — GitHub Actions has no timezone support, same as Vercel Cron.
+# During CEST the Amsterdam-local times are two hours later than the UTC ones
+# below; that's fine for every job here.
+name: Cron
+
+on:
+  schedule:
+    # Challenge open->live / live->settling. Hourly, so a challenge that
+    # starts at 20:00 doesn't sit closed until the next morning.
+    - cron: "0 * * * *"
+    # Settle finished events against real scores. 06:00 UTC.
+    - cron: "0 6 * * *"
+    # Weekly odds import, Monday 08:00 UTC.
+    - cron: "0 8 * * 1"
+    # Optional midweek top-up, Thursday 08:00 UTC (only for challenges that
+    # opted in via midweekImportEnabled).
+    - cron: "0 8 * * 4"
+    # Daily rank snapshots + rank-update notifications, 22:05 UTC.
+    - cron: "5 22 * * *"
+    # Time-bound missions (profit_day, survive, volume, ...), 22:15 UTC.
+    - cron: "15 22 * * *"
+  # Lets you fire any single job by hand from the Actions tab.
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Which endpoint to call
+        required: true
+        default: status-transitions
+        type: choice
+        options:
+          - status-transitions
+          - results
+          - odds-import
+          - odds-import-midweek
+          - snapshots
+          - missions
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pick endpoint for this schedule
+        id: pick
+        env:
+          SCHEDULE: ${{ github.event.schedule }}
+          MANUAL: ${{ inputs.job }}
+        run: |
+          case "${MANUAL:-$SCHEDULE}" in
+            "0 * * * *"|status-transitions)   path="/api/cron/status-transitions" ;;
+            "0 6 * * *"|results)              path="/api/cron/results" ;;
+            "0 8 * * 1"|odds-import)          path="/api/cron/odds-import" ;;
+            "0 8 * * 4"|odds-import-midweek)  path="/api/cron/odds-import?midweek=1" ;;
+            "5 22 * * *"|snapshots)           path="/api/cron/snapshots" ;;
+            "15 22 * * *"|missions)           path="/api/cron/missions" ;;
+            *) echo "Onbekend schema: ${MANUAL:-$SCHEDULE}" >&2; exit 1 ;;
+          esac
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+
+      - name: Call it
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          PATH_TO_CALL: ${{ steps.pick.outputs.path }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "APP_URL of CRON_SECRET secret ontbreekt" >&2
+            exit 1
+          fi
+          echo "POST-vrij GET naar ${PATH_TO_CALL}"
+          # --fail-with-body so a 4xx/5xx fails the run *and* shows the reason.
+          curl --fail-with-body --silent --show-error --max-time 120 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL}${PATH_TO_CALL}"

@@ -2,6 +2,26 @@
 
 Keuzes die ik onderweg heb gemaakt, met motivatie. Zie PLAN.md §12.7.
 
+## Cron draait via GitHub Actions, niet via Vercel (2026-08-22)
+
+Vercel's Hobby-plan staat alleen **dagelijkse** crons toe en weigerde de
+deploy op `0 * * * *`. `status-transitions` moet wél elk uur draaien: anders
+gaat een challenge die om 20:00 begint pas de volgende ochtend live.
+
+Drie opties afgewogen: Vercel Pro (€20/maand voor één cron-frequentie),
+alles dagelijks maken (dan klopt de starttijd van een challenge niet), of
+het schema ergens anders neerzetten. Het is GitHub Actions geworden —
+gratis, de repo staat er toch al, en de endpoints waren al beveiligd met een
+`CRON_SECRET` als Bearer-token, dus er hoefde niets aan de app te
+veranderen. `vercel.json` heeft nu geen `crons` meer, zodat er één plek is
+waar het schema staat en de twee elkaar niet kunnen tegenspreken.
+
+Kosten: de repo is privé, dus Actions-minuten tellen mee (2000/maand
+gratis). Het uurlijkse job is er ~730 per maand van een paar seconden;
+GitHub rondt af op hele minuten, dus reken op ~900 van de 2000. Past, maar
+het is geen nul. Wordt het krap, dan is een externe pinger (cron-job.org)
+of alsnog Vercel Pro het alternatief.
+
 ## De OTP-code-bug, opgelost (2026-08-22)
 
 Wekenlang stond dit als "magic link werkt, ingetypte code niet, oorzaak
