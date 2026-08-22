@@ -6,6 +6,7 @@ import { transitionChallengeToLive } from "@/actions/admin/challenge-lifecycle";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { challenges } from "@drizzle/schema";
+import { FinishChallengeForm } from "./finish-challenge-form";
 import { SportsbookSettingsForm } from "./sportsbook-settings-form";
 
 export const metadata: Metadata = { title: "Challenge-instellingen" };
@@ -47,6 +48,12 @@ export default async function AdminChallengeDetailPage({
               Nu live zetten
             </Button>
           </form>
+        </div>
+      )}
+
+      {challenge.status === "settling" && (
+        <div className="rounded-lg border border-border p-4">
+          <FinishChallengeForm challengeId={challenge.id} />
         </div>
       )}
 

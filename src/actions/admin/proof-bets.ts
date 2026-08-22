@@ -6,7 +6,8 @@ import { redirect } from "next/navigation";
 import { logAuditEvent } from "@/lib/audit";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
-import { evaluateMissionsForSettledBet } from "@/lib/missions/engine";
+import { evaluateProofBetBadges } from "@/lib/badges/triggers";
+import { runPostSettlementChecks } from "@/lib/settlement/after-settlement";
 import { bets, challengeParticipants, sanctions, type SanctionType } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
@@ -35,8 +36,14 @@ export async function approveProofBet(betId: string) {
   });
 
   // If the player already self-settled it before this approval landed, the
-  // mission engine still needs a nudge now that it's approved.
-  await evaluateMissionsForSettledBet(betId);
+  // mission and badge checks still need a nudge now that it's approved.
+  await runPostSettlementChecks(betId);
+
+  const bet = await db.query.bets.findFirst({
+    where: eq(bets.id, betId),
+    columns: { userId: true },
+  });
+  if (bet) await evaluateProofBetBadges(bet.userId);
 
   revalidatePath("/admin/proof-bets");
 }

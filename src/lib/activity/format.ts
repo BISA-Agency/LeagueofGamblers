@@ -18,6 +18,8 @@ export function formatActivityMessage(
       return `${username} haalde missie ${payload.title ?? ""}`;
     case "badge_awarded":
       return `${username} verdiende de badge ${payload.name ?? ""}`;
+    case "challenge_won":
+      return `${username} wint ${payload.challengeName ?? "de challenge"} met €${Number(payload.balance ?? 0).toLocaleString("nl-NL")} 👑`;
     case "odds_published":
       return `Nieuwe odds voor deze week staan live (${payload.eventsCount ?? "?"} wedstrijden)`;
     default:

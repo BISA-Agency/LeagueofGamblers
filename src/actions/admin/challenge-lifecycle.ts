@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { logAuditEvent } from "@/lib/audit";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { FinishChallengeError, finishChallenge } from "@/lib/challenges/finish";
 import { challengeParticipants, challenges } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
@@ -83,4 +84,31 @@ export async function transitionChallengeToLive(challengeId: string) {
   revalidatePath("/admin/challenges");
   revalidatePath(`/admin/challenges/${challengeId}`);
   revalidatePath("/app/challenges");
+}
+
+export type FinishChallengeState = { error?: string; ok?: string };
+
+/**
+ * settling -> finished. Writes the prize payout records, so it stays a
+ * deliberate admin action rather than something a cron does at midnight.
+ */
+export async function finishChallengeAction(
+  challengeId: string,
+  _prevState: FinishChallengeState,
+  _formData: FormData
+): Promise<FinishChallengeState> {
+  const admin = await requireAdmin();
+
+  try {
+    const result = await finishChallenge(challengeId, admin.id);
+    revalidatePath("/admin/challenges");
+    revalidatePath(`/admin/challenges/${challengeId}`);
+    revalidatePath("/admin/payments");
+    return {
+      ok: `Afgesloten. Pot €${result.pot.toLocaleString("nl-NL")}, ${result.payouts} uitbetaling(en) klaargezet.`,
+    };
+  } catch (err) {
+    if (err instanceof FinishChallengeError) return { error: err.message };
+    throw err;
+  }
 }

@@ -1,7 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { logActivity } from "@/lib/activity/log";
 import { db } from "@/lib/db";
-import { evaluateMissionsForSettledBet } from "@/lib/missions/engine";
+import { runPostSettlementChecks } from "@/lib/settlement/after-settlement";
 import {
   betSelections,
   bets,
@@ -143,7 +143,7 @@ export async function finalizeBetIfComplete(betId: string) {
     });
   }
 
-  await evaluateMissionsForSettledBet(betId);
+  await runPostSettlementChecks(betId);
 }
 
 /** Marks a participant bust (§5.2) once their balance hits 0 with no open bets left — they keep betting-blocked from then on. */

@@ -7,7 +7,7 @@ import { z } from "zod";
 import { logActivity } from "@/lib/activity/log";
 import { db } from "@/lib/db";
 import { amsterdamLocalToUtc } from "@/lib/datetime";
-import { evaluateMissionsForSettledBet } from "@/lib/missions/engine";
+import { runPostSettlementChecks } from "@/lib/settlement/after-settlement";
 import { checkAndMarkBust, voidAndRefundBet } from "@/lib/settlement/execute";
 import { uploadProofScreenshot, validateScreenshotFile } from "@/lib/storage/screenshots";
 import { betFlags, betSelections, bets, challengeParticipants, type Bookmaker } from "@drizzle/schema";
@@ -199,7 +199,7 @@ export async function settleProofBetSelf(betId: string, status: "won" | "lost" |
       payout: bet.potentialPayout,
       odds: bet.totalOdds,
     });
-    await evaluateMissionsForSettledBet(betId);
+    await runPostSettlementChecks(betId);
   } else {
     await db
       .update(bets)
@@ -207,7 +207,7 @@ export async function settleProofBetSelf(betId: string, status: "won" | "lost" |
       .where(eq(bets.id, betId));
     await logActivity(bet.challengeId, bet.userId, "bet_lost", { stake: bet.stake });
     await checkAndMarkBust(bet.challengeId, bet.userId);
-    await evaluateMissionsForSettledBet(betId);
+    await runPostSettlementChecks(betId);
   }
 
   revalidatePath("/app/bets");

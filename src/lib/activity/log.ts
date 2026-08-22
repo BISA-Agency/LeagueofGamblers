@@ -7,7 +7,8 @@ export type ActivityType =
   | "bust"
   | "mission_completed"
   | "badge_awarded"
-  | "odds_published";
+  | "odds_published"
+  | "challenge_won";
 
 export async function logActivity(
   challengeId: string,

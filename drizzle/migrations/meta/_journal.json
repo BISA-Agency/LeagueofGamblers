@@ -57,6 +57,13 @@
       "when": 1787370867299,
       "tag": "0007_awesome_blue_shield",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787394979460,
+      "tag": "0008_demonic_eternity",
+      "breakpoints": true
     }
   ]
 }

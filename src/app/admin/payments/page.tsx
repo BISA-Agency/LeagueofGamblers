@@ -8,6 +8,13 @@ import { payments } from "@drizzle/schema";
 
 export const metadata: Metadata = { title: "Pot & betalingen" };
 
+const DIRECTION_LABEL: Record<string, string> = {
+  buy_in: "inleg",
+  payout_mission: "missie-uitkering",
+  payout_prize: "prijzengeld",
+  refund: "terugbetaling",
+};
+
 export default async function AdminPaymentsPage() {
   const [allChallenges, pendingPayments] = await Promise.all([
     db.query.challenges.findMany({
@@ -49,7 +56,7 @@ export default async function AdminPaymentsPage() {
 
       <section className="space-y-3">
         <h2 className="text-sm font-medium text-muted-foreground">
-          Te betalen missie-uitkeringen ({pendingPayments.length})
+          Openstaande uitbetalingen ({pendingPayments.length})
         </h2>
         {pendingPayments.length === 0 && (
           <p className="text-sm text-muted-foreground">Niets te betalen.</p>
@@ -65,7 +72,9 @@ export default async function AdminPaymentsPage() {
                   {payment.user.username} · €{payment.amount.toLocaleString("nl-NL")}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {payment.challenge.name} · {payment.direction}
+                  {payment.challenge.name} ·{" "}
+                  {DIRECTION_LABEL[payment.direction] ?? payment.direction}
+                  {payment.reference && ` · ${payment.reference}`}
                 </p>
               </div>
               <form action={confirmPayment.bind(null, payment.id)}>
