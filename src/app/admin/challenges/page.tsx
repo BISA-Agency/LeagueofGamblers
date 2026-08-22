@@ -44,18 +44,20 @@ export default async function AdminChallengesPage() {
       <div className="space-y-3">
         {all.map((challenge) => (
           <Card key={challenge.id}>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-2">
-                <CardTitle>{challenge.name}</CardTitle>
-                <Badge variant="secondary">{STATUS_LABEL[challenge.status]}</Badge>
-              </div>
-              <CardDescription className="tabular-nums">
-                /c/{challenge.slug} · {dateFormatter.format(challenge.startAt)} –{" "}
-                {dateFormatter.format(challenge.endAt)} · Startsaldo €
-                {challenge.startingBalance.toLocaleString("nl-NL")} · Inleg €
-                {challenge.buyInAmount.toLocaleString("nl-NL")}
-              </CardDescription>
-            </CardHeader>
+            <Link href={`/admin/challenges/${challenge.id}`}>
+              <CardHeader>
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle>{challenge.name}</CardTitle>
+                  <Badge variant="secondary">{STATUS_LABEL[challenge.status]}</Badge>
+                </div>
+                <CardDescription className="tabular-nums">
+                  /c/{challenge.slug} · {dateFormatter.format(challenge.startAt)} –{" "}
+                  {dateFormatter.format(challenge.endAt)} · Startsaldo €
+                  {challenge.startingBalance.toLocaleString("nl-NL")} · Inleg €
+                  {challenge.buyInAmount.toLocaleString("nl-NL")}
+                </CardDescription>
+              </CardHeader>
+            </Link>
             {challenge.status === "draft" && (
               <CardFooter className="justify-end border-t-0 bg-transparent p-0 px-4 pb-4">
                 <form action={publishChallenge.bind(null, challenge.id)}>
