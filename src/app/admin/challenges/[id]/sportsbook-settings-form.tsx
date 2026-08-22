@@ -3,7 +3,8 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { DEFAULT_SPORT_KEYS, DEFAULT_SPORT_LABELS } from "@/lib/odds-provider/sports";
+import { SPORT_GROUP_LABELS } from "@/lib/odds-provider/sports";
+import type { SportGroup } from "@/lib/odds-provider/available-sports";
 import { updateChallengeSportsbookSettings } from "@/actions/admin/challenge-settings";
 
 const MARKET_OPTIONS: { value: string; label: string }[] = [
@@ -14,12 +15,16 @@ const MARKET_OPTIONS: { value: string; label: string }[] = [
 
 export function SportsbookSettingsForm({
   challengeId,
+  sportGroups,
+  liveSportList,
   defaultSportKeys,
   defaultMarkets,
   defaultAutoPublish,
   defaultMidweekImport,
 }: {
   challengeId: string;
+  sportGroups: SportGroup[];
+  liveSportList: boolean;
   defaultSportKeys: string[];
   defaultMarkets: string[];
   defaultAutoPublish: boolean;
@@ -29,20 +34,57 @@ export function SportsbookSettingsForm({
 
   return (
     <form action={action} className="space-y-6">
-      <div className="space-y-2">
-        <Label>Sporten</Label>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {Object.entries(DEFAULT_SPORT_KEYS).map(([key, apiKey]) => (
-            <label key={key} className="flex min-h-9 items-center gap-2 text-sm">
-              <Checkbox
-                name="sportKeys"
-                value={apiKey}
-                defaultChecked={defaultSportKeys.includes(apiKey)}
-              />
-              {DEFAULT_SPORT_LABELS[key]}
-            </label>
-          ))}
+      <div className="space-y-3">
+        <div>
+          <Label>Sporten</Label>
+          <p className="text-xs text-muted-foreground">
+            {liveSportList
+              ? "Live lijst van de odds-provider. Buiten seizoen mag je alvast aanvinken — die competities komen vanzelf terug."
+              : "Geen ODDS_API_KEY gevonden, dus dit is de standaardlijst. Zet de key en herlaad voor de echte competities."}{" "}
+            Elke sport kost credits per import, dus kies gericht.
+          </p>
         </div>
+
+        {/* Collapsed by default: the live catalogue is ~175 competitions, and
+            an admin usually only opens the one group they need. */}
+        {sportGroups.map((group) => {
+          const selectedInGroup = group.sports.filter((s) =>
+            defaultSportKeys.includes(s.key)
+          ).length;
+          return (
+            <details
+              key={group.group}
+              open={selectedInGroup > 0}
+              className="rounded-md border border-border"
+            >
+              <summary className="flex min-h-11 cursor-pointer items-center justify-between px-3 text-sm font-medium">
+                <span>{SPORT_GROUP_LABELS[group.group] ?? group.group}</span>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {selectedInGroup > 0 ? `${selectedInGroup} gekozen` : `${group.sports.length}`}
+                </span>
+              </summary>
+              <div className="grid grid-cols-1 gap-1 px-3 pb-3 sm:grid-cols-2">
+                {group.sports.map((sport) => (
+                  <label
+                    key={sport.key}
+                    className="flex min-h-9 items-center gap-2 text-sm"
+                    title={sport.key}
+                  >
+                    <Checkbox
+                      name="sportKeys"
+                      value={sport.key}
+                      defaultChecked={defaultSportKeys.includes(sport.key)}
+                    />
+                    <span className={sport.active ? "" : "text-muted-foreground"}>
+                      {sport.title}
+                      {!sport.active && " · buiten seizoen"}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </details>
+          );
+        })}
       </div>
 
       <div className="space-y-2">

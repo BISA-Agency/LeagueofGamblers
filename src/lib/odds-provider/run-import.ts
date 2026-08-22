@@ -5,6 +5,10 @@ import { challenges, events, markets, oddsImports, outcomes } from "@drizzle/sch
 import { getOddsApiProvider } from "./index";
 import type { MarketType, ProviderEventOdds } from "./types";
 
+/** A bit over a week, so the Monday import still covers next Monday's early
+ * fixtures and the optional Thursday run overlaps rather than leaves a gap. */
+const IMPORT_HORIZON_DAYS = 8;
+
 export type ImportPayload = {
   events: ProviderEventOdds[];
   newExternalIds: string[];
@@ -26,9 +30,25 @@ export async function createImportPreview(challengeId: string, ranBy: string | n
   let creditsUsed = 0;
   let creditsRemaining: number | null = null;
 
+  // The /odds endpoint happily returns matches that already kicked off, plus
+  // fixtures months out. Neither belongs in a weekly sportsbook: a started
+  // match can't be bet on (placeSportsbookBet rejects it) so it would just be
+  // dead weight in the list, and far-future fixtures get re-imported with
+  // fresher odds next week anyway.
+  const now = Date.now();
+  const horizon = now + IMPORT_HORIZON_DAYS * 86_400_000;
+
   for (const sportKey of challenge.sportKeys) {
     const result = await provider.getOdds(sportKey, marketTypes);
-    fetched.push(...result.events);
+    fetched.push(
+      ...result.events.filter((e) => {
+        const startsAt = e.event.startsAt.getTime();
+        if (startsAt <= now || startsAt > horizon) return false;
+        // Bookmakers pull their markets close to kick-off; an event with no
+        // outcomes left would render as a card with nothing to tap.
+        return e.markets.some((m) => m.outcomes.length > 0);
+      })
+    );
     if (result.creditsUsed) creditsUsed += result.creditsUsed;
     if (result.creditsRemaining !== null) creditsRemaining = result.creditsRemaining;
   }
@@ -65,6 +85,22 @@ export async function createImportPreview(challengeId: string, ranBy: string | n
   return { importRow, challenge };
 }
 
+/**
+ * The preview is parked in a jsonb column, so every Date in it comes back as
+ * an ISO string. Drizzle's timestamp columns expect real Dates and throw
+ * ("value.toISOString is not a function") otherwise, so revive them on the
+ * way out.
+ */
+function revivePayload(payload: ImportPayload): ImportPayload {
+  return {
+    ...payload,
+    events: payload.events.map((entry) => ({
+      ...entry,
+      event: { ...entry.event, startsAt: new Date(entry.event.startsAt) },
+    })),
+  };
+}
+
 /** Writes a preview import's events/markets/outcomes for real and marks it published. */
 export async function publishImportRow(importId: string) {
   const importRow = await db.query.oddsImports.findFirst({ where: eq(oddsImports.id, importId) });
@@ -72,7 +108,7 @@ export async function publishImportRow(importId: string) {
     throw new Error("Deze import kan niet (meer) gepubliceerd worden.");
   }
 
-  const payload = importRow.diff as ImportPayload;
+  const payload = revivePayload(importRow.diff as ImportPayload);
 
   for (const { event, markets: providerMarkets } of payload.events) {
     const [eventRow] = await db

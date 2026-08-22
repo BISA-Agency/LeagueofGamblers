@@ -9,6 +9,7 @@ import type {
   ProviderEventOdds,
   ProviderMarket,
   ProviderResult,
+  ProviderSport,
   UsageInfo,
 } from "./types";
 
@@ -120,6 +121,22 @@ export class TheOddsApiProvider implements OddsProvider {
     private readonly regions = "eu"
   ) {}
 
+  async listSports(): Promise<ProviderSport[]> {
+    // all=true also returns out-of-season competitions, which the admin still
+    // needs to be able to pick — a challenge starting in September wants the
+    // Champions League selected in August, while it's still inactive.
+    const url = new URL(`${BASE_URL}/sports`);
+    url.searchParams.set("apiKey", this.apiKey);
+    url.searchParams.set("all", "true");
+
+    const res = await fetch(url, { next: { revalidate: 3600 } });
+    if (!res.ok) {
+      throw new Error(`The Odds API listSports failed: ${res.status} ${await res.text()}`);
+    }
+    const raw: { key: string; title: string; group: string; active: boolean }[] = await res.json();
+    return raw.map((s) => ({ key: s.key, title: s.title, group: s.group, active: s.active }));
+  }
+
   async listEvents(sportKey: string, from: Date, to: Date): Promise<ProviderEvent[]> {
     const url = new URL(`${BASE_URL}/sports/${sportKey}/events`);
     url.searchParams.set("apiKey", this.apiKey);
@@ -159,7 +176,10 @@ export class TheOddsApiProvider implements OddsProvider {
 
     return {
       events,
-      creditsUsed: parseIntHeader(res.headers.get("x-requests-used")),
+      // x-requests-last is what THIS call cost. x-requests-used is the
+      // account's lifetime total, so summing that across sports produced a
+      // meaningless number on the admin dashboard.
+      creditsUsed: parseIntHeader(res.headers.get("x-requests-last")),
       creditsRemaining: parseIntHeader(res.headers.get("x-requests-remaining")),
     };
   }

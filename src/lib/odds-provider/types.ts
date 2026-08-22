@@ -46,7 +46,18 @@ export type OddsAggregationStrategy =
   | { mode: "average" }
   | { mode: "reference"; bookmakerKey: string };
 
+export type ProviderSport = {
+  key: string;
+  title: string;
+  group: string;
+  /** In season right now. Out-of-season competitions still exist and come
+   * back — the Champions League is inactive in August and live in September. */
+  active: boolean;
+};
+
 export interface OddsProvider {
+  /** Free/no-credit catalogue of what this provider currently offers. */
+  listSports(): Promise<ProviderSport[]>;
   /** Free/no-credit event listing for the given window. */
   listEvents(sportKey: string, from: Date, to: Date): Promise<ProviderEvent[]>;
   /** Costs provider credits — only call this from the weekly import flow. */

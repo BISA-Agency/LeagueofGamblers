@@ -2,6 +2,44 @@
 
 Keuzes die ik onderweg heb gemaakt, met motivatie. Zie PLAN.md §12.7.
 
+## Eerste echte Odds API-run (2026-08-22)
+
+De koppeling was gebouwd op de documentatie en had nog nooit met de echte
+API gepraat. Bij de eerste live run kwamen vier dingen boven water.
+
+**Publiceren van een import crashte altijd.** De preview wordt in een
+`jsonb`-kolom geparkeerd, dus `startsAt` komt terug als string terwijl
+Drizzle een `Date` verwacht (`value.toISOString is not a function`). Dit pad
+was nooit end-to-end gelopen: custom events gaan langs een ander pad en de
+seed schrijft rechtstreeks. Zonder deze fix had geen enkele echte import
+gepubliceerd kunnen worden. `revivePayload()` zet de datums terug.
+
+**`/odds` geeft ook al begonnen wedstrijden terug**, en de import schreef
+die weg als `upcoming`. Wedden erop werd server-side al geweigerd, maar het
+sportsbook liep vol met dode kaarten. De import filtert nu op
+`nu < startsAt <= nu + 8 dagen`, plus events waar geen enkele bookmaker nog
+een quotering voor geeft.
+
+**Credits werden verkeerd geteld.** We lazen `x-requests-used` — het
+lifetime-totaal van het account — en telden dat óók nog op per sport, dus
+het admin-dashboard toonde "18 credits" voor een import die er 4 kostte.
+`x-requests-last` geeft de kosten van díé aanroep; dat is wat we nu
+optellen. Gemeten: 1 credit per markt per regio, dus 2 sporten × 2 markten
+= 4.
+
+**Vijf van de elf hardcoded sportkeys bestonden niet.** `bundesliga1` moest
+`bundesliga` zijn, en tennis heeft geen seizoenssleutel: The Odds API
+scoopt tennis per toernooi (`tennis_atp_wimbledon`, ...) en die rouleren het
+hele jaar. Champions League en Europa League bestáán wel maar staan in
+augustus op inactief — die komen in september vanzelf terug.
+
+Daarom kiest de admin nu uit de **live catalogus** (`/sports?all=true`, een
+gratis aanroep) in plaats van uit een vaste lijst: 175 competities,
+gegroepeerd en ingeklapt, met buiten-seizoen erbij zodat je in augustus al
+de Champions League kunt aanvinken. De statische lijst blijft als fallback
+voor als er geen `ODDS_API_KEY` is. Een sleutel die de challenge al gebruikt
+blijft altijd zichtbaar, anders zou opslaan hem stilletjes uitvinken.
+
 ## Fase 2b — Landingspagina (2026-08-22)
 
 **Eerst een demo-toestand, dan pas screenshots.** `scripts/seed-demo-state.ts`

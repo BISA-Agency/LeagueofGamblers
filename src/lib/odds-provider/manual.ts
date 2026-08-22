@@ -7,6 +7,7 @@ import type {
   ProviderEvent,
   ProviderEventOdds,
   ProviderResult,
+  ProviderSport,
   UsageInfo,
 } from "./types";
 
@@ -29,6 +30,26 @@ function toProviderEvent(e: typeof events.$inferSelect): ProviderEvent {
 // mostly just echoes what's already in our own events/markets/outcomes
 // tables, kept behind the interface for architectural consistency.
 export class ManualProvider implements OddsProvider {
+  /** Whatever sports the admin already created events for. */
+  async listSports(): Promise<ProviderSport[]> {
+    const rows = await db.query.events.findMany({
+      where: eq(events.source, "admin"),
+      columns: { sportKey: true, sportLabel: true },
+    });
+    const seen = new Map<string, ProviderSport>();
+    for (const row of rows) {
+      if (!seen.has(row.sportKey)) {
+        seen.set(row.sportKey, {
+          key: row.sportKey,
+          title: row.sportLabel,
+          group: "Handmatig",
+          active: true,
+        });
+      }
+    }
+    return [...seen.values()];
+  }
+
   async listEvents(sportKey: string, from: Date, to: Date): Promise<ProviderEvent[]> {
     const rows = await db.query.events.findMany({
       where: and(

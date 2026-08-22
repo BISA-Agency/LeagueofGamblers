@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { transitionChallengeToLive } from "@/actions/admin/challenge-lifecycle";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
+import { getAvailableSports } from "@/lib/odds-provider/available-sports";
 import { challenges } from "@drizzle/schema";
 import { ChallengeRulesForm } from "./challenge-rules-form";
 import { FinishChallengeForm } from "./finish-challenge-form";
@@ -20,6 +21,8 @@ export default async function AdminChallengeDetailPage({
   const { id } = await params;
   const challenge = await db.query.challenges.findFirst({ where: eq(challenges.id, id) });
   if (!challenge) notFound();
+
+  const { groups: sportGroups, live } = await getAvailableSports(challenge.sportKeys);
 
   return (
     <div className="space-y-6">
@@ -71,6 +74,8 @@ export default async function AdminChallengeDetailPage({
         <h2 className="mb-4 text-sm font-medium text-muted-foreground">Sportsbook-instellingen</h2>
         <SportsbookSettingsForm
           challengeId={challenge.id}
+          sportGroups={sportGroups}
+          liveSportList={live}
           defaultSportKeys={challenge.sportKeys}
           defaultMarkets={challenge.markets}
           defaultAutoPublish={challenge.autoPublishImports}
