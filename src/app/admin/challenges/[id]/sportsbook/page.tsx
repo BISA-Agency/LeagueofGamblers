@@ -2,6 +2,7 @@ import { desc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { reopenEvent, suspendEvent, voidEventAction } from "@/actions/admin/custom-events";
 import { runOddsImportPreview } from "@/actions/admin/odds-import";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,13 +52,21 @@ export default async function AdminSportsbookPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold tracking-tight">Sportsbook — {challenge.name}</h1>
-        <form action={runOddsImportPreview.bind(null, id)}>
-          <Button type="submit" size="sm" className="h-11" disabled={challenge.sportKeys.length === 0}>
-            Week importeren
+        <div className="flex gap-2">
+          <Button asChild size="sm" variant="outline" className="h-11">
+            <Link href={`/admin/challenges/${id}/sportsbook/settle`}>Settlement-queue</Link>
           </Button>
-        </form>
+          <Button asChild size="sm" variant="outline" className="h-11">
+            <Link href={`/admin/challenges/${id}/sportsbook/custom/new`}>Custom event</Link>
+          </Button>
+          <form action={runOddsImportPreview.bind(null, id)}>
+            <Button type="submit" size="sm" className="h-11" disabled={challenge.sportKeys.length === 0}>
+              Week importeren
+            </Button>
+          </form>
+        </div>
       </div>
       {challenge.sportKeys.length === 0 && (
         <p className="text-sm text-loss">
@@ -113,6 +122,28 @@ export default async function AdminSportsbookPage({
                   {event.sportLabel} · {dateTimeFormatter.format(event.startsAt)}
                 </CardDescription>
               </CardHeader>
+              {(event.status === "upcoming" || event.status === "suspended") && (
+                <div className="flex gap-2 px-4 pb-4">
+                  {event.status === "upcoming" ? (
+                    <form action={suspendEvent.bind(null, event.id, id)}>
+                      <Button type="submit" size="sm" variant="outline" className="h-9">
+                        Schorsen
+                      </Button>
+                    </form>
+                  ) : (
+                    <form action={reopenEvent.bind(null, event.id, id)}>
+                      <Button type="submit" size="sm" variant="outline" className="h-9">
+                        Heropenen
+                      </Button>
+                    </form>
+                  )}
+                  <form action={voidEventAction.bind(null, event.id, id)}>
+                    <Button type="submit" size="sm" variant="outline" className="h-9 text-loss">
+                      Void (afgelast)
+                    </Button>
+                  </form>
+                </div>
+              )}
             </Card>
           ))}
         </div>
