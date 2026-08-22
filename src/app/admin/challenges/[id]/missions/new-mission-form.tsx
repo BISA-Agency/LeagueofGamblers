@@ -87,6 +87,19 @@ export function NewMissionForm({ challengeId }: { challengeId: string }) {
           <Input id="maxWinners" name="maxWinners" type="number" min="1" placeholder="Onbeperkt" className="h-11 tabular-nums" />
         </div>
       </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="validFrom">Loopt vanaf</Label>
+          <Input id="validFrom" name="validFrom" type="datetime-local" className="h-11" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="validTo">Loopt tot</Label>
+          <Input id="validTo" name="validTo" type="datetime-local" className="h-11" />
+        </div>
+      </div>
+      <p className="-mt-2 text-xs text-muted-foreground">
+        Zet een einddatum om er een weekmissie van te maken; leeg laten betekent doorlopend.
+      </p>
       <div className="flex gap-4">
         <label className="flex items-center gap-2 text-sm">
           <Checkbox name="repeatable" /> Herhaalbaar

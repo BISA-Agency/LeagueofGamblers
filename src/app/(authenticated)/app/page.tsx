@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ActivityFeed } from "@/components/activity/activity-feed";
+import { BetOfTheDay } from "@/components/activity/bet-of-the-day";
 import { Countdown } from "@/components/challenges/countdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -87,10 +88,16 @@ export default async function AppHomePage() {
           </div>
 
           {activeParticipation && (
-            <section className="space-y-2">
-              <h2 className="text-sm font-medium text-muted-foreground">Activiteit</h2>
-              <ActivityFeed challengeId={activeParticipation.challengeId} currentUserId={user.id} />
-            </section>
+            <>
+              <BetOfTheDay challengeId={activeParticipation.challengeId} />
+              <section className="space-y-2">
+                <h2 className="text-sm font-medium text-muted-foreground">Activiteit</h2>
+                <ActivityFeed
+                  challengeId={activeParticipation.challengeId}
+                  currentUserId={user.id}
+                />
+              </section>
+            </>
           )}
         </>
       )}

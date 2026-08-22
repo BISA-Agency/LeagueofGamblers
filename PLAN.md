@@ -197,8 +197,8 @@ league-of-gamblers/
 - [x] `rank_snapshots` cron + sparkline per speler + veldgrafiek (recharts) op challenge-pagina — cron draait 22:05 UTC (≈ 00:05 Amsterdam, zie DST-kanttekening in DECISIONS.md)
 - [x] Head-to-head (`/app/compare`) — twee spelers naast elkaar, h2h-score over de meetbare kolommen, gedeeld saldoverloop; bereikbaar vanaf het leaderboard
 - [x] Notificaties (in-app): dagelijkse rank-update via de snapshot-cron, plus `mission_completed` en `new_follower`; bel met ongelezen-teller in de header, `/app/notifications`. Resend-e-mail bewust nog niet (zie DECISIONS.md)
-- [ ] "Bet van de dag"-highlight
-- [ ] Weekmissies + weekwinnaar mini-ranking
+- [x] "Bet van de dag"-highlight — grootste winnende bet van de afgelopen 24u, boven de activity feed
+- [x] Weekmissies + weekwinnaar mini-ranking — missies met een einddatum vallen onder "Deze week", weekwinnaar = meeste winst sinds maandag (Amsterdamse week, baseline uit de maandagsnapshot)
 - [ ] Voorspelling side-game bij challenge-start
 - [x] Overige missietypes: `profit_day`, `profit_week`, `volume`, `sport_win`, `survive`, `balance_reach`, `underdog`, `all_in_win` — tijdgebonden types via `/api/cron/missions`, rest via de per-bet engine
 - [ ] Wrapped-pagina (`/wrapped/[challengeId]/[username]`)

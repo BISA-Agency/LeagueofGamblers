@@ -20,6 +20,12 @@ async function requireAdmin() {
   return user;
 }
 
+function parseLocalDateTime(value: FormDataEntryValue | null): Date | null {
+  if (typeof value !== "string" || value === "") return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export type CreateMissionState = { error?: string };
 
 export async function createMission(
@@ -38,9 +44,14 @@ export async function createMission(
   const maxWinnersRaw = formData.get("maxWinners");
   const repeatable = formData.get("repeatable") === "on";
   const hidden = formData.get("hidden") === "on";
+  const validFrom = parseLocalDateTime(formData.get("validFrom"));
+  const validTo = parseLocalDateTime(formData.get("validTo"));
 
   if (!title || title.length < 3) return { error: "Titel moet minimaal 3 tekens zijn." };
   if (!description) return { error: "Omschrijving is verplicht." };
+  if (validFrom && validTo && validTo <= validFrom) {
+    return { error: "Einddatum moet na de startdatum liggen." };
+  }
 
   const typeOption = MISSION_TYPE_OPTIONS.find((t) => t.value === type);
   if (!typeOption) return { error: "Onbekend missietype." };
@@ -64,6 +75,8 @@ export async function createMission(
     maxWinners: maxWinnersRaw ? Number(maxWinnersRaw) : null,
     repeatable,
     hidden,
+    validFrom,
+    validTo,
   });
 
   revalidatePath(`/admin/challenges/${challengeId}/missions`);
