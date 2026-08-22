@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,26 @@ const dateFormatter = new Intl.DateTimeFormat("nl-NL", {
   year: "numeric",
   timeZone: "Europe/Amsterdam",
 });
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const challenge = await db.query.challenges.findFirst({ where: eq(challenges.slug, slug) });
+  if (!challenge) return { title: "Challenge" };
+
+  const description = `Inleg €${challenge.buyInAmount.toLocaleString("nl-NL")} · ${dateFormatter.format(challenge.startAt)} – ${dateFormatter.format(challenge.endAt)}`;
+  const images = [`/api/og/leaderboard/${challenge.id}`];
+
+  return {
+    title: challenge.name,
+    description,
+    openGraph: { title: challenge.name, description, images },
+    twitter: { card: "summary_large_image", title: challenge.name, description, images },
+  };
+}
 
 export default async function PublicChallengePage({
   params,

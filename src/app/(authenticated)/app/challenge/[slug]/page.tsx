@@ -48,6 +48,7 @@ export default async function ChallengeDetailPage({
   } = await supabase.auth.getUser();
 
   const paid = challenge.participants.filter((p) => p.paidBuyIn);
+  const myUsername = paid.find((p) => p.userId === user?.id)?.user.username;
   const pot = paid.length * challenge.buyInAmount;
   const prizeTierRows = await db.query.prizeTiers.findMany();
   const tiers = ((challenge.prizeSplitOverride as PrizeTierRow[] | null) ?? prizeTierRows) as PrizeTierRow[];
@@ -90,9 +91,19 @@ export default async function ChallengeDetailPage({
             {split.map((s) => `#${s.rank} €${s.amount.toLocaleString("nl-NL")}`).join(" · ")}
           </p>
         )}
-        <Link href="/rules" className="mt-2 inline-block text-accent-brand underline underline-offset-2">
-          Spelregels
-        </Link>
+        <div className="mt-2 flex gap-4">
+          <Link href="/rules" className="text-accent-brand underline underline-offset-2">
+            Spelregels
+          </Link>
+          {myUsername && (challenge.status === "settling" || challenge.status === "finished") && (
+            <Link
+              href={`/wrapped/${challenge.id}/${myUsername}`}
+              className="text-accent-brand underline underline-offset-2"
+            >
+              Jouw Wrapped
+            </Link>
+          )}
+        </div>
       </section>
 
       {user && (

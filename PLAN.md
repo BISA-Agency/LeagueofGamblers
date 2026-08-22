@@ -201,8 +201,8 @@ league-of-gamblers/
 - [x] Weekmissies + weekwinnaar mini-ranking — missies met een einddatum vallen onder "Deze week", weekwinnaar = meeste winst sinds maandag (Amsterdamse week, baseline uit de maandagsnapshot)
 - [x] Voorspelling side-game bij challenge-start — stemmen kan alleen zolang de challenge `open` staat; zodra hij live gaat liggen de stemmen vast en worden ze getoond op de challenge-pagina
 - [x] Overige missietypes: `profit_day`, `profit_week`, `volume`, `sport_win`, `survive`, `balance_reach`, `underdog`, `all_in_win` — tijdgebonden types via `/api/cron/missions`, rest via de per-bet engine
-- [ ] Wrapped-pagina (`/wrapped/[challengeId]/[username]`)
-- [ ] Deelbare OG-kaarten (`/api/og/*`): leaderboard, profiel, "ik won"
+- [x] Wrapped-pagina (`/wrapped/[challengeId]/[username]`) — publiek deelbaar, gelinkt vanaf de challenge-pagina zodra die `settling`/`finished` is
+- [x] Deelbare OG-kaarten (`/api/og/*`): leaderboard (op `/c/[slug]`), profiel, wrapped/"ik won". `metadataBase` staat nu in de root layout, anders blijven og:image-paden relatief
 - [x] Midweek-import toggle (optioneel, default uit) — `?midweek=1` op de bestaande import-cron, donderdag
 - [x] `follows`-tabel + volgen-knop op profiel, inclusief volgers/volgend-teller en een notificatie voor de gevolgde speler
 

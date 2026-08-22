@@ -1,4 +1,5 @@
 import { and, count, eq } from "drizzle-orm";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BadgeIcon } from "@/components/badges/badge-icon";
@@ -7,6 +8,7 @@ import { LevelProgressBar } from "@/components/profile/level-progress-bar";
 import { UserAvatar } from "@/components/profile/user-avatar";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
+import { getLevelInfo } from "@/lib/levels";
 import { bets, follows, profiles } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
@@ -14,6 +16,30 @@ const memberSinceFormatter = new Intl.DateTimeFormat("nl-NL", {
   month: "long",
   year: "numeric",
 });
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ username: string }>;
+}): Promise<Metadata> {
+  const { username } = await params;
+  const profile = await db.query.profiles.findFirst({
+    where: eq(profiles.username, username.toLowerCase()),
+    columns: { username: true, xp: true },
+  });
+  if (!profile) return { title: "Profiel" };
+
+  const level = getLevelInfo(profile.xp);
+  const description = `Level ${level.level} · ${level.title} · ${profile.xp} XP`;
+  const images = [`/api/og/profile/${profile.username}`];
+
+  return {
+    title: profile.username,
+    description,
+    openGraph: { title: profile.username, description, images },
+    twitter: { card: "summary_large_image", title: profile.username, description, images },
+  };
+}
 
 export default async function ProfilePage({
   params,
