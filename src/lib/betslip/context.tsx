@@ -1,0 +1,66 @@
+"use client";
+
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
+
+export type BetSlipSelection = {
+  outcomeId: string;
+  eventId: string;
+  eventName: string;
+  eventStart: string; // ISO
+  sport: string;
+  competition?: string;
+  marketLabel: string;
+  selectionLabel: string;
+  odds: number;
+};
+
+type BetSlipContextValue = {
+  selections: BetSlipSelection[];
+  addSelection: (selection: BetSlipSelection) => void;
+  removeSelection: (outcomeId: string) => void;
+  clear: () => void;
+  isSelected: (outcomeId: string) => boolean;
+};
+
+const BetSlipContext = createContext<BetSlipContextValue | null>(null);
+
+export function BetSlipProvider({ children }: { children: React.ReactNode }) {
+  const [selections, setSelections] = useState<BetSlipSelection[]>([]);
+
+  const addSelection = useCallback((selection: BetSlipSelection) => {
+    setSelections((prev) => {
+      const withoutSameEvent = prev.filter((s) => s.eventId !== selection.eventId);
+      const alreadyHadThisExact = prev.some((s) => s.outcomeId === selection.outcomeId);
+      if (alreadyHadThisExact) {
+        // Tapping the same outcome again removes it.
+        return prev.filter((s) => s.outcomeId !== selection.outcomeId);
+      }
+      // Selections from the same event can't be combined (§5.3) — swap it.
+      return [...withoutSameEvent, selection];
+    });
+  }, []);
+
+  const removeSelection = useCallback((outcomeId: string) => {
+    setSelections((prev) => prev.filter((s) => s.outcomeId !== outcomeId));
+  }, []);
+
+  const clear = useCallback(() => setSelections([]), []);
+
+  const isSelected = useCallback(
+    (outcomeId: string) => selections.some((s) => s.outcomeId === outcomeId),
+    [selections]
+  );
+
+  const value = useMemo(
+    () => ({ selections, addSelection, removeSelection, clear, isSelected }),
+    [selections, addSelection, removeSelection, clear, isSelected]
+  );
+
+  return <BetSlipContext.Provider value={value}>{children}</BetSlipContext.Provider>;
+}
+
+export function useBetSlip() {
+  const ctx = useContext(BetSlipContext);
+  if (!ctx) throw new Error("useBetSlip must be used within a BetSlipProvider");
+  return ctx;
+}

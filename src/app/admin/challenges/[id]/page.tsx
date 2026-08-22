@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { transitionChallengeToLive } from "@/actions/admin/challenge-lifecycle";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { challenges } from "@drizzle/schema";
@@ -22,10 +23,29 @@ export default async function AdminChallengeDetailPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold tracking-tight">{challenge.name}</h1>
-        <Button asChild size="sm" variant="outline" className="h-11">
-          <Link href={`/admin/challenges/${challenge.id}/sportsbook`}>Sportsbook beheren</Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild size="sm" variant="outline" className="h-11">
+            <Link href={`/admin/challenges/${challenge.id}/players`}>Spelers</Link>
+          </Button>
+          <Button asChild size="sm" variant="outline" className="h-11">
+            <Link href={`/admin/challenges/${challenge.id}/sportsbook`}>Sportsbook beheren</Link>
+          </Button>
+        </div>
       </div>
+
+      {challenge.status === "open" && (
+        <div className="rounded-lg border border-border p-4">
+          <p className="mb-3 text-sm text-muted-foreground">
+            Zet deze challenge live: betaalde deelnemers krijgen hun startsaldo en kunnen wedden.
+            Gebeurt normaal automatisch op de startdatum.
+          </p>
+          <form action={transitionChallengeToLive.bind(null, challenge.id)}>
+            <Button type="submit" size="sm" className="h-11">
+              Nu live zetten
+            </Button>
+          </form>
+        </div>
+      )}
 
       <div className="rounded-lg border border-border p-4">
         <h2 className="mb-4 text-sm font-medium text-muted-foreground">Sportsbook-instellingen</h2>
