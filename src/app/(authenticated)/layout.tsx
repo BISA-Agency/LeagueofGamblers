@@ -1,7 +1,9 @@
 import { and, count, eq, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ChallengeSwitcher } from "@/components/challenges/challenge-switcher";
 import { UnpaidBuyInBanner } from "@/components/challenges/unpaid-buy-in-banner";
+import { getActiveParticipation } from "@/lib/challenges/active";
 import { BottomNav } from "@/components/nav/bottom-nav";
 import { Sidebar } from "@/components/nav/sidebar";
 import { NotificationBell } from "@/components/notifications/notification-bell";
@@ -23,10 +25,13 @@ export default async function AuthenticatedLayout({
   const profile = await db.query.profiles.findFirst({ where: eq(profiles.id, user.id) });
   if (!profile?.rulesAcceptedAt) redirect("/onboarding");
 
-  const [unread] = await db
-    .select({ n: count() })
-    .from(notifications)
-    .where(and(eq(notifications.userId, user.id), isNull(notifications.readAt)));
+  const [[unread], { active, all }] = await Promise.all([
+    db
+      .select({ n: count() })
+      .from(notifications)
+      .where(and(eq(notifications.userId, user.id), isNull(notifications.readAt))),
+    getActiveParticipation(user.id),
+  ]);
 
   return (
     <div className="flex min-h-dvh">
@@ -36,7 +41,15 @@ export default async function AuthenticatedLayout({
           <Link href="/app" className="text-base font-semibold tracking-tight md:invisible">
             League of <span className="text-accent-brand">Gamblers</span>
           </Link>
-          <NotificationBell unreadCount={unread.n} />
+          <div className="flex items-center gap-2">
+            {active && (
+              <ChallengeSwitcher
+                challenges={all.map((p) => ({ id: p.challengeId, name: p.challenge.name }))}
+                activeId={active.challengeId}
+              />
+            )}
+            <NotificationBell unreadCount={unread.n} />
+          </div>
         </header>
         <UnpaidBuyInBanner userId={user.id} />
         <main className="flex-1 pb-20 md:pb-0">{children}</main>

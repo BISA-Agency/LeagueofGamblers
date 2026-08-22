@@ -1,4 +1,3 @@
-import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ActivityFeed } from "@/components/activity/activity-feed";
@@ -6,8 +5,7 @@ import { BetOfTheDay } from "@/components/activity/bet-of-the-day";
 import { Countdown } from "@/components/challenges/countdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { db } from "@/lib/db";
-import { challengeParticipants } from "@drizzle/schema";
+import { getActiveParticipation } from "@/lib/challenges/active";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Home" };
@@ -19,12 +17,10 @@ export default async function AppHomePage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const participations = await db.query.challengeParticipants.findMany({
-    where: eq(challengeParticipants.userId, user.id),
-    with: { challenge: true },
-  });
-
-  const activeParticipation = participations.find((p) => p.status === "active");
+  // `all` is every challenge the player is in (the list below); `active` is
+  // the one the header switcher points at, which drives the feed.
+  const { active, all: participations } = await getActiveParticipation(user.id);
+  const activeParticipation = active?.status === "active" ? active : null;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">

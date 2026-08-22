@@ -1,7 +1,8 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { getActiveParticipation } from "@/lib/challenges/active";
 import { db } from "@/lib/db";
 import { bets } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -16,8 +17,13 @@ export default async function BetsPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // Scoped to the challenge in the header switcher, so a player in two
+  // challenges doesn't see one list mixing both.
+  const { active } = await getActiveParticipation(user.id);
   const myBets = await db.query.bets.findMany({
-    where: eq(bets.userId, user.id),
+    where: active
+      ? and(eq(bets.userId, user.id), eq(bets.challengeId, active.challengeId))
+      : eq(bets.userId, user.id),
     orderBy: desc(bets.placedAt),
     with: { selections: true },
   });

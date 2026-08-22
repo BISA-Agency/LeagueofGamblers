@@ -1,7 +1,5 @@
-import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
-import { db } from "@/lib/db";
-import { challengeParticipants } from "@drizzle/schema";
+import { getActiveParticipation } from "@/lib/challenges/active";
 import { createClient } from "@/lib/supabase/server";
 import { ProofBetForm } from "./proof-bet-form";
 
@@ -14,10 +12,7 @@ export default async function ProofBetPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const participation = await db.query.challengeParticipants.findFirst({
-    where: eq(challengeParticipants.userId, user.id),
-    with: { challenge: true },
-  });
+  const { active: participation } = await getActiveParticipation(user.id);
 
   if (!participation || participation.status !== "active") {
     return (

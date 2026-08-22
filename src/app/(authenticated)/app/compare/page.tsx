@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ComparePicker } from "@/components/compare/compare-picker";
 import { FieldChart } from "@/components/charts/field-chart";
 import { UserAvatar } from "@/components/profile/user-avatar";
+import { getActiveParticipation } from "@/lib/challenges/active";
 import { getSnapshotsForUsers } from "@/lib/challenges/rank-snapshots";
 import { db } from "@/lib/db";
 import { getLevelInfo } from "@/lib/levels";
@@ -73,10 +74,7 @@ export default async function ComparePage({
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const myParticipation = await db.query.challengeParticipants.findFirst({
-    where: eq(challengeParticipants.userId, user.id),
-    with: { challenge: true, user: true },
-  });
+  const { active: myParticipation } = await getActiveParticipation(user.id);
 
   if (!myParticipation) {
     return (
@@ -112,7 +110,10 @@ export default async function ComparePage({
   const usernames = participants.map((p) => p.user.username).sort();
   const { a: aParam, b: bParam } = await searchParams;
 
-  const defaultA = myParticipation.user.username;
+  // Default the left slot to the viewer, unless they haven't paid in and so
+  // aren't among the ranked participants.
+  const defaultA =
+    participants.find((p) => p.userId === user.id)?.user.username ?? usernames[0];
   const aName = usernames.includes(aParam ?? "") ? aParam! : defaultA;
   const bName =
     usernames.includes(bParam ?? "") && bParam !== aName

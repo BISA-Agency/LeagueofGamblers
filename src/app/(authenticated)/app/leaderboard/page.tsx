@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { UserAvatar } from "@/components/profile/user-avatar";
 import { LeaderboardAutoRefresh } from "@/components/leaderboard/auto-refresh";
+import { getActiveParticipation } from "@/lib/challenges/active";
 import { db } from "@/lib/db";
 import { bets, challengeParticipants } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -18,10 +19,7 @@ export default async function LeaderboardPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const participation = await db.query.challengeParticipants.findFirst({
-    where: eq(challengeParticipants.userId, user.id),
-    with: { challenge: true },
-  });
+  const { active: participation } = await getActiveParticipation(user.id);
 
   if (!participation) {
     return (

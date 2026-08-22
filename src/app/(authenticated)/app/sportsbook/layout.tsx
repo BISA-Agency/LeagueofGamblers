@@ -1,10 +1,8 @@
-import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { BetSlipPanel } from "@/components/betslip/bet-slip-panel";
 import { BetSlipSheet } from "@/components/betslip/bet-slip-sheet";
-import { db } from "@/lib/db";
+import { getActiveParticipation } from "@/lib/challenges/active";
 import { BetSlipProvider } from "@/lib/betslip/context";
-import { challengeParticipants } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function SportsbookLayout({ children }: { children: React.ReactNode }) {
@@ -14,9 +12,8 @@ export default async function SportsbookLayout({ children }: { children: React.R
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const participation = await db.query.challengeParticipants.findFirst({
-    where: and(eq(challengeParticipants.userId, user.id), eq(challengeParticipants.status, "active")),
-  });
+  const { active } = await getActiveParticipation(user.id);
+  const participation = active?.status === "active" ? active : null;
 
   if (!participation) {
     return <div className="mx-auto max-w-2xl">{children}</div>;

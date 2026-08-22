@@ -1,8 +1,9 @@
 import { and, asc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import { EventList } from "@/components/sportsbook/event-list";
+import { getActiveParticipation } from "@/lib/challenges/active";
 import { db } from "@/lib/db";
-import { challengeParticipants, events } from "@drizzle/schema";
+import { events } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Sportsbook" };
@@ -14,10 +15,7 @@ export default async function SportsbookPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const participation = await db.query.challengeParticipants.findFirst({
-    where: eq(challengeParticipants.userId, user.id),
-    with: { challenge: true },
-  });
+  const { active: participation } = await getActiveParticipation(user.id);
 
   if (!participation) {
     return (

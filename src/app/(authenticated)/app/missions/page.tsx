@@ -4,8 +4,9 @@ import { WeeklyStandings } from "@/components/missions/weekly-standings";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/db";
+import { getActiveParticipation } from "@/lib/challenges/active";
 import { getWeeklyStandings } from "@/lib/challenges/week";
-import { challengeParticipants, missions, type Mission } from "@drizzle/schema";
+import { missions, type Mission } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Missies" };
@@ -33,10 +34,7 @@ export default async function MissionsPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const participation = await db.query.challengeParticipants.findFirst({
-    where: eq(challengeParticipants.userId, user.id),
-    with: { challenge: true },
-  });
+  const { active: participation } = await getActiveParticipation(user.id);
 
   if (!participation) {
     return (

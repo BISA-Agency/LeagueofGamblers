@@ -5,8 +5,9 @@ import { FlagBetButton } from "@/components/bets/flag-bet-button";
 import { UserAvatar } from "@/components/profile/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { getActiveParticipation } from "@/lib/challenges/active";
 import { db } from "@/lib/db";
-import { bets, challengeParticipants } from "@drizzle/schema";
+import { bets } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Bets van het veld" };
@@ -35,10 +36,7 @@ export default async function FieldBetsPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const participation = await db.query.challengeParticipants.findFirst({
-    where: eq(challengeParticipants.userId, user.id),
-    with: { challenge: true },
-  });
+  const { active: participation } = await getActiveParticipation(user.id);
 
   if (!participation) {
     return (
