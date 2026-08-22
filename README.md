@@ -53,15 +53,18 @@ migratie te genereren, dan opnieuw `npm run db:migrate`.
 > foreign-key-typering; die tabel mag nooit door onze migraties worden
 > aangemaakt (zie het commentaar bovenin `drizzle/migrations/0000_*.sql`).
 
-### 5. Storage buckets (nog niet gebruikt in Fase 0)
+### 5. RLS- en Storage-policies
 
-Vanaf Fase 1 zijn er twee Storage buckets nodig (aan te maken via
-**Storage** in het Supabase dashboard, met RLS-policies die spelers alleen
-toegang geven tot hun eigen bestanden):
+```bash
+npm run db:apply-sql supabase/migrations/0001_rls_policies.sql
+npm run db:apply-sql supabase/migrations/0002_storage_policies.sql
+```
 
-- `avatars` — publiek leesbaar, alleen de eigenaar mag schrijven.
-- `proof-bet-screenshots` — pas leesbaar voor medespelers na aanvang van het
-  event (zie §7 van PLAN.md); alleen de eigenaar mag schrijven.
+Deze zijn niet Drizzle-managed (Drizzle's schema-DSL kent geen RLS-policies)
+en moeten dus los uitgevoerd worden. De twee Storage buckets zelf
+(`avatars`, publiek; `proof-bet-screenshots`, privé — screenshots worden
+alleen als kortlevende signed URL vrijgegeven na een server-side check,
+zie `src/lib/storage/`) staan al klaar in het project.
 
 ### 6. Seed-data (optioneel, voor lokaal testen)
 
