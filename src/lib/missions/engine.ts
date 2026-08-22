@@ -30,7 +30,7 @@ async function alreadyCompleted(missionId: string, userId: string, challengeId: 
   return !!existing;
 }
 
-async function awardMission(
+export async function awardMission(
   mission: Mission,
   userId: string,
   challengeId: string,

@@ -20,3 +20,4 @@ export const badges = pgTable("badges", {
 
 export type Badge = typeof badges.$inferSelect;
 export type NewBadge = typeof badges.$inferInsert;
+export type BadgeRarity = (typeof badgeRarityEnum.enumValues)[number];

@@ -18,6 +18,8 @@ export const missionAppliesToEnum = pgEnum("mission_applies_to", [
   "both",
 ]);
 
+export type MissionAppliesTo = (typeof missionAppliesToEnum.enumValues)[number];
+
 export const missions = pgTable("missions", {
   id: uuid("id").primaryKey().defaultRandom(),
   // null = reusable across challenges.

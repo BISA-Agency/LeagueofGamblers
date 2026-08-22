@@ -29,6 +29,12 @@ export const verificationStatusEnum = pgEnum("verification_status", [
   "rejected",
 ]);
 
+export type BetKind = (typeof betKindEnum.enumValues)[number];
+export type BetType = (typeof betTypeEnum.enumValues)[number];
+export type BetStatus = (typeof betStatusEnum.enumValues)[number];
+export type Bookmaker = (typeof bookmakerEnum.enumValues)[number];
+export type VerificationStatus = (typeof verificationStatusEnum.enumValues)[number];
+
 export const bets = pgTable("bets", {
   id: uuid("id").primaryKey().defaultRandom(),
   challengeId: uuid("challenge_id")

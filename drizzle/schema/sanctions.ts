@@ -10,6 +10,8 @@ export const sanctionTypeEnum = pgEnum("sanction_type", [
   "disqualification",
 ]);
 
+export type SanctionType = (typeof sanctionTypeEnum.enumValues)[number];
+
 export const sanctions = pgTable("sanctions", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")

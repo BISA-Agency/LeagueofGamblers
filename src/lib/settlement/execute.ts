@@ -133,7 +133,7 @@ export async function finalizeBetIfComplete(betId: string) {
   await evaluateMissionsForSettledBet(betId);
 }
 
-async function voidAndRefundBet(betId: string) {
+export async function voidAndRefundBet(betId: string) {
   const bet = await db.query.bets.findFirst({ where: eq(bets.id, betId) });
   if (!bet) return;
 
