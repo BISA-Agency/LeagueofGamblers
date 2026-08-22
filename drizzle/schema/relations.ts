@@ -1,4 +1,5 @@
 import { relations } from "drizzle-orm";
+import { activityFeed } from "./activity-feed";
 import { auditLog } from "./audit-log";
 import { badges } from "./badges";
 import { betFlags } from "./bet-flags";
@@ -6,14 +7,19 @@ import { betSelections } from "./bet-selections";
 import { bets } from "./bets";
 import { challenges } from "./challenges";
 import { events } from "./events";
+import { feedReactions } from "./feed-reactions";
+import { follows } from "./follows";
 import { markets } from "./markets";
 import { missionCompletions } from "./mission-completions";
 import { missions } from "./missions";
+import { notifications } from "./notifications";
 import { oddsImports } from "./odds-imports";
 import { outcomes } from "./outcomes";
 import { payments } from "./payments";
 import { challengeParticipants } from "./participants";
+import { predictions } from "./predictions";
 import { profiles } from "./profiles";
+import { rankSnapshots } from "./rank-snapshots";
 import { sanctions } from "./sanctions";
 import { userBadges } from "./user-badges";
 import { xpEvents } from "./xp-events";
@@ -26,6 +32,15 @@ export const profilesRelations = relations(profiles, ({ many }) => ({
   badges: many(userBadges),
   xpEvents: many(xpEvents),
   payments: many(payments),
+  activityFeed: many(activityFeed),
+  feedReactions: many(feedReactions),
+  notifications: many(notifications),
+  predictionsMade: many(predictions, { relationName: "predictor" }),
+  predictedAsWinner: many(predictions, { relationName: "predictedWinner" }),
+  rankSnapshots: many(rankSnapshots),
+  // people I follow / who follow me
+  following: many(follows, { relationName: "follower" }),
+  followedBy: many(follows, { relationName: "following" }),
 }));
 
 export const challengesRelations = relations(challenges, ({ one, many }) => ({
@@ -123,4 +138,51 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
 
 export const auditLogRelations = relations(auditLog, ({ one }) => ({
   actor: one(profiles, { fields: [auditLog.actorId], references: [profiles.id] }),
+}));
+
+export const rankSnapshotsRelations = relations(rankSnapshots, ({ one }) => ({
+  challenge: one(challenges, { fields: [rankSnapshots.challengeId], references: [challenges.id] }),
+  user: one(profiles, { fields: [rankSnapshots.userId], references: [profiles.id] }),
+}));
+
+export const activityFeedRelations = relations(activityFeed, ({ one, many }) => ({
+  challenge: one(challenges, { fields: [activityFeed.challengeId], references: [challenges.id] }),
+  user: one(profiles, { fields: [activityFeed.userId], references: [profiles.id] }),
+  reactions: many(feedReactions),
+}));
+
+export const feedReactionsRelations = relations(feedReactions, ({ one }) => ({
+  feed: one(activityFeed, { fields: [feedReactions.feedId], references: [activityFeed.id] }),
+  user: one(profiles, { fields: [feedReactions.userId], references: [profiles.id] }),
+}));
+
+export const followsRelations = relations(follows, ({ one }) => ({
+  follower: one(profiles, {
+    fields: [follows.followerId],
+    references: [profiles.id],
+    relationName: "follower",
+  }),
+  following: one(profiles, {
+    fields: [follows.followingId],
+    references: [profiles.id],
+    relationName: "following",
+  }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(profiles, { fields: [notifications.userId], references: [profiles.id] }),
+}));
+
+export const predictionsRelations = relations(predictions, ({ one }) => ({
+  challenge: one(challenges, { fields: [predictions.challengeId], references: [challenges.id] }),
+  user: one(profiles, {
+    fields: [predictions.userId],
+    references: [profiles.id],
+    relationName: "predictor",
+  }),
+  predictedWinner: one(profiles, {
+    fields: [predictions.predictedWinnerId],
+    references: [profiles.id],
+    relationName: "predictedWinner",
+  }),
 }));
