@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { money } from "./_helpers";
 import { challenges } from "./challenges";
 import { profiles } from "./profiles";
@@ -21,8 +21,24 @@ export const payments = pgTable("payments", {
   amount: money("amount").notNull(),
   currency: text("currency").notNull().default("EUR"),
   status: paymentStatusEnum("status").notNull().default("pending"),
-  // Free text (e.g. "contant ontvangen 3/9") or a tx hash in Fase 3.
+  // Free text, e.g. "contant ontvangen 3/9".
   reference: text("reference"),
+  // --- crypto buy-ins ---
+  // Which chain the player says they sent on. USDT exists on several and they
+  // are not interchangeable, so this is recorded, not inferred.
+  network: text("network"),
+  // The chain is the real proof, not the screenshot: a hash can be looked up,
+  // and the unique constraint stops the same transaction being claimed twice.
+  txHash: text("tx_hash").unique(),
+  // Stored path in a private bucket, never a URL.
+  screenshotUrl: text("screenshot_url"),
+  // What the player was asked to send, so an admin can compare against the
+  // chain without recomputing a rate that has since moved.
+  tokenAmount: numeric("token_amount", { precision: 18, scale: 6, mode: "number" }),
+  // The platform's cut, charged ON TOP of the buy-in. Kept beside the buy-in
+  // rather than as its own row so the pot stays "sum of amount" and revenue
+  // stays "sum of fee_amount" — one row still tells the whole story.
+  feeAmount: money("fee_amount").notNull().default(0),
   confirmedBy: uuid("confirmed_by").references(() => profiles.id),
   confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
   challengeId: uuid("challenge_id")

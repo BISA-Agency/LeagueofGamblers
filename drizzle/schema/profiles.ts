@@ -18,6 +18,10 @@ export const profiles = pgTable(
     // ISO 3166-1 alpha-2 (e.g. "NL") — rendered as a flag emoji behind the
     // username. Nullable: existing players simply haven't picked one yet.
     country: text("country"),
+  // Where prize money goes. Validated per network before it is stored — a
+  // wrong address is an irrecoverable payout.
+  payoutAddress: text("payout_address"),
+  payoutNetwork: text("payout_network"),
     // Level/title are derived from xp (see lib/levels.ts), not stored — a
     // stored column would drift out of sync with xp the moment level
     // thresholds change.

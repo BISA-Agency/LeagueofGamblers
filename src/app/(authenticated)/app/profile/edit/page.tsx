@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { profiles } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
+import { PayoutMethodForm } from "@/components/payments/payout-method-form";
 import { ProfileEditForm } from "./profile-edit-form";
 
 export const metadata: Metadata = { title: "Profiel bewerken" };
@@ -30,6 +31,19 @@ export default async function ProfileEditPage() {
           country: profile.country,
         }}
       />
+
+      <section className="space-y-2 border-t border-border pt-6">
+        <div>
+          <h2 className="text-sm font-medium">Uitbetaling</h2>
+          <p className="text-xs text-muted-foreground">
+            Waar prijzengeld naartoe gaat. Je kunt dit later altijd wijzigen.
+          </p>
+        </div>
+        <PayoutMethodForm
+          defaultNetwork={profile.payoutNetwork}
+          defaultAddress={profile.payoutAddress}
+        />
+      </section>
     </div>
   );
 }

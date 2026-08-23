@@ -44,3 +44,21 @@ export async function getProofScreenshotSignedUrl(
   if (error) return null;
   return data.signedUrl;
 }
+
+/** Buy-in proof. Same private bucket, its own folder. */
+export async function uploadPaymentScreenshot(
+  userId: string,
+  paymentId: string,
+  file: File
+): Promise<string> {
+  const supabase = createServiceRoleClient();
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+  const path = `payments/${userId}/${paymentId}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: true });
+  if (error) throw new Error(`Screenshot uploaden mislukt: ${error.message}`);
+
+  return path;
+}

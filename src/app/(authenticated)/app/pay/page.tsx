@@ -1,12 +1,19 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
-import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { Check, ChevronRight, Clock, X } from "lucide-react";
 import { db } from "@/lib/db";
-import { CashProvider } from "@/lib/payment-provider/cash";
-import { challengeParticipants } from "@drizzle/schema";
+import { totalWithFee } from "@/lib/payments/rate";
+import { challengeParticipants, payments } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Inleg" };
+
+const money = (n: number) =>
+  n.toLocaleString("nl-NL", {
+    minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
 
 export default async function PayPage() {
   const supabase = await createClient();
@@ -15,45 +22,80 @@ export default async function PayPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const participations = await db.query.challengeParticipants.findMany({
-    where: eq(challengeParticipants.userId, user.id),
-    with: { challenge: true },
-  });
+  const [participations, myPayments] = await Promise.all([
+    db.query.challengeParticipants.findMany({
+      where: eq(challengeParticipants.userId, user.id),
+      with: { challenge: true },
+    }),
+    db.query.payments.findMany({
+      where: eq(payments.userId, user.id),
+      orderBy: desc(payments.createdAt),
+    }),
+  ]);
 
-  const provider = new CashProvider();
+  const latestByChallenge = new Map<string, (typeof myPayments)[number]>();
+  for (const p of myPayments) {
+    if (!latestByChallenge.has(p.challengeId)) latestByChallenge.set(p.challengeId, p);
+  }
+
+  const sorted = [...participations].sort(
+    (a, b) => Number(a.paidBuyIn) - Number(b.paidBuyIn)
+  );
 
   return (
     <div className="mx-auto max-w-md space-y-6 px-4 py-6">
-      <h1 className="text-xl font-semibold tracking-tight">Inleg</h1>
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight">Inleg</h1>
+        <p className="text-sm text-muted-foreground">
+          Betalen gaat met USDT. Je doet mee zodra de betaling is teruggevonden op de blockchain.
+        </p>
+      </div>
 
-      {participations.length === 0 && (
+      {sorted.length === 0 && (
         <p className="text-sm text-muted-foreground">Je doet nog niet mee aan een challenge.</p>
       )}
 
-      <div className="space-y-3">
-        {await Promise.all(
-          participations.map(async (p) => {
-            const request = await provider.createPaymentRequest({
-              amount: p.challenge.buyInAmount,
-              currency: p.challenge.currency,
-              challengeId: p.challengeId,
-              userId: user.id,
-            });
-            return (
-              <div key={p.challengeId} className="rounded-lg border border-border p-4">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium">{p.challenge.name}</p>
-                  {p.paidBuyIn ? (
-                    <Badge className="border-profit/30 bg-profit/15 text-profit">Betaald</Badge>
-                  ) : (
-                    <Badge variant="secondary">Nog niet betaald</Badge>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground">{request.instructions}</p>
+      <div className="space-y-2">
+        {sorted.map((p) => {
+          const { total } = totalWithFee(p.challenge.buyInAmount, p.challenge.platformFeePercent);
+          const latest = latestByChallenge.get(p.challengeId);
+          const pending = !p.paidBuyIn && latest?.status === "pending";
+          const rejected = !p.paidBuyIn && latest?.status === "rejected";
+
+          return (
+            <Link
+              key={p.challengeId}
+              href={`/app/pay/${p.challengeId}`}
+              className="flex items-center gap-3 rounded-lg border border-border p-4 transition-colors hover:bg-secondary/40"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{p.challenge.name}</p>
+                <p className="text-xs tabular-nums text-muted-foreground">
+                  &euro;{money(total)}
+                  {p.challenge.platformFeePercent > 0 &&
+                    ` · incl. ${p.challenge.platformFeePercent}% servicekosten`}
+                </p>
               </div>
-            );
-          })
-        )}
+
+              {p.paidBuyIn ? (
+                <span className="flex shrink-0 items-center gap-1 text-xs text-profit">
+                  <Check className="size-3.5" /> Betaald
+                </span>
+              ) : pending ? (
+                <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                  <Clock className="size-3.5" /> In controle
+                </span>
+              ) : rejected ? (
+                <span className="flex shrink-0 items-center gap-1 text-xs text-loss">
+                  <X className="size-3.5" /> Afgekeurd
+                </span>
+              ) : (
+                <span className="shrink-0 text-xs text-accent-brand">Betalen</span>
+              )}
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

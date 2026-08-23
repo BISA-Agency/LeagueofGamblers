@@ -33,6 +33,9 @@ export const challenges = pgTable(
     status: challengeStatusEnum("status").notNull().default("draft"),
     startingBalance: money("starting_balance").notNull().default(10000),
     buyInAmount: money("buy_in_amount").notNull().default(100),
+    // Charged on top of the buy-in, so the pot is unaffected. 0 for the
+    // friends-and-cash challenges this started as.
+    platformFeePercent: integer("platform_fee_percent").notNull().default(10),
     currency: text("currency").notNull().default("EUR"),
     maxPlayers: integer("max_players"),
     missionBudget: money("mission_budget").notNull().default(0),
