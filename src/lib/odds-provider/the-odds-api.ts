@@ -12,6 +12,7 @@ import type {
   ProviderSport,
   UsageInfo,
 } from "./types";
+import { sportLabelFromKey } from "./sports";
 
 const BASE_URL = "https://api.the-odds-api.com/v4";
 
@@ -69,10 +70,16 @@ type RawScoreEvent = {
 };
 
 function toProviderEvent(e: RawEvent): ProviderEvent {
+  const title = e.sport_title ?? e.sport_key;
   return {
     externalId: e.id,
     sportKey: e.sport_key,
-    sportLabel: e.sport_title ?? e.sport_key,
+    // The API's sport_title is the competition ("La Liga - Spain"); the sport
+    // itself lives only in the key. Getting these the right way round is what
+    // makes the icons and the category rail work on imported events — the seed
+    // data had them correct, so this only ever showed up against the real API.
+    sportLabel: sportLabelFromKey(e.sport_key, title),
+    competition: title,
     homeTeam: e.home_team,
     awayTeam: e.away_team,
     name: e.home_team && e.away_team ? `${e.home_team} - ${e.away_team}` : e.id,

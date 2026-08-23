@@ -61,3 +61,36 @@ export const SPORT_GROUP_LABELS: Record<string, string> = {
   Politics: "Politiek",
   Handmatig: "Handmatig",
 };
+
+/**
+ * The Odds API puts the competition in `sport_title` ("La Liga - Spain") and
+ * has no field for the sport itself. The key does carry it, always as the part
+ * before the first underscore, so the sport is derived from there and the
+ * title becomes the competition.
+ *
+ * This matters beyond tidiness: the sportsbook's icons and category rail key
+ * on the Dutch sport label, and without this every imported event would land
+ * under a "sport" that is really a league name.
+ */
+const SPORT_BY_KEY_PREFIX: Record<string, string> = {
+  soccer: "Voetbal",
+  basketball: "Basketbal",
+  tennis: "Tennis",
+  americanfootball: "American football",
+  icehockey: "IJshockey",
+  baseball: "Honkbal",
+  mma: "MMA",
+  boxing: "Boksen",
+  cricket: "Cricket",
+  golf: "Golf",
+  rugbyleague: "Rugby",
+  rugbyunion: "Rugby",
+  aussierules: "Aussie rules",
+  politics: "Politiek",
+};
+
+/** "soccer_spain_la_liga" -> "Voetbal". Falls back to the raw title. */
+export function sportLabelFromKey(sportKey: string, fallback: string): string {
+  const prefix = sportKey.split("_")[0]?.toLowerCase() ?? "";
+  return SPORT_BY_KEY_PREFIX[prefix] ?? fallback;
+}
