@@ -5,6 +5,19 @@ export type MissionProgressContext = {
   bets: (Bet & { selections: BetSelection[] })[];
   currentBalance: number;
   startingBalance: number;
+  /**
+   * Lifetime totals. The career chains run to 2000 bets across every
+   * challenge, so a bar drawn from this challenge's bets alone would be wrong
+   * — and would reset to zero every month, which is the opposite of what a
+   * career chain promises.
+   */
+  career: {
+    settledBets: number;
+    wonBets: number;
+    sportsWon: number;
+    challengesFinished: number;
+    referralsConfirmed: number;
+  };
 };
 
 export type MissionProgress = { current: number; target: number };
@@ -23,6 +36,42 @@ export const MISSION_PROGRESS: Record<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (ctx: MissionProgressContext, params: any) => MissionProgress | null
 > = {
+  win_count: (ctx, params: { count: number }) => ({
+    current: Math.min(ctx.career.wonBets, params.count),
+    target: params.count,
+  }),
+
+  bets_settled: (ctx, params: { count: number }) => ({
+    current: Math.min(ctx.career.settledBets, params.count),
+    target: params.count,
+  }),
+
+  sports_variety: (ctx, params: { count: number }) => ({
+    current: Math.min(ctx.career.sportsWon, params.count),
+    target: params.count,
+  }),
+
+  challenges_played: (ctx, params: { count: number }) => ({
+    current: Math.min(ctx.career.challengesFinished, params.count),
+    target: params.count,
+  }),
+
+  referrals: (ctx, params: { count: number }) => ({
+    current: Math.min(ctx.career.referralsConfirmed, params.count),
+    target: params.count,
+  }),
+
+  /**
+   * Progress toward the sample size, not toward the percentage. Until you have
+   * enough bets the mission is unreachable whatever your winrate, so that is
+   * the honest thing to count; once you are over the line the bar is full and
+   * only the rate decides.
+   */
+  winrate_min: (ctx, params: { minBets: number }) => ({
+    current: Math.min(ctx.career.settledBets, params.minBets),
+    target: params.minBets,
+  }),
+
   win_streak: (ctx, params: { count: number }) => {
     let streak = 0;
     for (const bet of ctx.bets.filter((b) => b.status !== "open" && b.status !== "void")) {

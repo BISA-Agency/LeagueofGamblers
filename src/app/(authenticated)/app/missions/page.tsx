@@ -1,13 +1,15 @@
-import { and, desc, eq, isNull, or } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, or } from "drizzle-orm";
 import type { Metadata } from "next";
-import { MissionCard } from "@/components/missions/mission-card";
+import { MissionChainCard } from "@/components/missions/mission-chain-card";
 import { MissionSummary } from "@/components/missions/mission-summary";
 import { WeeklyStandings } from "@/components/missions/weekly-standings";
 import { db } from "@/lib/db";
 import { getActiveParticipation } from "@/lib/challenges/active";
 import { getWeeklyStandings } from "@/lib/challenges/week";
+import { buildChains, type ChainRung } from "@/lib/missions/chains";
 import { getMissionProgress, type MissionProgressContext } from "@/lib/missions/progress";
-import { bets, missions, type Mission } from "@drizzle/schema";
+import { countConfirmedReferrals } from "@/lib/referrals/assign";
+import { betSelections, bets, challengeParticipants, missions, type Mission } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Missies" };
@@ -59,10 +61,39 @@ export default async function MissionsPage() {
     }),
   ]);
 
+  // Career totals for the chain bars. Counted in the database rather than by
+  // loading a lifetime of bets: these run to 2000.
+  const [settledBets, wonBets, sportRows, played, referralsConfirmed] = await Promise.all([
+    db.$count(bets, and(eq(bets.userId, user.id), ne(bets.status, "open"))),
+    db.$count(
+      bets,
+      and(eq(bets.userId, user.id), or(eq(bets.status, "won"), eq(bets.status, "half_won")))
+    ),
+    db
+      .selectDistinct({ sport: betSelections.sport })
+      .from(betSelections)
+      .innerJoin(bets, eq(bets.id, betSelections.betId))
+      .where(
+        and(eq(bets.userId, user.id), or(eq(bets.status, "won"), eq(bets.status, "half_won")))
+      ),
+    db.query.challengeParticipants.findMany({
+      where: eq(challengeParticipants.userId, user.id),
+      with: { challenge: { columns: { status: true } } },
+    }),
+    countConfirmedReferrals(user.id),
+  ]);
+
   const progressContext: MissionProgressContext = {
     bets: myBets,
     currentBalance: participation.balance,
     startingBalance: participation.challenge.startingBalance,
+    career: {
+      settledBets,
+      wonBets,
+      sportsWon: sportRows.filter((r) => r.sport).length,
+      challengesFinished: played.filter((p) => p.challenge.status === "finished").length,
+      referralsConfirmed,
+    },
   };
 
   const now = new Date();
@@ -83,58 +114,59 @@ export default async function MissionsPage() {
     };
   };
 
-  // Actionable first, then completed, then whatever's out of reach.
-  const byPriority = (a: Row, b: Row) => {
-    const sa = state(a);
-    const sb = state(b);
-    const rank = (s: ReturnType<typeof state>) => (s.completed ? 1 : s.expired || s.full ? 2 : 0);
-    return rank(sa) - rank(sb);
-  };
+  const rungs = (rows: Row[]): ChainRung<Row>[] =>
+    rows.map((mission) => {
+      const s = state(mission);
+      return {
+        mission,
+        completed: s.completed,
+        progress: s.completed || s.expired ? null : getMissionProgress(mission, progressContext),
+      };
+    });
 
-  const card = (mission: Row) => {
+  const challengeChains = buildChains(rungs(visible.filter((m) => m.challengeId !== null)));
+  const generalChains = buildChains(rungs(visible.filter((m) => m.challengeId === null)));
+
+  const completedCount = visible.filter((m) => state(m).completed).length;
+  const openCash = visible
+    .filter((m) => {
+      const s = state(m);
+      return m.challengeId !== null && !s.completed && !s.expired && !s.full;
+    })
+    .reduce((sum, m) => sum + (m.rewardAmount ?? 0), 0);
+
+  const renderChain = (chain: ReturnType<typeof buildChains<Row>>[number]) => {
+    const mission = chain.active.mission;
     const s = state(mission);
+    const spotsLeft =
+      mission.maxWinners !== null ? mission.maxWinners - mission.completions.length : null;
+
     return (
-      <MissionCard
-        key={mission.id}
+      <MissionChainCard
+        key={chain.key}
         title={mission.title}
         description={mission.description}
-        rewardAmount={mission.rewardAmount}
         rewardXp={mission.rewardXp}
-        hasBadge={Boolean(mission.rewardBadgeId)}
-        completed={s.completed}
-        full={s.full}
-        expired={s.expired}
-        deadline={
-          s.bucket === "week" && mission.validTo
-            ? `Loopt tot ${deadlineFormatter.format(mission.validTo)}`
-            : undefined
+        rewardAmount={mission.rewardAmount}
+        total={chain.total}
+        done={chain.doneCount}
+        allDone={chain.allDone}
+        progress={chain.active.progress}
+        single={chain.total === 1}
+        note={
+          s.expired
+            ? "Verlopen"
+            : spotsLeft !== null && spotsLeft <= 0
+              ? "Vol"
+              : spotsLeft !== null && !chain.allDone
+                ? `Nog ${spotsLeft} ${spotsLeft === 1 ? "plek" : "plekken"}`
+                : mission.validTo && !chain.allDone
+                  ? `Loopt tot ${deadlineFormatter.format(mission.validTo)}`
+                  : undefined
         }
-        progress={
-          s.completed || s.expired ? null : getMissionProgress(mission, progressContext)
-        }
-        winners={[
-          ...new Set(
-            mission.completions
-              // Your own card already says "Behaald"; repeating your name
-              // under it is noise.
-              .filter((c) => c.userId !== user.id)
-              .map((c) => c.user.username)
-          ),
-        ]}
       />
     );
   };
-
-  const challengeMissions = visible.filter((m) => m.challengeId !== null).sort(byPriority);
-  const generalMissions = visible.filter((m) => m.challengeId === null).sort(byPriority);
-
-  const completedCount = visible.filter((m) => state(m).completed).length;
-  const openCash = challengeMissions
-    .filter((m) => {
-      const s = state(m);
-      return !s.completed && !s.expired && !s.full;
-    })
-    .reduce((sum, m) => sum + (m.rewardAmount ?? 0), 0);
 
   return (
     <div className="mx-auto max-w-2xl space-y-8 px-4 py-6">
@@ -156,12 +188,12 @@ export default async function MissionsPage() {
             Horen bij {participation.challenge.name}. Hier valt geld te winnen.
           </p>
         </div>
-        {challengeMissions.length === 0 ? (
+        {challengeChains.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
             Nog geen missies voor deze challenge.
           </p>
         ) : (
-          <div className="space-y-2">{challengeMissions.map(card)}</div>
+          <div className="space-y-2">{challengeChains.map(renderChain)}</div>
         )}
       </section>
 
@@ -171,15 +203,15 @@ export default async function MissionsPage() {
             League of <span className="text-accent-brand">Gamblers</span>-missies
           </h2>
           <p className="text-xs text-muted-foreground">
-            Gelden in elke challenge en zijn één keer te behalen. Hiermee klim je in level.
+            Reeksen die in elke challenge doorlopen. Elke reeks telt door zolang je speelt.
           </p>
         </div>
-        {generalMissions.length === 0 ? (
+        {generalChains.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
             Nog geen LoG-missies.
           </p>
         ) : (
-          <div className="space-y-2">{generalMissions.map(card)}</div>
+          <div className="space-y-2">{generalChains.map(renderChain)}</div>
         )}
       </section>
     </div>
