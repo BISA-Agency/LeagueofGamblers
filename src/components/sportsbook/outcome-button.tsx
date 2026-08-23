@@ -14,6 +14,7 @@ export function OutcomeButton({
   sport,
   competition,
   marketLabel,
+  stacked = false,
 }: {
   outcomeId: string;
   /** What the bet slip and settlement see — always the real outcome label. */
@@ -27,6 +28,8 @@ export function OutcomeButton({
   sport: string;
   competition?: string | null;
   marketLabel: string;
+  /** Label above the price instead of beside it, for labels too long to sit on one line. */
+  stacked?: boolean;
 }) {
   const { addSelection, isSelected } = useBetSlip();
   const selected = isSelected(outcomeId);
@@ -51,7 +54,13 @@ export function OutcomeButton({
       // Label left, price right: the price is what the eye goes to, so it gets
       // the fixed edge to line up along.
       className={cn(
-        "flex min-h-11 flex-1 items-center justify-between gap-2 rounded-md border px-2.5 py-2 transition-colors",
+        // min-w-0: a flex item defaults to min-width:auto and refuses to shrink
+        // below its content, which made the label's truncate useless and pushed
+        // long outcomes ("Chelsea of Gelijkspel") off the side of the phone.
+        "flex min-h-11 min-w-0 flex-1 rounded-md border px-2.5 py-2 transition-colors",
+        stacked
+          ? "flex-col items-center justify-center gap-0.5 text-center"
+          : "items-center justify-between gap-2",
         selected
           ? "border-accent-brand bg-accent-brand/10"
           : "border-border bg-secondary/40 hover:border-foreground/25 hover:bg-secondary/70"
@@ -59,7 +68,10 @@ export function OutcomeButton({
     >
       <span
         className={cn(
-          "min-w-0 truncate text-xs",
+          "text-xs",
+          // Truncating "Chelsea of Gelijkspel" to "Chelse…" makes it identical
+          // to "Chelsea of Fulham", so a long label wraps rather than clips.
+          stacked ? "leading-tight text-balance" : "min-w-0 truncate",
           selected ? "text-accent-brand" : "text-muted-foreground"
         )}
       >

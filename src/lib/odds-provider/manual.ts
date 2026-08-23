@@ -86,6 +86,12 @@ export class ManualProvider implements OddsProvider {
     return { events: result, creditsUsed: null, creditsRemaining: null };
   }
 
+  // Admin-entered events carry whatever markets the admin typed in; there is
+  // no second endpoint to ask.
+  async getEventOdds() {
+    return { markets: [], creditsUsed: null, creditsRemaining: null };
+  }
+
   async getResults(_sportKey: string, eventExternalIds: string[]): Promise<ProviderResult[]> {
     const rows = await db.query.events.findMany({
       where: and(eq(events.source, "admin"), inArray(events.id, eventExternalIds)),

@@ -14,12 +14,37 @@ export type ProviderOutcome = {
   odds: number;
 };
 
-export type MarketType = "h2h" | "totals" | "spreads";
+/**
+ * Markets we can both price and settle. Everything here is decidable from a
+ * final score, which is all getResults() gives us — that is the boundary, not
+ * what The Odds API happens to offer. Player props, corners, cards and
+ * half-time markets are deliberately absent: nothing in /scores can settle
+ * them.
+ */
+export type MarketType =
+  | "h2h"
+  | "totals"
+  | "spreads"
+  | "team_totals"
+  | "btts"
+  | "double_chance"
+  | "draw_no_bet";
+
+/** Featured markets come from the bulk /odds call; the rest cost one request per event. */
+export const FEATURED_MARKETS: MarketType[] = ["h2h", "totals", "spreads"];
+export const ADDITIONAL_MARKETS: MarketType[] = [
+  "team_totals",
+  "btts",
+  "double_chance",
+  "draw_no_bet",
+];
 
 export type ProviderMarket = {
   type: MarketType;
   label: string;
   line?: number;
+  /** Which team a line belongs to — team totals only. */
+  team?: string;
   outcomes: ProviderOutcome[];
 };
 
@@ -65,5 +90,15 @@ export interface OddsProvider {
     sportKey: string,
     markets: MarketType[]
   ): Promise<{ events: ProviderEventOdds[] } & UsageInfo>;
+  /**
+   * Additional markets, one event at a time — The Odds API does not serve them
+   * in bulk. Costs [markets actually returned] x [regions] per call, which is
+   * why the import only asks for events close to kick-off.
+   */
+  getEventOdds(
+    sportKey: string,
+    eventExternalId: string,
+    markets: MarketType[]
+  ): Promise<{ markets: ProviderMarket[] } & UsageInfo>;
   getResults(sportKey: string, eventExternalIds: string[]): Promise<ProviderResult[]>;
 }

@@ -19,7 +19,33 @@ const MARKET_LABELS: Record<MarketType, string> = {
   h2h: "Uitslag (1X2)",
   totals: "Over/Under",
   spreads: "Handicap",
+  team_totals: "Team totaal",
+  btts: "Beide teams scoren",
+  double_chance: "Dubbele kans",
+  draw_no_bet: "Draw no bet",
 };
+
+/**
+ * Which API keys we ask for per market type, and how the keys in the response
+ * map back. The alternate_* variants are the same bet at a different line, so
+ * they fold into the same type — a 2.5 and a 3.5 over/under are two markets of
+ * type "totals", not two kinds of market.
+ */
+const API_KEYS: Record<MarketType, string[]> = {
+  h2h: ["h2h"],
+  totals: ["totals", "alternate_totals"],
+  spreads: ["spreads", "alternate_spreads"],
+  team_totals: ["team_totals", "alternate_team_totals"],
+  btts: ["btts"],
+  double_chance: ["double_chance"],
+  draw_no_bet: ["draw_no_bet"],
+};
+
+const TYPE_BY_API_KEY = new Map<string, MarketType>(
+  Object.entries(API_KEYS).flatMap(([type, keys]) =>
+    keys.map((key) => [key, type as MarketType] as const)
+  )
+);
 
 type RawEvent = {
   id: string;
@@ -30,7 +56,9 @@ type RawEvent = {
   away_team?: string;
 };
 
-type RawOutcome = { name: string; price: number; point?: number };
+// description carries the subject of a market that needs one — the team on a
+// team total, the player on a prop.
+type RawOutcome = { name: string; price: number; point?: number; description?: string };
 type RawMarket = { key: string; outcomes: RawOutcome[] };
 type RawBookmaker = { key: string; title: string; markets: RawMarket[] };
 type RawEventWithOdds = RawEvent & { bookmakers: RawBookmaker[] };
@@ -73,40 +101,94 @@ function pickOdds(quotes: { odds: number; bookmakerKey: string }[], strategy: Od
   return Math.max(...quotes.map((q) => q.odds));
 }
 
+/**
+ * One bucket per market that a player can actually bet as a unit.
+ *
+ * Bucketing on the API key alone was wrong even before alternate lines: two
+ * bookmakers offering Over/Under at 2.5 and at 3.5 landed in the same bucket
+ * and their prices were averaged across different lines. The key has to
+ * include the line and the subject.
+ *
+ * abs() on the point, because a handicap's two sides carry opposite signs
+ * (home -1.5, away +1.5) and belong to the same market, while -1.5 and -2.5
+ * are genuinely different markets.
+ */
+function bucketKey(apiKey: string, outcome: RawOutcome): string {
+  const point = outcome.point === undefined ? "" : Math.abs(outcome.point).toString();
+  return `${apiKey}|${outcome.description ?? ""}|${point}`;
+}
+
 function aggregateMarkets(
   raw: RawEventWithOdds,
   marketTypes: MarketType[],
   strategy: OddsAggregationStrategy
 ): ProviderMarket[] {
   type Bucket = {
+    type: MarketType;
     line?: number;
+    team?: string;
     outcomeQuotes: Map<string, { odds: number; bookmakerKey: string }[]>;
   };
-  const byType = new Map<string, Bucket>();
+  const buckets = new Map<string, Bucket>();
 
   for (const bookmaker of raw.bookmakers ?? []) {
     for (const market of bookmaker.markets ?? []) {
-      if (!marketTypes.includes(market.key as MarketType)) continue;
-      const bucket: Bucket = byType.get(market.key) ?? { outcomeQuotes: new Map() };
+      const type = TYPE_BY_API_KEY.get(market.key);
+      if (!type || !marketTypes.includes(type)) continue;
+
       for (const outcome of market.outcomes) {
+        const key = bucketKey(market.key, outcome);
+        const bucket: Bucket =
+          buckets.get(key) ?? { type, team: outcome.description, outcomeQuotes: new Map() };
+
         const list = bucket.outcomeQuotes.get(outcome.name) ?? [];
         list.push({ odds: outcome.price, bookmakerKey: bookmaker.key });
         bucket.outcomeQuotes.set(outcome.name, list);
-        if (outcome.point !== undefined) bucket.line = outcome.point;
+
+        if (outcome.point !== undefined) {
+          // Settlement reads a handicap as the HOME team's line, so take the
+          // sign from the home outcome. Taking whichever came last flipped the
+          // sign whenever the away side was listed second, which is the usual
+          // order — every spread settled against the wrong line.
+          if (type === "spreads") {
+            if (outcome.name === raw.home_team) bucket.line = outcome.point;
+            else if (bucket.line === undefined) bucket.line = -outcome.point;
+          } else {
+            bucket.line = outcome.point;
+          }
+        }
+
+        buckets.set(key, bucket);
       }
-      byType.set(market.key, bucket);
     }
   }
 
-  return Array.from(byType.entries()).map(([type, bucket]) => ({
-    type: type as MarketType,
-    label: MARKET_LABELS[type as MarketType] ?? type,
+  return Array.from(buckets.values()).map((bucket) => ({
+    type: bucket.type,
+    label: marketLabel(bucket.type, bucket.line, bucket.team, raw.home_team),
     line: bucket.line,
+    team: bucket.team,
     outcomes: Array.from(bucket.outcomeQuotes.entries()).map(([label, quotes]) => ({
       label,
       odds: pickOdds(quotes, strategy),
     })),
   }));
+}
+
+/** With alternate lines in play the label has to name the line, or a card shows five identical "Over/Under" rows. */
+function marketLabel(type: MarketType, line?: number, team?: string, homeTeam?: string): string {
+  const base = MARKET_LABELS[type] ?? type;
+  if (type === "team_totals" && team) {
+    return line === undefined ? `${team} totaal` : `${team} over/under ${line}`;
+  }
+  if (line === undefined) return base;
+  if (type === "spreads") {
+    // A handicap is always quoted from the home team's side, so the label says
+    // whose it is — "Handicap +1" on a bet slip is otherwise unreadable.
+    const signed = `${line > 0 ? "+" : ""}${line}`;
+    return homeTeam ? `${base} ${homeTeam} ${signed}` : `${base} ${signed}`;
+  }
+  return `${base} ${line}`;
 }
 
 function parseIntHeader(value: string | null): number | null {
@@ -179,6 +261,44 @@ export class TheOddsApiProvider implements OddsProvider {
       // x-requests-last is what THIS call cost. x-requests-used is the
       // account's lifetime total, so summing that across sports produced a
       // meaningless number on the admin dashboard.
+      creditsUsed: parseIntHeader(res.headers.get("x-requests-last")),
+      creditsRemaining: parseIntHeader(res.headers.get("x-requests-remaining")),
+    };
+  }
+
+  /**
+   * Additional markets, one event at a time — The Odds API does not serve them
+   * in bulk. Billed on the markets actually RETURNED, so asking for four and
+   * getting two back costs two.
+   */
+  async getEventOdds(
+    sportKey: string,
+    eventExternalId: string,
+    marketTypes: MarketType[]
+  ): Promise<{ markets: ProviderMarket[] } & UsageInfo> {
+    const apiKeys = marketTypes.flatMap((type) => API_KEYS[type] ?? []);
+    if (apiKeys.length === 0) {
+      return { markets: [], creditsUsed: 0, creditsRemaining: null };
+    }
+
+    const url = new URL(`${BASE_URL}/sports/${sportKey}/events/${eventExternalId}/odds`);
+    url.searchParams.set("apiKey", this.apiKey);
+    url.searchParams.set("regions", this.regions);
+    url.searchParams.set("markets", apiKeys.join(","));
+    url.searchParams.set("oddsFormat", "decimal");
+    url.searchParams.set("dateFormat", "iso");
+
+    const res = await fetch(url, { cache: "no-store" });
+    // A 404 means this bookmaker set has nothing extra for the fixture, which
+    // is normal and must not abort the whole import.
+    if (res.status === 404) return { markets: [], creditsUsed: 0, creditsRemaining: null };
+    if (!res.ok) {
+      throw new Error(`The Odds API getEventOdds failed: ${res.status} ${await res.text()}`);
+    }
+
+    const raw = (await res.json()) as RawEventWithOdds;
+    return {
+      markets: aggregateMarkets(raw, marketTypes, getStrategyFromEnv()),
       creditsUsed: parseIntHeader(res.headers.get("x-requests-last")),
       creditsRemaining: parseIntHeader(res.headers.get("x-requests-remaining")),
     };

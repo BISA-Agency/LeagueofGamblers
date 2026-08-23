@@ -7,10 +7,17 @@ import { SPORT_GROUP_LABELS } from "@/lib/odds-provider/sports";
 import type { SportGroup } from "@/lib/odds-provider/available-sports";
 import { updateChallengeSportsbookSettings } from "@/actions/admin/challenge-settings";
 
-const MARKET_OPTIONS: { value: string; label: string }[] = [
+// Featured markets come free with the bulk call. The additional ones cost one
+// request per event, so the form says so rather than letting an admin quietly
+// multiply the weekly credit bill.
+const MARKET_OPTIONS: { value: string; label: string; hint?: string }[] = [
   { value: "h2h", label: "1X2 / Moneyline" },
   { value: "totals", label: "Over/Under" },
   { value: "spreads", label: "Handicap" },
+  { value: "team_totals", label: "Team totaal", hint: "extra credits" },
+  { value: "btts", label: "Beide teams scoren", hint: "extra credits" },
+  { value: "double_chance", label: "Dubbele kans", hint: "extra credits" },
+  { value: "draw_no_bet", label: "Draw no bet", hint: "extra credits" },
 ];
 
 export function SportsbookSettingsForm({
@@ -98,6 +105,9 @@ export function SportsbookSettingsForm({
                 defaultChecked={defaultMarkets.includes(m.value)}
               />
               {m.label}
+              {m.hint && (
+                <span className="text-xs text-muted-foreground">({m.hint})</span>
+              )}
             </label>
           ))}
         </div>

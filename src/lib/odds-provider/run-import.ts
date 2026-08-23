@@ -3,11 +3,22 @@ import { logActivity } from "@/lib/activity/log";
 import { db } from "@/lib/db";
 import { challenges, events, markets, oddsImports, outcomes } from "@drizzle/schema";
 import { getOddsApiProvider } from "./index";
-import type { MarketType, ProviderEventOdds } from "./types";
+import { ADDITIONAL_MARKETS, FEATURED_MARKETS, type MarketType, type ProviderEventOdds } from "./types";
 
 /** A bit over a week, so the Monday import still covers next Monday's early
  * fixtures and the optional Thursday run overlaps rather than leaves a gap. */
 const IMPORT_HORIZON_DAYS = 8;
+
+/**
+ * How close to kick-off an event has to be before we buy its extra markets.
+ *
+ * Featured markets come free with the bulk call — one request per sport, all
+ * fixtures. Additional markets cost one request PER EVENT, billed on the
+ * markets returned, so pulling them for the full 8-day window would multiply
+ * a ~18-credit import into a ~240-credit one. Nobody bets a team total on a
+ * fixture eight days out, so the sportsbook fills those in as kick-off nears.
+ */
+const ADDITIONAL_WINDOW_HOURS = Number(process.env.ADDITIONAL_MARKETS_WINDOW_HOURS ?? 48);
 
 export type ImportPayload = {
   events: ProviderEventOdds[];
@@ -24,7 +35,9 @@ export async function createImportPreview(challengeId: string, ranBy: string | n
   }
 
   const provider = getOddsApiProvider();
-  const marketTypes = (challenge.markets.length > 0 ? challenge.markets : ["h2h"]) as MarketType[];
+  const configured = (challenge.markets.length > 0 ? challenge.markets : ["h2h"]) as MarketType[];
+  const featured = configured.filter((m) => FEATURED_MARKETS.includes(m));
+  const additional = configured.filter((m) => ADDITIONAL_MARKETS.includes(m));
 
   const fetched: ProviderEventOdds[] = [];
   let creditsUsed = 0;
@@ -39,7 +52,7 @@ export async function createImportPreview(challengeId: string, ranBy: string | n
   const horizon = now + IMPORT_HORIZON_DAYS * 86_400_000;
 
   for (const sportKey of challenge.sportKeys) {
-    const result = await provider.getOdds(sportKey, marketTypes);
+    const result = await provider.getOdds(sportKey, featured.length > 0 ? featured : ["h2h"]);
     fetched.push(
       ...result.events.filter((e) => {
         const startsAt = e.event.startsAt.getTime();
@@ -51,6 +64,31 @@ export async function createImportPreview(challengeId: string, ranBy: string | n
     );
     if (result.creditsUsed) creditsUsed += result.creditsUsed;
     if (result.creditsRemaining !== null) creditsRemaining = result.creditsRemaining;
+  }
+
+  // Extra markets for the fixtures close enough to kick-off to be worth the
+  // credits. One failure must not take the import with it — a missing team
+  // total is a smaller problem than no odds at all.
+  if (additional.length > 0) {
+    const cutoff = now + ADDITIONAL_WINDOW_HOURS * 3_600_000;
+    for (const entry of fetched) {
+      if (entry.event.startsAt.getTime() > cutoff) continue;
+      try {
+        const extra = await provider.getEventOdds(
+          entry.event.sportKey,
+          entry.event.externalId,
+          additional
+        );
+        entry.markets.push(...extra.markets.filter((m) => m.outcomes.length > 0));
+        if (extra.creditsUsed) creditsUsed += extra.creditsUsed;
+        if (extra.creditsRemaining !== null) creditsRemaining = extra.creditsRemaining;
+      } catch (err) {
+        console.error(
+          `Extra markten ophalen mislukt voor ${entry.event.name}:`,
+          err instanceof Error ? err.message : err
+        );
+      }
+    }
   }
 
   const previouslyImported = await db.query.events.findMany({
@@ -151,6 +189,7 @@ export async function publishImportRow(importId: string) {
           type: market.type,
           label: market.label,
           line: market.line,
+          team: market.team,
         })
         .returning();
 

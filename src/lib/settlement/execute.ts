@@ -12,7 +12,16 @@ import {
   type Market,
   type Outcome,
 } from "@drizzle/schema";
-import { settleH2h, settleSpread, settleTotals, type SettlementOutcome } from "./markets";
+import {
+  settleBtts,
+  settleDoubleChance,
+  settleDrawNoBet,
+  settleH2h,
+  settleSpread,
+  settleTeamTotal,
+  settleTotals,
+  type SettlementOutcome,
+} from "./markets";
 
 export type EventResult = { homeScore: number; awayScore: number };
 
@@ -32,6 +41,38 @@ function computeOutcomeResult(
     return settleSpread(
       outcome.label,
       market.line,
+      event.homeTeam,
+      event.awayTeam,
+      result.homeScore,
+      result.awayScore
+    );
+  }
+  if (market.type === "team_totals" && market.line !== null && market.team) {
+    // Which side's score the line applies to. An unrecognised team name would
+    // otherwise settle against the home score by accident, so it voids.
+    if (market.team === event.homeTeam) {
+      return settleTeamTotal(outcome.label, market.line, result.homeScore);
+    }
+    if (market.team === event.awayTeam) {
+      return settleTeamTotal(outcome.label, market.line, result.awayScore);
+    }
+    return "void";
+  }
+  if (market.type === "btts") {
+    return settleBtts(outcome.label, result.homeScore, result.awayScore);
+  }
+  if (market.type === "double_chance" && event.homeTeam && event.awayTeam) {
+    return settleDoubleChance(
+      outcome.label,
+      event.homeTeam,
+      event.awayTeam,
+      result.homeScore,
+      result.awayScore
+    );
+  }
+  if (market.type === "draw_no_bet" && event.homeTeam && event.awayTeam) {
+    return settleDrawNoBet(
+      outcome.label,
       event.homeTeam,
       event.awayTeam,
       result.homeScore,

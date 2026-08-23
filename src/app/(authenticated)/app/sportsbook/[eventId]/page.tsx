@@ -3,7 +3,7 @@ import { ArrowLeft, Trophy } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { MarketSection } from "@/components/sportsbook/market-section";
+import { MarketGroups } from "@/components/sportsbook/market-groups";
 import { TeamBadge } from "@/components/sportsbook/team-badge";
 import { db } from "@/lib/db";
 import { formatEventTime } from "@/lib/format-event-time";
@@ -71,22 +71,18 @@ export default async function EventDetailPage({
         <h1 className="mb-6 text-lg font-semibold">{event.name}</h1>
       )}
 
-      <div className="space-y-5">
-        {event.markets.map((market) => (
-          <MarketSection
-            key={market.id}
-            market={market}
-            eventId={event.id}
-            eventName={event.name}
-            eventStart={event.startsAt.toISOString()}
-            sport={event.sportLabel}
-            competition={event.competition}
-          />
-        ))}
-        {event.markets.length === 0 && (
-          <p className="text-sm text-muted-foreground">Nog geen markten voor deze wedstrijd.</p>
-        )}
-      </div>
+      {event.markets.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Nog geen markten voor deze wedstrijd.</p>
+      ) : (
+        <MarketGroups
+          markets={event.markets}
+          eventId={event.id}
+          eventName={event.name}
+          eventStart={event.startsAt.toISOString()}
+          sport={event.sportLabel}
+          competition={event.competition}
+        />
+      )}
     </div>
   );
 }
