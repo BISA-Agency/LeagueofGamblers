@@ -1,4 +1,5 @@
-import { Check, Lock, Minus, X } from "lucide-react";
+import { Lock } from "lucide-react";
+import { LegMark, SLIP_STRIPE } from "@/components/bets/slip-chrome";
 import { cn } from "@/lib/utils";
 
 const kickoffFormatter = new Intl.DateTimeFormat("nl-NL", {
@@ -73,14 +74,6 @@ const REDACTION = {
     "repeating-linear-gradient(45deg, rgba(255,255,255,0.055) 0 3px, rgba(255,255,255,0.11) 3px 6px)",
 };
 
-const STRIPE: Record<string, string> = {
-  sealed: "bg-border",
-  open: "bg-accent-brand/50",
-  won: "bg-profit",
-  lost: "bg-loss",
-  void: "bg-border",
-};
-
 export function FeedBetSlip({ slip }: { slip: FeedBetSlipData }) {
   const state = slip.revealed ? slip.status : "sealed";
   const typeLabel =
@@ -90,7 +83,7 @@ export function FeedBetSlip({ slip }: { slip: FeedBetSlipData }) {
     <div className="relative mt-2 overflow-hidden rounded-md border border-border bg-secondary/25">
       <span
         aria-hidden
-        className={cn("absolute inset-y-0 left-0 w-[3px]", STRIPE[state])}
+        className={cn("absolute inset-y-0 left-0 w-[3px]", SLIP_STRIPE[state])}
       />
 
       <div className="space-y-2 py-2.5 pl-4 pr-3">
@@ -175,23 +168,6 @@ function StateLabel({ state }: { state: string }) {
       {label}
     </span>
   );
-}
-
-function LegMark({ result, settled }: { result: string | null; settled: boolean }) {
-  if (!settled || result === null) {
-    return <span className="mt-1 size-3.5 shrink-0 rounded-full border border-border" />;
-  }
-  if (result === "lost" || result === "half_lost") {
-    return <X className="mt-0.5 size-3.5 shrink-0 text-loss" />;
-  }
-  if (result === "void") {
-    return (
-      <span className="mt-0.5 flex size-3.5 shrink-0 items-center justify-center text-muted-foreground">
-        <Minus className="size-3" />
-      </span>
-    );
-  }
-  return <Check className="mt-0.5 size-3.5 shrink-0 text-profit" />;
 }
 
 function Payout({ slip }: { slip: FeedBetSlipData }) {

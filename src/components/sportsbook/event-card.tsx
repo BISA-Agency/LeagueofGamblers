@@ -44,16 +44,6 @@ export function EventCard({ event }: { event: EventWithOdds }) {
         href={`/app/sportsbook/${event.id}`}
         className="block flex-1 px-3 pb-3 pt-2.5 transition-colors hover:bg-secondary/30"
       >
-        <p className="mb-2 truncate text-[11px] text-muted-foreground">
-          {event.sportLabel}
-          {event.competition && (
-            <>
-              <span className="px-1.5 text-muted-foreground/40">|</span>
-              {event.competition}
-            </>
-          )}
-        </p>
-
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1 space-y-1.5">
             {hasTeams ? (
