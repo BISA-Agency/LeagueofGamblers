@@ -96,7 +96,12 @@ export default async function LeaderboardPage() {
                   href={`/app/profile/${p.user.username}`}
                   className="min-w-0 flex-1 truncate text-sm hover:underline"
                 >
-                  <UsernameWithFlag username={p.user.username} country={p.user.country} />
+                  <UsernameWithFlag
+                    username={p.user.username}
+                    country={p.user.country}
+                    xp={p.user.xp}
+                    levelFloor={p.user.levelFloor}
+                  />
                 </Link>
                 <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
                   €{moneyFormatter.format(startingBalance)}

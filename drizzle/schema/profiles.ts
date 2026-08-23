@@ -20,6 +20,8 @@ export const profiles = pgTable(
     country: text("country"),
   // Where prize money goes. Validated per network before it is stored — a
   // wrong address is an irrecoverable payout.
+  // Highest level ever reached. XP itself can fall; the level never does.
+  levelFloor: integer("level_floor").notNull().default(1),
   payoutAddress: text("payout_address"),
   payoutNetwork: text("payout_network"),
     // Level/title are derived from xp (see lib/levels.ts), not stored — a

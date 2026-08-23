@@ -1,5 +1,6 @@
 import { evaluateBadgesForSettledBet } from "@/lib/badges/triggers";
 import { evaluateMissionsForSettledBet } from "@/lib/missions/engine";
+import { awardXpForSettledBet } from "@/lib/xp/award";
 
 /**
  * Everything that reacts to a bet leaving "open". Call this instead of the
@@ -8,6 +9,9 @@ import { evaluateMissionsForSettledBet } from "@/lib/missions/engine";
  * proof-bet self-settlement, proof-bet approval).
  */
 export async function runPostSettlementChecks(betId: string) {
+  // XP first: a mission that fires off the same bet then lands on top of it,
+  // and awardXpForSettledBet skips proof bets until an admin approves them.
+  await awardXpForSettledBet(betId);
   await evaluateMissionsForSettledBet(betId);
   await evaluateBadgesForSettledBet(betId);
 }

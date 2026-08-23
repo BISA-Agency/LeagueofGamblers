@@ -1,0 +1,1 @@
+ALTER TABLE "profiles" ADD COLUMN "level_floor" integer DEFAULT 1 NOT NULL;

@@ -67,7 +67,12 @@ export function RecordBoardCard({
                     href={`/app/profile/${entry.username}`}
                     className="block min-w-0 text-sm hover:underline"
                   >
-                    <UsernameWithFlag username={entry.username} country={entry.country} />
+                    <UsernameWithFlag
+                      username={entry.username}
+                      country={entry.country}
+                      xp={entry.xp}
+                      levelFloor={entry.levelFloor}
+                    />
                   </Link>
                   {entry.detail && (
                     <p className="truncate text-[11px] text-muted-foreground">{entry.detail}</p>

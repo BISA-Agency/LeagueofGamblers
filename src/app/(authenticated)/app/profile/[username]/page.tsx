@@ -29,12 +29,12 @@ export async function generateMetadata({
   const { username } = await params;
   const profile = await db.query.profiles.findFirst({
     where: eq(profiles.username, username.toLowerCase()),
-    columns: { username: true, xp: true },
+    columns: { username: true, xp: true, levelFloor: true },
   });
   if (!profile) return { title: "Profiel" };
 
-  const level = getLevelInfo(profile.xp);
-  const description = `Level ${level.level} · ${level.title} · ${profile.xp} XP`;
+  const level = getLevelInfo(profile.xp, profile.levelFloor);
+  const description = `${level.label} · ${profile.xp} XP`;
   const images = [`/api/og/profile/${profile.username}`];
 
   return {
@@ -143,7 +143,12 @@ export default async function ProfilePage({
         <UserAvatar username={profile.username} avatarUrl={profile.avatarUrl} size={64} />
         <div className="min-w-0 flex-1">
           <h1 className="flex min-w-0 text-lg font-semibold">
-            <UsernameWithFlag username={profile.username} country={profile.country} />
+            <UsernameWithFlag
+              username={profile.username}
+              country={profile.country}
+              xp={profile.xp}
+              levelFloor={profile.levelFloor}
+            />
           </h1>
           {profile.statusText && (
             <p className="truncate text-sm text-muted-foreground">{profile.statusText}</p>

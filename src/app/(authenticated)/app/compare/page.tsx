@@ -216,7 +216,7 @@ export default async function ComparePage({
               className="max-w-full truncate text-sm font-medium"
             />
             <span className="text-xs text-muted-foreground">
-              {getLevelInfo(p.user.xp).title}
+              {getLevelInfo(p.user.xp, p.user.levelFloor).label}
             </span>
           </div>
         ))}

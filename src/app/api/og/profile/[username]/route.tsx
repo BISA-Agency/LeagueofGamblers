@@ -29,7 +29,7 @@ export async function GET(
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <span style={{ fontSize: 76, fontWeight: 700 }}>{profile.username}</span>
           <span style={{ fontSize: 34, color: OG_COLORS.muted }}>
-            Level {level.level} · {level.title}
+            {level.label}
           </span>
         </div>
         <div style={{ display: "flex", gap: 20, marginTop: 44 }}>

@@ -14,6 +14,8 @@ export type RecordEntry = {
   username: string;
   avatarUrl: string | null;
   country: string | null;
+  xp: number;
+  levelFloor: number;
   value: number;
   /** Extra context under the name, e.g. which bet set the record. */
   detail?: string;
@@ -50,7 +52,9 @@ const MIN_BETS_FOR_RATE = 10;
 export async function getRecordBoards(): Promise<RecordBoard[]> {
   const [allProfiles, allBets, allParticipants] = await Promise.all([
     db.query.profiles.findMany({
-      columns: { id: true, username: true, avatarUrl: true, country: true, xp: true },
+      columns: {
+        id: true, username: true, avatarUrl: true, country: true, xp: true, levelFloor: true,
+      },
       with: { badges: { columns: { id: true } } },
     }),
     db.query.bets.findMany({
@@ -72,6 +76,8 @@ export async function getRecordBoards(): Promise<RecordBoard[]> {
       username: p.username,
       avatarUrl: p.avatarUrl,
       country: p.country,
+      xp: p.xp,
+      levelFloor: p.levelFloor,
     };
   };
 
