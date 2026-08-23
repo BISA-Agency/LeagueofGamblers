@@ -2,15 +2,16 @@
 // the betting loop can be exercised without spending Odds API credits. Also
 // used later for the landing-page screenshots (§10).
 //
-//   npm run db:seed-sportsbook            add the fixtures
-//   npm run db:seed-sportsbook -- --clean remove them again
+//   npm run db:seed-sportsbook                     add the fixtures
+//   npm run db:seed-sportsbook -- --clean          remove them again
+//   npm run db:seed-sportsbook -- --slug=my-slug   target another challenge
 //
 // Everything it creates is marked source "admin" with an external_id prefixed
 // "demo-", so --clean can find its own rows and nothing else.
 import { config } from "dotenv";
 config({ path: ".env.local" });
 
-const CHALLENGE_SLUG = "demo";
+const DEFAULT_SLUG = "demo";
 const PREFIX = "demo-";
 
 type Fixture = {
@@ -123,15 +124,17 @@ const FIXTURES: Fixture[] = [
 
 async function main() {
   const clean = process.argv.includes("--clean");
+  const slug =
+    process.argv.find((a) => a.startsWith("--slug="))?.slice("--slug=".length) ?? DEFAULT_SLUG;
 
   const { and, eq, like } = await import("drizzle-orm");
   const { db } = await import("../src/lib/db");
   const { challenges, events, markets, outcomes } = await import("../drizzle/schema");
 
   const challenge = await db.query.challenges.findFirst({
-    where: eq(challenges.slug, CHALLENGE_SLUG),
+    where: eq(challenges.slug, slug),
   });
-  if (!challenge) throw new Error(`Challenge "${CHALLENGE_SLUG}" niet gevonden — draai eerst db:seed.`);
+  if (!challenge) throw new Error(`Challenge "${slug}" niet gevonden — draai eerst db:seed.`);
 
   if (clean) {
     // markets/outcomes cascade from events.
