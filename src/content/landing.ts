@@ -5,7 +5,7 @@ export const hero = {
   eyebrow: "De maandelijkse onderlinge competitie",
   title: "€10.000 virtueel.\nEén maand.\nHoogste saldo wint de pot.",
   subtitle:
-    "Zet je vriendengroep tegen elkaar op in een maand vol bets, trash talk en één winnaar. Je speelt met virtueel geld — de inleg regel je onderling.",
+    "Zet je vriendengroep tegen elkaar op in een maand vol bets, trash talk en één winnaar. Je wedt met virtueel saldo; de pot is echt.",
   primaryCta: "Gratis account maken",
   secondaryCta: "Ik heb al een account",
   note: "Geen wachtwoord nodig — je logt in met een code per e-mail",
@@ -27,7 +27,7 @@ export const howItWorks = {
     },
     {
       title: "Iedereen legt in",
-      body: "De inleg gaat onderling — contant of via een tikkie. Jij vinkt af wie betaald heeft; de pot groeit vanzelf mee.",
+      body: "Iedereen betaalt zijn inleg in USDT. De app toont het adres en het exacte bedrag; jij keurt goed en de pot groeit mee.",
     },
     {
       title: "Wedden maar",
@@ -109,9 +109,9 @@ export const potSection = {
   title: "Wat kun je winnen?",
   subtitle:
     "De pot is de inleg van iedereen die betaald heeft. Schuif aan het aantal spelers en zie hoe de verdeling meegroeit.",
-  disclaimerTitle: "De app raakt geen echt geld aan",
+  disclaimerTitle: "Betalen gaat met USDT",
   disclaimer:
-    "Inleg en uitbetaling regelen jullie onderling — contant of per overboeking. De app houdt alleen bij wie betaald heeft en wat er uitgekeerd moet worden.",
+    "Je stuurt je inleg naar het adres in de app en meldt de transactie. De organisator vindt hem terug op de blockchain en zet je in de challenge. Prijzengeld gaat naar het adres op je profiel — de app bewaart nooit iemands geld of sleutels.",
 };
 
 export const gamification = {
@@ -173,7 +173,15 @@ export const faq = {
   items: [
     {
       q: "Speel ik met echt geld?",
-      a: "Nee. In de app wed je uitsluitend met virtueel saldo. De inleg en de uitbetaling van de pot regelen jullie onderling; de app houdt alleen de administratie bij.",
+      a: "In de app wed je uitsluitend met virtueel saldo — er staat nooit echt geld op het spel bij een bet. De inleg en het prijzengeld zijn wel echt: die gaan in USDT, naar en vanaf de adressen die je zelf beheert.",
+    },
+    {
+      q: "Hoe betaal ik mijn inleg?",
+      a: "In USDT, via Tron, BNB Chain, Solana of Ethereum. De app rekent het bedrag voor je om, toont het adres met een QR-code, en jij plakt daarna je transactiehash terug. Zodra de organisator hem op de blockchain heeft teruggevonden, sta je in de challenge.",
+    },
+    {
+      q: "Zitten er kosten bovenop de inleg?",
+      a: "Dat bepaalt de organisator per challenge. Rekent hij servicekosten, dan zie je die uitgesplitst op het betaalscherm voordat je iets verstuurt — nooit achteraf.",
     },
     {
       q: "Heb ik een bookmaker-account nodig?",

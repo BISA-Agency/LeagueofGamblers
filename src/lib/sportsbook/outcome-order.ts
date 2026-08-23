@@ -28,6 +28,18 @@ export function orderOutcomes<T extends Outcome>(
   });
 }
 
+/**
+ * The draw goes by different names depending on where the market came from:
+ * "Draw" from the odds provider, "Gelijkspel" from a seeded or admin-entered
+ * event. Matching only the English one pushed the draw to the end of every
+ * hand-made market — the same mis-tap risk in a different guise.
+ */
+const DRAW_LABELS = new Set(["draw", "gelijkspel", "tie", "remise", "x"]);
+
+function isDraw(label: string): boolean {
+  return DRAW_LABELS.has(label.trim().toLowerCase());
+}
+
 function rankerFor(
   market: Pick<Market, "type" | "team">,
   event: { homeTeam?: string | null; awayTeam?: string | null }
@@ -38,7 +50,12 @@ function rankerFor(
   switch (market.type) {
     // 1 X 2 — the order every bookmaker and every coupon in the world uses.
     case "h2h":
-      return (label) => [home, "Draw", away].indexOf(label);
+      return (label) => {
+        if (label === home) return 0;
+        if (isDraw(label)) return 1;
+        if (label === away) return 2;
+        return -1;
+      };
 
     case "spreads":
     case "draw_no_bet":
@@ -54,7 +71,8 @@ function rankerFor(
     // 1X, 12, X2: home involved first, then the pair without the home side.
     case "double_chance":
       return (label) => {
-        const parts = label.split(/\s+or\s+|\//i).map((p) => p.trim());
+        // "or" from the provider, "of" from anything written in Dutch.
+        const parts = label.split(/\s+or\s+|\s+of\s+|\//i).map((p) => p.trim());
         const hasHome = parts.includes(home);
         const hasAway = parts.includes(away);
         if (hasHome && !hasAway) return 0;

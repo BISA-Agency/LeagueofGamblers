@@ -122,6 +122,19 @@ const FIXTURES: Fixture[] = [
   },
 ];
 
+/**
+ * A plausible kick-off, not "now plus N days". Offsetting from the clock meant
+ * a run at 01:22 produced an Eredivisie fixture at 01:22, which is the kind of
+ * detail that makes a screenshot look fake to anyone who watches football.
+ */
+function kickoff(inDays: number): Date {
+  const HOURS = [18.5, 20, 20.75, 14.5, 16.75];
+  const d = new Date(Date.now() + inDays * 86_400_000);
+  const hour = HOURS[inDays % HOURS.length];
+  d.setHours(Math.floor(hour), Math.round((hour % 1) * 60), 0, 0);
+  return d;
+}
+
 async function main() {
   const clean = process.argv.includes("--clean");
   const slug =
@@ -146,7 +159,6 @@ async function main() {
     process.exit(0);
   }
 
-  const now = Date.now();
   let created = 0;
 
   for (const f of FIXTURES) {
@@ -162,7 +174,7 @@ async function main() {
         homeTeam: f.home,
         awayTeam: f.away,
         name: `${f.home} - ${f.away}`,
-        startsAt: new Date(now + f.inDays * 86_400_000),
+        startsAt: kickoff(f.inDays),
         status: "upcoming",
       })
       .onConflictDoNothing({ target: [events.challengeId, events.externalId] })
