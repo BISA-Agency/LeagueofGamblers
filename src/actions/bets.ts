@@ -3,6 +3,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { logActivity } from "@/lib/activity/log";
 import { db } from "@/lib/db";
 import { RateLimitError, assertBetRateLimit } from "@/lib/rate-limit";
 import { bets, betSelections, challengeParticipants, events, markets, outcomes } from "@drizzle/schema";
@@ -85,8 +86,9 @@ export async function placeSportsbookBet(
     throw err;
   }
 
+  let betId: string;
   try {
-    await db.transaction(async (tx) => {
+    betId = await db.transaction(async (tx) => {
       const participant = await tx.query.challengeParticipants.findFirst({
         where: and(
           eq(challengeParticipants.challengeId, challengeId),
@@ -139,10 +141,18 @@ export async function placeSportsbookBet(
             eq(challengeParticipants.userId, user.id)
           )
         );
+
+      return bet.id;
     });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Plaatsen mislukt. Probeer het opnieuw." };
   }
+
+  await logActivity(challengeId, user.id, "bet_placed", {
+    betId,
+    stake,
+    legs: rows.length,
+  });
 
   revalidatePath("/app/sportsbook");
   revalidatePath("/app/bets");

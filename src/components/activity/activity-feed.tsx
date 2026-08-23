@@ -1,9 +1,12 @@
 import { desc, eq, isNull, and, inArray } from "drizzle-orm";
 import { formatActivityMessage } from "@/lib/activity/format";
 import { db } from "@/lib/db";
-import { activityFeed } from "@drizzle/schema";
+import { activityFeed, bets } from "@drizzle/schema";
+import { FeedBetSlip, type FeedBetSlipData } from "./feed-bet-slip";
 import { FeedComposer } from "./feed-composer";
 import { FeedItem, type FeedReply } from "./feed-item";
+
+const BET_TYPES = new Set(["bet_placed", "bet_won", "bet_lost"]);
 
 /**
  * The challenge timeline (§home/threads): system events and chat messages in
@@ -37,6 +40,62 @@ export async function ActivityFeed({
         })
       : [];
 
+  // Slips referenced by the feed. Older rows predate the betId payload, so a
+  // missing bet just means no slip — the sentence still stands on its own.
+  const betIds = [
+    ...new Set(
+      entries
+        .filter((e) => BET_TYPES.has(e.type))
+        .map((e) => (e.payload as { betId?: string }).betId)
+        .filter((id): id is string => typeof id === "string")
+    ),
+  ];
+
+  const betRows =
+    betIds.length > 0
+      ? await db.query.bets.findMany({
+          where: inArray(bets.id, betIds),
+          with: { selections: true },
+        })
+      : [];
+
+  const now = new Date();
+  const slipsByBetId = new Map<string, FeedBetSlipData>();
+  for (const bet of betRows) {
+    // Same gate as /app/bets/field: someone else's pick stays sealed until
+    // its earliest event kicks off. Hidden slips are built without any
+    // selection label or odds, so nothing leaks into the HTML.
+    const revealed = bet.userId === currentUserId || bet.eventStart <= now;
+    slipsByBetId.set(
+      bet.id,
+      revealed
+        ? {
+            revealed: true,
+            betId: bet.id,
+            stake: bet.stake,
+            legCount: bet.selections.length,
+            status: bet.status as "open" | "won" | "lost" | "void",
+            totalOdds: bet.totalOdds,
+            potentialPayout: bet.potentialPayout,
+            legs: bet.selections.map((s) => ({
+              id: s.id,
+              eventName: s.eventName,
+              selectionLabel: s.selectionLabel,
+              marketLabel: s.marketLabel,
+              odds: s.odds,
+              result: s.result,
+            })),
+          }
+        : {
+            revealed: false,
+            betId: bet.id,
+            stake: bet.stake,
+            legCount: bet.selections.length,
+            kickoff: bet.eventStart,
+          }
+    );
+  }
+
   const repliesByParent = new Map<string, FeedReply[]>();
   for (const reply of replies) {
     const list = repliesByParent.get(reply.parentId!) ?? [];
@@ -69,6 +128,8 @@ export async function ActivityFeed({
         }
 
         const isChat = entry.type === "chat";
+        const betId = (entry.payload as { betId?: string }).betId;
+        const slip = betId ? slipsByBetId.get(betId) : undefined;
 
         return (
           <FeedItem
@@ -87,6 +148,7 @@ export async function ActivityFeed({
             reactionCounts={reactionCounts}
             myReactions={myReactions}
             replies={repliesByParent.get(entry.id) ?? []}
+            slip={slip ? <FeedBetSlip slip={slip} /> : null}
           />
         );
       })}

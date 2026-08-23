@@ -169,6 +169,12 @@ export async function createProofBet(
   const screenshotPath = await uploadProofScreenshot(user.id, betId, screenshot);
   await db.update(bets).set({ screenshotUrl: screenshotPath }).where(eq(bets.id, betId));
 
+  await logActivity(challengeId, user.id, "bet_placed", {
+    betId,
+    stake,
+    legs: selections.length,
+  });
+
   revalidatePath("/app/bets");
   redirect("/app/bets");
 }
@@ -207,6 +213,7 @@ export async function settleProofBetSelf(betId: string, status: "won" | "lost" |
         );
     });
     await logActivity(bet.challengeId, bet.userId, "bet_won", {
+      betId,
       payout: bet.potentialPayout,
       odds: bet.totalOdds,
     });
@@ -216,7 +223,7 @@ export async function settleProofBetSelf(betId: string, status: "won" | "lost" |
       .update(bets)
       .set({ status: "lost", settledAt: new Date(), settlementSource: "Zelf gesetteld door speler" })
       .where(eq(bets.id, betId));
-    await logActivity(bet.challengeId, bet.userId, "bet_lost", { stake: bet.stake });
+    await logActivity(bet.challengeId, bet.userId, "bet_lost", { betId, stake: bet.stake });
     await checkAndMarkBust(bet.challengeId, bet.userId);
     await runPostSettlementChecks(betId);
   }

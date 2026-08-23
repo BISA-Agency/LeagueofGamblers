@@ -8,6 +8,12 @@ export function formatActivityMessage(
   const payload = entry.payload as Record<string, string | number | undefined>;
 
   switch (entry.type) {
+    // Deliberately vague: the slip underneath decides what may be shown, and
+    // before kick-off that is nothing beyond the stake.
+    case "bet_placed":
+      return Number(payload.legs ?? 1) > 1
+        ? `${username} zette €${Number(payload.stake ?? 0).toLocaleString("nl-NL")} op een combi van ${payload.legs}`
+        : `${username} zette €${Number(payload.stake ?? 0).toLocaleString("nl-NL")} in`;
     case "bet_won":
       return `${username} won €${Number(payload.payout ?? 0).toLocaleString("nl-NL")} op ${payload.selection ?? payload.eventName ?? "een bet"} @${Number(payload.odds ?? 0).toFixed(2)}`;
     case "bet_lost":

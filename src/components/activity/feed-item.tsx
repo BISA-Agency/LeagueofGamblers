@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { MessageCircle } from "lucide-react";
 import { toggleReaction } from "@/actions/activity";
@@ -35,6 +35,7 @@ export function FeedItem({
   reactionCounts,
   myReactions,
   replies,
+  slip,
 }: {
   feedId: string;
   challengeId: string;
@@ -46,6 +47,8 @@ export function FeedItem({
   reactionCounts: Record<string, number>;
   myReactions: Set<string>;
   replies: FeedReply[];
+  /** Rendered server-side so a sealed bet's details never reach the client. */
+  slip?: ReactNode;
 }) {
   const [pending, startTransition] = useTransition();
   // Threads open automatically once they have content; otherwise on demand.
@@ -68,6 +71,7 @@ export function FeedItem({
             </Link>
           )}
           <p className={cn("text-sm", kind === "chat" && "break-words")}>{message}</p>
+          {slip}
         </div>
         <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
           {timeFormatter.format(createdAt)}

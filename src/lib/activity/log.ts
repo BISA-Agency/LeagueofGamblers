@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { activityFeed } from "@drizzle/schema";
 
 export type ActivityType =
+  | "bet_placed"
   | "bet_won"
   | "bet_lost"
   | "bust"

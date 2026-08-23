@@ -112,6 +112,7 @@ export async function finalizeBetIfComplete(betId: string) {
   } else if (activeSelections.some((s) => s.result === "lost" || s.result === "half_lost")) {
     await db.update(bets).set({ status: "lost", settledAt: new Date() }).where(eq(bets.id, betId));
     await logActivity(bet.challengeId, bet.userId, "bet_lost", {
+      betId,
       stake: bet.stake,
       selection: activeSelections[0]?.selectionLabel,
     });
@@ -136,6 +137,7 @@ export async function finalizeBetIfComplete(betId: string) {
         );
     });
     await logActivity(bet.challengeId, bet.userId, "bet_won", {
+      betId,
       payout,
       odds: recomputedOdds,
       selection: activeSelections[0]?.selectionLabel,
