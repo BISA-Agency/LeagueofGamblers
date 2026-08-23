@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { ChallengeSwitcher } from "@/components/challenges/challenge-switcher";
 import { UnpaidBuyInBanner } from "@/components/challenges/unpaid-buy-in-banner";
 import { getActiveParticipation } from "@/lib/challenges/active";
-import { displayBalance } from "@/lib/challenges/stats";
+import { displayBalance, hasStarted } from "@/lib/challenges/stats";
 import { BottomNav } from "@/components/nav/bottom-nav";
 import { Sidebar } from "@/components/nav/sidebar";
 import { NotificationBell } from "@/components/notifications/notification-bell";
@@ -26,7 +26,7 @@ export default async function AuthenticatedLayout({
   const profile = await db.query.profiles.findFirst({ where: eq(profiles.id, user.id) });
   if (!profile?.rulesAcceptedAt) redirect("/onboarding");
 
-  const [[unread], { active, all }] = await Promise.all([
+  const [[unread], { active, switchable }] = await Promise.all([
     db
       .select({ n: count() })
       .from(notifications)
@@ -48,12 +48,17 @@ export default async function AuthenticatedLayout({
             League of <span className="text-accent-brand">Gamblers</span>
           </Link>
           <div className="flex items-center gap-2">
-            {active && (
-              <ChallengeSwitcher
-                challenges={all.map((p) => ({ id: p.challengeId, name: p.challenge.name }))}
-                activeId={active.challengeId}
-              />
-            )}
+            <ChallengeSwitcher
+              challenges={switchable.map((p) => ({
+                id: p.challengeId,
+                name: p.challenge.name,
+                status: p.challenge.status,
+                balance: displayBalance(p, p.challenge),
+                finalRank: p.finalRank,
+                started: hasStarted(p.challenge.status),
+              }))}
+              activeId={active?.challengeId ?? null}
+            />
             <NotificationBell unreadCount={unread.n} />
           </div>
         </header>

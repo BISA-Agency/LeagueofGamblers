@@ -24,6 +24,20 @@ function byRelevance(a: ParticipationWithChallenge, b: ParticipationWithChalleng
   return b.challenge.startAt.getTime() - a.challenge.startAt.getTime();
 }
 
+/**
+ * How long a finished challenge stays in the header switcher. Long enough to
+ * look back at the final standings, short enough that the list doesn't grow
+ * by one every month. The full history never disappears — it lives on the
+ * profile (§erelijst) and on /app/challenges.
+ */
+export const FINISHED_VISIBLE_DAYS = 3;
+
+/** Whether a participation still belongs in the switcher. */
+export function isSwitchable(p: ParticipationWithChallenge, now: Date): boolean {
+  if (p.challenge.status !== "finished") return true;
+  return now.getTime() - p.challenge.endAt.getTime() < FINISHED_VISIBLE_DAYS * 86_400_000;
+}
+
 export async function getParticipations(userId: string): Promise<ParticipationWithChallenge[]> {
   const rows = await db.query.challengeParticipants.findMany({
     where: eq(challengeParticipants.userId, userId),
@@ -39,14 +53,34 @@ export async function getParticipations(userId: string): Promise<ParticipationWi
  */
 export async function getActiveParticipation(userId: string): Promise<{
   active: ParticipationWithChallenge | null;
+  /** Everything the player has ever joined, most relevant first. */
   all: ParticipationWithChallenge[];
+  /** What the switcher offers: `all` minus challenges that finished over
+   *  {@link FINISHED_VISIBLE_DAYS} days ago. */
+  switchable: ParticipationWithChallenge[];
 }> {
   const all = await getParticipations(userId);
-  if (all.length === 0) return { active: null, all };
+  if (all.length === 0) return { active: null, all, switchable: [] };
+
+  const now = new Date();
+  const switchable = all.filter((p) => isSwitchable(p, now));
 
   const cookieStore = await cookies();
   const preferredId = cookieStore.get(ACTIVE_CHALLENGE_COOKIE)?.value;
-  const preferred = preferredId ? all.find((p) => p.challengeId === preferredId) : undefined;
+  // A pick only counts while that challenge is still on offer — otherwise a
+  // player who last opened the app during August would be stuck in August
+  // forever, looking at a finished board.
+  const preferred = preferredId
+    ? switchable.find((p) => p.challengeId === preferredId)
+    : undefined;
 
-  return { active: preferred ?? all[0], all };
+  const active = preferred ?? switchable[0] ?? all[0];
+
+  // The active challenge is always listed, even once it has aged out — the
+  // switcher must be able to name what you're looking at.
+  return {
+    active,
+    all,
+    switchable: switchable.includes(active) ? switchable : [active, ...switchable],
+  };
 }

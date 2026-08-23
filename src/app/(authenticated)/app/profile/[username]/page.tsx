@@ -1,9 +1,9 @@
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Check, Clock } from "lucide-react";
 import { notFound } from "next/navigation";
 import { BadgeIcon } from "@/components/badges/badge-icon";
+import { ChallengeHistory, type ChallengeHistoryRow } from "@/components/profile/challenge-history";
 import { FollowButton } from "@/components/profile/follow-button";
 import { LevelProgressBar } from "@/components/profile/level-progress-bar";
 import { UsernameWithFlag } from "@/components/profile/username-with-flag";
@@ -13,21 +13,13 @@ import { db } from "@/lib/db";
 import { displayBalance, hasStarted } from "@/lib/challenges/stats";
 import { getLevelInfo } from "@/lib/levels";
 import { summarizeBets } from "@/lib/stats/bets";
-import { bets, follows, profiles } from "@drizzle/schema";
+import { bets, challengeParticipants, follows, payments, profiles } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
 const memberSinceFormatter = new Intl.DateTimeFormat("nl-NL", {
   month: "long",
   year: "numeric",
 });
-
-const CHALLENGE_STATUS_LABEL: Record<string, string> = {
-  draft: "Nog niet open",
-  open: "Begint binnenkort",
-  live: "Bezig",
-  settling: "Wordt afgerond",
-  finished: "Afgelopen",
-};
 
 export async function generateMetadata({
   params,
@@ -83,6 +75,50 @@ export default async function ProfilePage({
         })
       : Promise.resolve(undefined),
   ]);
+
+  // Prize money and field size per challenge — what turns "#1" into
+  // "#1 van de 9, €450".
+  const challengeIds = profile.participations.map((p) => p.challengeId);
+  const [prizeRows, fieldSizes] = await Promise.all([
+    challengeIds.length > 0
+      ? db.query.payments.findMany({
+          where: and(
+            eq(payments.userId, profile.id),
+            eq(payments.direction, "payout_prize"),
+            inArray(payments.challengeId, challengeIds)
+          ),
+          columns: { challengeId: true, amount: true },
+        })
+      : Promise.resolve([]),
+    challengeIds.length > 0
+      ? db
+          .select({ challengeId: challengeParticipants.challengeId, n: count() })
+          .from(challengeParticipants)
+          .where(inArray(challengeParticipants.challengeId, challengeIds))
+          .groupBy(challengeParticipants.challengeId)
+      : Promise.resolve([]),
+  ]);
+
+  const prizeByChallenge = new Map<string, number>();
+  for (const row of prizeRows) {
+    prizeByChallenge.set(row.challengeId, (prizeByChallenge.get(row.challengeId) ?? 0) + row.amount);
+  }
+  const sizeByChallenge = new Map(fieldSizes.map((r) => [r.challengeId, r.n]));
+
+  const historyRows: ChallengeHistoryRow[] = [...profile.participations]
+    .sort((a, b) => b.challenge.startAt.getTime() - a.challenge.startAt.getTime())
+    .map((p) => ({
+      challengeId: p.challengeId,
+      slug: p.challenge.slug,
+      name: p.challenge.name,
+      status: p.challenge.status,
+      finalRank: p.finalRank,
+      balance: displayBalance(p, p.challenge),
+      started: hasStarted(p.challenge.status),
+      paidBuyIn: p.paidBuyIn,
+      prize: prizeByChallenge.get(p.challengeId) ?? 0,
+      playerCount: sizeByChallenge.get(p.challengeId) ?? 0,
+    }));
 
   const activeParticipation = profile.participations.find((p) => p.status === "active");
   // Scoped to the active challenge — these numbers are shown under that
@@ -151,63 +187,7 @@ export default async function ProfilePage({
         </div>
       )}
 
-      {profile.participations.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            Challenges ({profile.participations.length})
-          </h2>
-          <div className="divide-y divide-border rounded-lg border border-border">
-            {[...profile.participations]
-              .sort((a, b) => b.challenge.startAt.getTime() - a.challenge.startAt.getTime())
-              .map((p) => {
-                const started = hasStarted(p.challenge.status);
-                return (
-                  <div key={p.challengeId} className="flex items-center gap-3 p-3">
-                    <div className="min-w-0 flex-1">
-                      <Link
-                        href={`/app/challenge/${p.challenge.slug}`}
-                        className="truncate text-sm font-medium hover:underline"
-                      >
-                        {p.challenge.name}
-                      </Link>
-                      <p className="text-xs tabular-nums text-muted-foreground">
-                        {CHALLENGE_STATUS_LABEL[p.challenge.status] ?? p.challenge.status}
-                        {p.finalRank && ` · geëindigd als #${p.finalRank}`}
-                      </p>
-                    </div>
-
-                    {/* Payment status matters to the player: unpaid means no
-                        balance and no share of the pot. */}
-                    {p.paidBuyIn ? (
-                      <span className="flex shrink-0 items-center gap-1 text-xs text-profit">
-                        <Check className="size-3.5" /> Inleg betaald
-                      </span>
-                    ) : (
-                      <span className="flex shrink-0 items-center gap-1 text-xs text-loss">
-                        <Clock className="size-3.5" /> Inleg open
-                      </span>
-                    )}
-
-                    {started && (
-                      <span className="w-20 shrink-0 text-right text-sm font-medium tabular-nums">
-                        €{displayBalance(p, p.challenge).toLocaleString("nl-NL")}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-          </div>
-          {isOwnProfile && profile.participations.some((p) => !p.paidBuyIn) && (
-            <p className="text-xs text-muted-foreground">
-              Nog een inleg open?{" "}
-              <Link href="/app/pay" className="text-accent-brand underline underline-offset-2">
-                Zo betaal je
-              </Link>
-              .
-            </p>
-          )}
-        </section>
-      )}
+      <ChallengeHistory rows={historyRows} isOwnProfile={isOwnProfile} />
 
       <dl className="grid grid-cols-2 gap-4 text-sm">
         {profile.favoriteClub && (

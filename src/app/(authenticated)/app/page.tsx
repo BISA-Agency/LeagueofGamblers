@@ -28,7 +28,7 @@ export default async function AppHomePage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { active, all: participations } = await getActiveParticipation(user.id);
+  const { active, switchable: participations } = await getActiveParticipation(user.id);
 
   if (!active) {
     return (
