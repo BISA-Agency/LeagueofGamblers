@@ -19,7 +19,8 @@
     "icons:generate": "node scripts/generate-icons.mjs",
     "sport-icons": "tsx scripts/copy-sport-icons.ts",
     "check-addresses": "tsx scripts/check-addresses.ts",
-    "db:seed-referrals": "tsx scripts/seed-referral-missions.ts"
+    "db:seed-referrals": "tsx scripts/seed-referral-missions.ts",
+    "db:seed-missions": "tsx scripts/seed-missions.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

@@ -1,5 +1,6 @@
 import { allInWin } from "./all-in-win";
 import { balanceReach } from "./balance-reach";
+import { betsSettled, sportsVariety, winCount, winrateMin } from "./career-count";
 import { combiWin } from "./combi-win";
 import { referrals } from "./referrals";
 import type { MissionTypeDefinition } from "./shared";
@@ -8,7 +9,7 @@ import { underdog } from "./underdog";
 import { winOddsMin } from "./win-odds-min";
 import { winStreak } from "./win-streak";
 
-export type { MissionCheckContext, MissionTypeDefinition } from "./shared";
+export type { CareerTotals, MissionCheckContext, MissionTypeDefinition } from "./shared";
 
 // "manual" is deliberately absent — the admin awards it directly, it's
 // never auto-evaluated. profit_day/profit_week/survive/volume live in
@@ -28,4 +29,8 @@ export const MISSION_TYPES: Record<string, MissionTypeDefinition<any>> = {
   // Registered so it validates and shows in the picker; evaluated by
   // lib/referrals/evaluate.ts, not by this registry.
   [referrals.key]: referrals,
+  [winCount.key]: winCount,
+  [betsSettled.key]: betsSettled,
+  [sportsVariety.key]: sportsVariety,
+  [winrateMin.key]: winrateMin,
 };

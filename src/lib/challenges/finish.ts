@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { logActivity } from "@/lib/activity/log";
 import { logAuditEvent } from "@/lib/audit";
+import { evaluateEndOfChallengeMissions } from "@/lib/missions/end-of-challenge";
 import { awardBadgeBySlug } from "@/lib/badges/award";
 import { db } from "@/lib/db";
 import { calculatePrizeSplit, type PrizeTierRow } from "@/lib/settlement/payouts";
@@ -97,6 +98,9 @@ export async function finishChallenge(challengeId: string, actorId: string) {
   });
 
   await awardEndOfChallengeBadges(challengeId, challenge.startingBalance, ranked);
+  // Runs here and nowhere else: half of what these missions judge is the final
+  // rank, which only exists now that it has been frozen above.
+  await evaluateEndOfChallengeMissions(challengeId);
 
   await logAuditEvent({
     actorId,

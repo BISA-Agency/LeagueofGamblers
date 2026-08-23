@@ -3,6 +3,7 @@ import { logActivity } from "@/lib/activity/log";
 import { db } from "@/lib/db";
 import { createNotification } from "@/lib/notifications/create";
 import {
+  betSelections,
   bets,
   challengeParticipants,
   missionCompletions,
@@ -14,7 +15,7 @@ import {
   type Bet,
   type Mission,
 } from "@drizzle/schema";
-import { MISSION_TYPES, type MissionCheckContext } from "./types";
+import { MISSION_TYPES, type CareerTotals, type MissionCheckContext } from "./types";
 
 async function isMissionActive(mission: Mission, now: Date) {
   if (mission.validFrom && now < mission.validFrom) return false;
@@ -122,9 +123,17 @@ export async function evaluateMissionsForSettledBet(betId: string) {
       if (winnerCount >= mission.maxWinners) continue;
     }
 
-    const ctx: MissionCheckContext = { bet, recentSettledBets: [], currentBalance: null };
+    const ctx: MissionCheckContext = {
+      bet,
+      recentSettledBets: [],
+      currentBalance: null,
+      career: null,
+    };
     if (definition.needsHistory) {
       ctx.recentSettledBets = await getRecentSettledBets(bet);
+    }
+    if (definition.needsCareer) {
+      ctx.career = await getCareerTotals(bet.userId);
     }
     if (definition.needsBalance) {
       const participant = await db.query.challengeParticipants.findFirst({
@@ -140,6 +149,25 @@ export async function evaluateMissionsForSettledBet(betId: string) {
       await awardMission(mission, bet.userId, bet.challengeId, bet.id);
     }
   }
+}
+
+/**
+ * Counted in the database rather than in memory: these are lifetime numbers
+ * and a chain runs to 2000 bets. Only the sports query needs a join.
+ */
+async function getCareerTotals(userId: string): Promise<CareerTotals> {
+  const settledBets = await db.$count(bets, and(eq(bets.userId, userId), ne(bets.status, "open")));
+  const wonBets = await db.$count(
+    bets,
+    and(eq(bets.userId, userId), or(eq(bets.status, "won"), eq(bets.status, "half_won")))
+  );
+  const rows = await db
+    .selectDistinct({ sport: betSelections.sport })
+    .from(betSelections)
+    .innerJoin(bets, eq(bets.id, betSelections.betId))
+    .where(and(eq(bets.userId, userId), or(eq(bets.status, "won"), eq(bets.status, "half_won"))));
+
+  return { settledBets, wonBets, sportsWon: rows.filter((r) => r.sport).length };
 }
 
 async function getRecentSettledBets(bet: Bet, limit = 50) {
