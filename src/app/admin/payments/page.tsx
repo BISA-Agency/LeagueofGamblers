@@ -1,12 +1,12 @@
 import { asc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
-import { confirmPayment } from "@/actions/admin/payments";
-import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/db";
 import { explorerTxUrl, getNetwork } from "@/lib/payments/networks";
 import { payments } from "@drizzle/schema";
 import { EmailStatus } from "@/components/admin/email-status";
+import { quoteUsdt } from "@/lib/payments/rate";
+import { PayoutCard, type Payout } from "./payout-card";
 import { BuyInClaimCard, type BuyInClaim } from "./buy-in-claim";
 
 export const metadata: Metadata = { title: "Pot & betalingen" };
@@ -51,9 +51,30 @@ export default async function AdminPaymentsPage() {
       submittedAt: p.createdAt,
     }));
 
-  const outgoing = pendingPayments.filter(
-    (p) => !(p.direction === "buy_in" && p.provider === "crypto")
-  );
+  // One rate for the whole page: every payout is converted with the same
+  // number, so the column adds up to what the totals say.
+  const { rate } = await quoteUsdt(1);
+
+  const outgoing: Payout[] = pendingPayments
+    .filter((p) => !(p.direction === "buy_in" && p.provider === "crypto"))
+    .map((p) => {
+      const network = p.user.payoutNetwork ? getNetwork(p.user.payoutNetwork) : undefined;
+      // The rank lives in the reference ("Prijs #2 — ..."), not in a column.
+      // No match simply means no badge, which is right for a mission payout.
+      const place = Number(/#(\d+)/.exec(p.reference ?? "")?.[1]);
+      return {
+        id: p.id,
+        username: p.user.username,
+        challengeName: p.challenge.name,
+        kind: DIRECTION_LABEL[p.direction] ?? p.direction,
+        amount: p.amount,
+        tokenAmount: rate > 0 ? Math.round(p.amount * rate * 100) / 100 : null,
+        place: Number.isFinite(place) ? place : null,
+        network: p.user.payoutNetwork,
+        networkLabel: network ? `${network.label} (${network.standard})` : null,
+        address: p.user.payoutAddress,
+      };
+    });
 
   const feeRevenue = (
     await db.query.payments.findMany({
@@ -127,27 +148,8 @@ export default async function AdminPaymentsPage() {
           <p className="text-sm text-muted-foreground">Niets te betalen.</p>
         )}
         <div className="space-y-2">
-          {outgoing.map((payment) => (
-            <div
-              key={payment.id}
-              className="flex items-center justify-between gap-3 rounded-lg border border-border p-4"
-            >
-              <div>
-                <p className="text-sm font-medium">
-                  {payment.user.username} · €{payment.amount.toLocaleString("nl-NL")}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {payment.challenge.name} ·{" "}
-                  {DIRECTION_LABEL[payment.direction] ?? payment.direction}
-                  {payment.reference && ` · ${payment.reference}`}
-                </p>
-              </div>
-              <form action={confirmPayment.bind(null, payment.id)}>
-                <Button type="submit" size="sm" variant="outline" className="h-11">
-                  Markeer betaald
-                </Button>
-              </form>
-            </div>
+          {outgoing.map((payout) => (
+            <PayoutCard key={payout.id} payout={payout} />
           ))}
         </div>
       </section>
