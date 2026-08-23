@@ -110,21 +110,30 @@ export async function submitCryptoPayment(
   // error path.
   const notifyTo = adminNotifyAddress();
   if (notifyTo) {
-    const profile = await db.query.profiles.findFirst({
-      where: eq(profiles.id, user.id),
-      columns: { username: true },
-    });
-    const mail = buyInClaimEmail({
-      username: profile?.username ?? "onbekende speler",
-      challengeName: challenge.name,
-      amount: challenge.buyInAmount,
-      feeAmount: fee,
-      tokenAmount: quote.tokenAmount,
-      networkLabel: `${network.label} (${network.standard})`,
-      txHash,
-      explorerUrl: explorerTxUrl(network.id, txHash),
-    });
-    await sendEmail({ to: notifyTo, ...mail });
+    // The whole block, not just sendEmail: building the template reads the
+    // site URL, and that can throw on a malformed host. The payment is
+    // already saved, so nothing here may reach the player as a failure.
+    try {
+      const profile = await db.query.profiles.findFirst({
+        where: eq(profiles.id, user.id),
+        columns: { username: true },
+      });
+      const mail = buyInClaimEmail({
+        username: profile?.username ?? "onbekende speler",
+        challengeName: challenge.name,
+        amount: challenge.buyInAmount,
+        feeAmount: fee,
+        tokenAmount: quote.tokenAmount,
+        networkLabel: `${network.label} (${network.standard})`,
+        txHash,
+        explorerUrl: explorerTxUrl(network.id, txHash),
+      });
+      await sendEmail({ to: notifyTo, ...mail });
+    } catch (err) {
+      console.error("[email] melding over inleg mislukt:", err instanceof Error ? err.message : err);
+    }
+  } else {
+    console.warn("[email] ADMIN_NOTIFY_EMAIL ontbreekt — geen melding verstuurd.");
   }
 
   revalidatePath("/app/pay");

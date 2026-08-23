@@ -6,6 +6,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { db } from "@/lib/db";
 import { explorerTxUrl, getNetwork } from "@/lib/payments/networks";
 import { payments } from "@drizzle/schema";
+import { EmailStatus } from "@/components/admin/email-status";
 import { BuyInClaimCard, type BuyInClaim } from "./buy-in-claim";
 
 export const metadata: Metadata = { title: "Pot & betalingen" };
@@ -71,6 +72,8 @@ export default async function AdminPaymentsPage() {
   return (
     <div className="space-y-8">
       <h1 className="text-xl font-semibold tracking-tight">Pot & betalingen</h1>
+
+      <EmailStatus />
 
       <section className="space-y-3">
         <h2 className="text-sm font-medium text-muted-foreground">Pot per challenge</h2>
