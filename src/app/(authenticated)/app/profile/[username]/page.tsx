@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BadgeIcon } from "@/components/badges/badge-icon";
 import { ChallengeHistory, type ChallengeHistoryRow } from "@/components/profile/challenge-history";
+import { InvitePanel } from "@/components/profile/invite-panel";
 import { FollowButton } from "@/components/profile/follow-button";
 import { LevelProgressBar } from "@/components/profile/level-progress-bar";
 import { UsernameWithFlag } from "@/components/profile/username-with-flag";
@@ -12,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { displayBalance, hasStarted } from "@/lib/challenges/stats";
 import { getLevelInfo } from "@/lib/levels";
+import { REFERRAL_TIERS } from "@/lib/referrals/tiers";
+import { countConfirmedReferrals, ensureInviteCode } from "@/lib/referrals/assign";
 import { summarizeBets } from "@/lib/stats/bets";
 import { bets, challengeParticipants, follows, payments, profiles } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -120,6 +123,15 @@ export default async function ProfilePage({
       playerCount: sizeByChallenge.get(p.challengeId) ?? 0,
     }));
 
+  // Only on your own profile: your invite link is yours to share, and how
+  // many people someone has brought in is not public business.
+  const invite = isOwnProfile
+    ? {
+        code: await ensureInviteCode(profile.id),
+        confirmed: await countConfirmedReferrals(profile.id),
+      }
+    : null;
+
   const activeParticipation = profile.participations.find((p) => p.status === "active");
   // Scoped to the active challenge — these numbers are shown under that
   // challenge's heading, so pulling in bets from other challenges would make
@@ -190,6 +202,18 @@ export default async function ProfilePage({
             </div>
           ))}
         </div>
+      )}
+
+      {invite?.code && (
+        <InvitePanel
+          code={invite.code}
+          confirmed={invite.confirmed}
+          tiers={REFERRAL_TIERS.map((t) => ({
+            count: t.count,
+            label: t.label,
+            reached: invite.confirmed >= t.count,
+          }))}
+        />
       )}
 
       <ChallengeHistory rows={historyRows} isOwnProfile={isOwnProfile} />

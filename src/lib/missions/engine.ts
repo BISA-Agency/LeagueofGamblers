@@ -22,7 +22,7 @@ async function isMissionActive(mission: Mission, now: Date) {
   return true;
 }
 
-async function alreadyCompleted(mission: Mission, userId: string, challengeId: string) {
+export async function alreadyCompleted(mission: Mission, userId: string, challengeId: string) {
   // A League of Gamblers mission (challengeId null) is career-wide: once
   // completed in any challenge it stays completed. Challenge missions reset
   // per challenge.

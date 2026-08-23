@@ -22,6 +22,14 @@ export const profiles = pgTable(
   // wrong address is an irrecoverable payout.
   // Highest level ever reached. XP itself can fall; the level never does.
   levelFloor: integer("level_floor").notNull().default(1),
+  // Shareable invite code. Unique, and stable once handed out — people paste
+  // it into chats, so it cannot be regenerated under them.
+  inviteCode: text("invite_code").unique(),
+  // Who brought this player in. Set once at onboarding and never again:
+  // referral credit has to be un-rewritable to be worth anything. Not a
+  // typed self-reference because Drizzle cannot express one inline; the FK is
+  // added in the migration.
+  invitedBy: uuid("invited_by"),
   payoutAddress: text("payout_address"),
   payoutNetwork: text("payout_network"),
     // Level/title are derived from xp (see lib/levels.ts), not stored — a

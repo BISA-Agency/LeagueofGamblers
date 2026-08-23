@@ -7,6 +7,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { FinishChallengeError, finishChallenge } from "@/lib/challenges/finish";
+import { evaluateReferralMissions } from "@/lib/referrals/evaluate";
 import { challengeParticipants, challenges } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
@@ -31,6 +32,8 @@ export async function toggleParticipantPaid(challengeId: string, userId: string,
         eq(challengeParticipants.userId, userId)
       )
     );
+
+  if (paid) await evaluateReferralMissions(userId);
 
   await logAuditEvent({
     actorId: admin.id,

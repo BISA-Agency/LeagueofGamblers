@@ -1,9 +1,12 @@
 "use server";
 
 import { eq } from "drizzle-orm";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { isKnownCountry } from "@/lib/countries";
 import { db } from "@/lib/db";
+import { assignInviter, ensureInviteCode } from "@/lib/referrals/assign";
+import { normalizeInviteCode } from "@/lib/referrals/code";
 import { profiles } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 import { onboardingSchema } from "@/lib/validation/profile";
@@ -84,6 +87,24 @@ export async function completeOnboarding(
       return { fieldErrors: { username: "Deze gebruikersnaam is al bezet." } };
     }
     throw err;
+  }
+
+  // Both are best-effort: a referral that cannot be resolved must never stop
+  // somebody finishing onboarding.
+  try {
+    await ensureInviteCode(user.id);
+
+    const jar = await cookies();
+    const raw = jar.get("log_ref")?.value;
+    const code = raw ? normalizeInviteCode(raw) : null;
+    if (code) {
+      // Safe to call unconditionally: assignInviter only writes when there is
+      // no inviter yet, so re-running onboarding cannot rewrite the credit.
+      await assignInviter(user.id, code);
+      jar.delete("log_ref");
+    }
+  } catch (err) {
+    console.error("[referrals] onboarding:", err instanceof Error ? err.message : err);
   }
 
   redirect("/app");

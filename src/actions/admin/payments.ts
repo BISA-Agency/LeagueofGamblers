@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { logAuditEvent } from "@/lib/audit";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { evaluateReferralMissions } from "@/lib/referrals/evaluate";
 import { getProofScreenshotSignedUrl } from "@/lib/storage/screenshots";
 import { challengeParticipants, payments } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -65,6 +66,8 @@ export async function approveCryptoBuyIn(paymentId: string) {
         )
       );
   });
+
+  await evaluateReferralMissions(payment.userId);
 
   await logAuditEvent({
     actorId: admin.id,

@@ -1,6 +1,7 @@
 import { allInWin } from "./all-in-win";
 import { balanceReach } from "./balance-reach";
 import { combiWin } from "./combi-win";
+import { referrals } from "./referrals";
 import type { MissionTypeDefinition } from "./shared";
 import { sportWin } from "./sport-win";
 import { underdog } from "./underdog";
@@ -24,4 +25,7 @@ export const MISSION_TYPES: Record<string, MissionTypeDefinition<any>> = {
   [underdog.key]: underdog,
   [balanceReach.key]: balanceReach,
   [allInWin.key]: allInWin,
+  // Registered so it validates and shows in the picker; evaluated by
+  // lib/referrals/evaluate.ts, not by this registry.
+  [referrals.key]: referrals,
 };
