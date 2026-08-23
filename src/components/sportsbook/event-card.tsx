@@ -1,8 +1,8 @@
-import { Trophy } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { formatEventTime } from "@/lib/format-event-time";
+import { formatEventDayTime } from "@/lib/format-event-time";
 import type { Event, Market, Outcome } from "@drizzle/schema";
-import { MarketSection } from "./market-section";
+import { OutcomeButton } from "./outcome-button";
 import { TeamBadge } from "./team-badge";
 
 export type EventWithOdds = Event & { markets: (Market & { outcomes: Outcome[] })[] };
@@ -15,56 +15,102 @@ function primaryMarket(markets: EventWithOdds["markets"]) {
   )[0];
 }
 
+/**
+ * 1 / X / 2 on the card, because the teams are already named directly above
+ * it. The underlying label is untouched — settlement matches on it.
+ */
+function shortLabel(
+  market: Market,
+  outcome: Outcome,
+  event: Pick<Event, "homeTeam" | "awayTeam">
+): string | undefined {
+  if (market.type !== "h2h" || !event.homeTeam || !event.awayTeam) return undefined;
+  if (outcome.label === event.homeTeam) return "1";
+  if (outcome.label === event.awayTeam) return "2";
+  return "X";
+}
+
 export function EventCard({ event }: { event: EventWithOdds }) {
   const market = primaryMarket(event.markets);
   const extraMarkets = event.markets.length - (market ? 1 : 0);
+  const { day, time } = formatEventDayTime(event.startsAt);
+  const hasTeams = Boolean(event.homeTeam && event.awayTeam);
 
   return (
-    <Link
-      href={`/app/sportsbook/${event.id}`}
-      className="block rounded-lg border border-border bg-card p-3 transition-colors hover:border-accent-brand/40"
-    >
-      <div className="mb-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-        <span className="flex min-w-0 items-center gap-1.5 truncate">
-          <Trophy className="size-3.5 shrink-0" />
-          <span className="truncate">{event.competition ?? event.sportLabel}</span>
-        </span>
-        <span className="shrink-0 tabular-nums">{formatEventTime(event.startsAt)}</span>
-      </div>
+    <article className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card">
+      {/* Only the fixture block navigates. The odds are buttons, and nesting
+          buttons inside a link makes both of them worse. */}
+      <Link
+        href={`/app/sportsbook/${event.id}`}
+        className="block flex-1 px-3 pb-3 pt-2.5 transition-colors hover:bg-secondary/30"
+      >
+        <p className="mb-2 truncate text-[11px] text-muted-foreground">
+          {event.sportLabel}
+          {event.competition && (
+            <>
+              <span className="px-1.5 text-muted-foreground/40">|</span>
+              {event.competition}
+            </>
+          )}
+        </p>
 
-      <div className="mb-3 space-y-1.5">
-        {event.homeTeam && event.awayTeam ? (
-          <>
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <TeamBadge name={event.homeTeam} />
-              <span className="truncate">{event.homeTeam}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <TeamBadge name={event.awayTeam} />
-              <span className="truncate">{event.awayTeam}</span>
-            </div>
-          </>
-        ) : (
-          <p className="text-sm font-medium">{event.name}</p>
-        )}
-      </div>
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            {hasTeams ? (
+              <>
+                <TeamLine name={event.homeTeam!} />
+                <TeamLine name={event.awayTeam!} />
+              </>
+            ) : (
+              <p className="text-sm font-medium">{event.name}</p>
+            )}
+          </div>
+          {/* Two lines on the right to mirror the two team lines on the left. */}
+          <div className="shrink-0 text-right text-xs tabular-nums leading-[1.4]">
+            <p className="text-muted-foreground">{day}</p>
+            <p className="font-medium">{time}</p>
+          </div>
+        </div>
+      </Link>
 
       {market && (
-        <MarketSection
-          market={market}
-          eventId={event.id}
-          eventName={event.name}
-          eventStart={event.startsAt.toISOString()}
-          sport={event.sportLabel}
-          competition={event.competition}
-        />
+        <div className="flex gap-1.5 px-3 pb-3">
+          {market.outcomes.map((outcome) => (
+            <OutcomeButton
+              key={outcome.id}
+              outcomeId={outcome.id}
+              label={outcome.label}
+              displayLabel={shortLabel(market, outcome, event)}
+              odds={outcome.odds}
+              eventId={event.id}
+              eventName={event.name}
+              eventStart={event.startsAt.toISOString()}
+              sport={event.sportLabel}
+              competition={event.competition}
+              marketLabel={market.label}
+            />
+          ))}
+        </div>
       )}
 
-      {extraMarkets > 0 && (
-        <p className="mt-2 text-[11px] text-accent-brand">
-          +{extraMarkets} markt{extraMarkets !== 1 ? "en" : ""} — bekijk alle opties
-        </p>
-      )}
-    </Link>
+      <Link
+        href={`/app/sportsbook/${event.id}`}
+        className="flex items-center justify-center gap-1 border-t border-border py-2 text-[11px] text-muted-foreground transition-colors hover:bg-secondary/40 hover:text-foreground"
+      >
+        {extraMarkets > 0
+          ? `+${extraMarkets} ${extraMarkets === 1 ? "markt" : "markten"}`
+          : "Bekijk wedstrijd"}
+        <ChevronRight className="size-3.5" />
+      </Link>
+    </article>
+  );
+}
+
+function TeamLine({ name }: { name: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <TeamBadge name={name} size={20} />
+      <span className="truncate text-sm font-medium">{name}</span>
+    </div>
   );
 }

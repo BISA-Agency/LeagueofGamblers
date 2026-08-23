@@ -1,24 +1,16 @@
 import { EventCard, type EventWithOdds } from "./event-card";
 
+/**
+ * Flat and chronological. Grouping by sport used to add a heading above every
+ * card that already names its own sport and competition, and it threw away
+ * the "what starts soonest" order that matters most here. The category rail
+ * is how you slice by sport now.
+ */
 export function EventList({ events }: { events: EventWithOdds[] }) {
-  const bySport = new Map<string, EventWithOdds[]>();
-  for (const event of events) {
-    const list = bySport.get(event.sportLabel) ?? [];
-    list.push(event);
-    bySport.set(event.sportLabel, list);
-  }
-
   return (
-    <div className="space-y-6">
-      {Array.from(bySport.entries()).map(([sport, sportEvents]) => (
-        <section key={sport} className="space-y-2">
-          <h2 className="text-sm font-medium text-muted-foreground">{sport}</h2>
-          <div className="space-y-2">
-            {sportEvents.map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
-          </div>
-        </section>
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 2xl:grid-cols-3">
+      {events.map((event) => (
+        <EventCard key={event.id} event={event} />
       ))}
     </div>
   );

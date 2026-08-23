@@ -18,10 +18,15 @@ function hashString(value: string) {
   return Math.abs(hash);
 }
 
+/** Stable colour for any name — shared with the sportsbook category rail. */
+export function colorForName(name: string): string {
+  return PALETTE[hashString(name) % PALETTE.length];
+}
+
 // Same deterministic-color approach as the player GeneratedAvatar, applied to
 // team names — no logo API, but every team still reads as a distinct "chip".
 export function TeamBadge({ name, size = 22 }: { name: string; size?: number }) {
-  const color = PALETTE[hashString(name) % PALETTE.length];
+  const color = colorForName(name);
   const initial = name.trim().charAt(0).toUpperCase() || "?";
 
   return (

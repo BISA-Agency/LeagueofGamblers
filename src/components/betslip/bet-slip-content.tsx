@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
+import { toast } from "sonner";
 import { placeSportsbookBet } from "@/actions/bets";
 import { useBetSlip } from "@/lib/betslip/context";
 import { Button } from "@/components/ui/button";
@@ -11,6 +13,12 @@ const QUICK_PERCENTAGES = [10, 25, 50];
 
 const oddsFormatter = new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const moneyFormatter = new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/** Drops a pointless ",00" — a €250 stake should read as €250. */
+const compactMoney = (n: number) =>
+  n.toLocaleString("nl-NL", {
+    minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
 
 export function BetSlipContent({
   challengeId,
@@ -21,6 +29,7 @@ export function BetSlipContent({
   balance: number;
   onPlaced?: () => void;
 }) {
+  const router = useRouter();
   const { selections, removeSelection, clear } = useBetSlip();
   const [stake, setStake] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +70,21 @@ export function BetSlipContent({
         setError(result.error);
         return;
       }
+
+      // The slip empties itself on success, which on its own looks like the
+      // bet vanished. Say what was placed, and offer the way to it.
+      const placedStake = compactMoney(stakeValue);
+      const placedOdds = oddsFormatter.format(totalOdds);
+      toast.success(
+        selections.length > 1
+          ? `Combi geplaatst · €${placedStake} @ ${placedOdds}`
+          : `Bet geplaatst · €${placedStake} @ ${placedOdds}`,
+        {
+          description: `Mogelijke uitbetaling €${compactMoney(Math.round(stakeValue * totalOdds * 100) / 100)}`,
+          action: { label: "Bekijk", onClick: () => router.push("/app/bets") },
+        }
+      );
+
       clear();
       setStake("");
       onPlaced?.();

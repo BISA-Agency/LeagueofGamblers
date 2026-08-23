@@ -19,3 +19,13 @@ function dayKeyDiff(date: Date, now: Date): number {
   const diffMs = Date.parse(a) - Date.parse(b);
   return Math.round(diffMs / 86_400_000);
 }
+
+/** Same labels, split so a card can stack the day over the time. */
+export function formatEventDayTime(date: Date, now = new Date()): { day: string; time: string } {
+  const time = timeFormatter.format(date);
+  const dayDiff = dayKeyDiff(date, now);
+
+  if (dayDiff === 0) return { day: "Vandaag", time };
+  if (dayDiff === 1) return { day: "Morgen", time };
+  return { day: weekdayFormatter.format(date), time };
+}
