@@ -81,6 +81,8 @@ export default async function EventDetailPage({
           eventStart={event.startsAt.toISOString()}
           sport={event.sportLabel}
           competition={event.competition}
+          homeTeam={event.homeTeam}
+          awayTeam={event.awayTeam}
         />
       )}
     </div>

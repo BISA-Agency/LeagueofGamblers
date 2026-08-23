@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { formatEventDayTime } from "@/lib/format-event-time";
+import { orderOutcomes } from "@/lib/sportsbook/outcome-order";
 import type { Event, Market, Outcome } from "@drizzle/schema";
 import { OutcomeButton } from "./outcome-button";
 import { TeamBadge } from "./team-badge";
@@ -65,7 +66,7 @@ export function EventCard({ event }: { event: EventWithOdds }) {
 
       {market && (
         <div className="flex gap-1.5 px-3 pb-3">
-          {market.outcomes.map((outcome) => (
+          {orderOutcomes(market, market.outcomes, event).map((outcome) => (
             <OutcomeButton
               key={outcome.id}
               outcomeId={outcome.id}

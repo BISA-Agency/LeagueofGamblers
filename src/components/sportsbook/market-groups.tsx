@@ -1,5 +1,6 @@
 import type { Market, Outcome } from "@drizzle/schema";
 import { dutchOutcomeLabel } from "@/lib/sportsbook/outcome-label";
+import { orderOutcomes } from "@/lib/sportsbook/outcome-order";
 import { OutcomeButton } from "./outcome-button";
 
 type MarketWithOutcomes = Market & { outcomes: Outcome[] };
@@ -35,6 +36,8 @@ export function MarketGroups({
   eventStart,
   sport,
   competition,
+  homeTeam,
+  awayTeam,
 }: {
   markets: MarketWithOutcomes[];
   eventId: string;
@@ -42,6 +45,8 @@ export function MarketGroups({
   eventStart: string;
   sport: string;
   competition?: string | null;
+  homeTeam?: string | null;
+  awayTeam?: string | null;
 }) {
   const groups = GROUP_ORDER.map((group) => ({
     ...group,
@@ -82,7 +87,7 @@ export function MarketGroups({
                       </span>
                     )}
                     <div className="flex min-w-0 flex-1 items-stretch gap-1.5">
-                      {market.outcomes.map((outcome) => (
+                      {orderOutcomes(market, market.outcomes, { homeTeam, awayTeam }).map((outcome) => (
                         <OutcomeButton
                           key={outcome.id}
                           outcomeId={outcome.id}
