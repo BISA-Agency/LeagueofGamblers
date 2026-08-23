@@ -7,7 +7,7 @@ import { PotCalculator } from "@/components/landing/pot-calculator";
 import { ScreenShowcase } from "@/components/landing/screen-showcase";
 import { Button } from "@/components/ui/button";
 import {
-  betTypes,
+  sportsbook,
   fairPlay,
   faq,
   finalCta,
@@ -177,23 +177,18 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Sportsbook vs bewijsbet */}
+        {/* Sportsbook */}
         <section className="border-t border-border/60 px-4 py-20">
           <div className="mx-auto max-w-5xl">
-            <SectionHeading title={betTypes.title} subtitle={betTypes.subtitle} />
-            <div className="mt-12 grid gap-4 md:grid-cols-2">
-              {betTypes.cards.map((card) => (
-                <div key={card.title} className="rounded-xl border border-border bg-card p-6">
-                  <h3 className="text-xl font-semibold tracking-tight">{card.title}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground text-pretty">{card.body}</p>
-                  <ul className="mt-5 space-y-2.5">
-                    {card.points.map((point) => (
-                      <li key={point} className="flex items-start gap-2.5 text-sm">
-                        <Check className="mt-0.5 size-4 shrink-0 text-accent-brand" />
-                        {point}
-                      </li>
-                    ))}
-                  </ul>
+            <SectionHeading title={sportsbook.title} subtitle={sportsbook.subtitle} />
+            <div className="mt-12 grid gap-4 sm:grid-cols-2">
+              {sportsbook.points.map((point) => (
+                <div key={point.title} className="rounded-xl border border-border bg-card p-6">
+                  <h3 className="flex items-start gap-2.5 text-base font-semibold">
+                    <Check className="mt-0.5 size-4 shrink-0 text-accent-brand" />
+                    {point.title}
+                  </h3>
+                  <p className="mt-2 text-sm text-muted-foreground text-pretty">{point.body}</p>
                 </div>
               ))}
             </div>

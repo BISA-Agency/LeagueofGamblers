@@ -14,7 +14,7 @@ export const hero = {
 export const stats = [
   { value: "€10.000", label: "virtueel startsaldo", hint: "voor iedereen gelijk" },
   { value: "1 maand", label: "per challenge", hint: "elke maand opnieuw" },
-  { value: "1 winnaar", label: "pakt de pot", hint: "of top 3 bij 7+ spelers" },
+  { value: "12%", label: "van het veld in de prijzen", hint: "de winnaar pakt het meest" },
 ];
 
 export const howItWorks = {
@@ -31,7 +31,7 @@ export const howItWorks = {
     },
     {
       title: "Wedden maar",
-      body: "Elke week verse odds in het sportsbook. Wed je ergens anders? Upload een screenshot als bewijsbet.",
+      body: "Elke week verse odds in het sportsbook. Van de Eredivisie tot de Premier League, met combi's en handicaps.",
     },
     {
       title: "Hoogste saldo wint",
@@ -82,29 +82,25 @@ export const showcase = {
   ],
 };
 
-export const betTypes = {
-  title: "Twee manieren om te wedden",
-  subtitle: "Het sportsbook voor het gemak, de bewijsbet voor al het andere.",
-  cards: [
+export const sportsbook = {
+  title: "Het sportsbook",
+  subtitle: "Verse odds, elke week. Alles wat je nodig hebt zit in de app.",
+  points: [
     {
-      title: "Het sportsbook",
-      body: "Voetbal, basketbal, tennis en meer — met odds die een week lang vaststaan, zodat niemand kan wachten op een betere prijs.",
-      points: [
-        "1X2, over/under en handicaps",
-        "Combi's bouwen in de bet slip",
-        "Odds worden vastgelegd bij plaatsen",
-        "Automatisch afgerekend op de echte uitslag",
-      ],
+      title: "De grote competities",
+      body: "Eredivisie, Premier League, La Liga, Serie A, Bundesliga en Ligue 1 — inclusief hun tweede divisies.",
     },
     {
-      title: "De bewijsbet",
-      body: "Wil je wedden op iets wat niet in het sportsbook staat? Plaats 'm bij je eigen bookmaker en upload een screenshot.",
-      points: [
-        "Elke markt bij elke bookmaker",
-        "Screenshot vóór aanvang verplicht",
-        "Admin controleert en keurt goed",
-        "Medespelers kunnen betwisten",
-      ],
+      title: "Meer dan alleen 1X2",
+      body: "Over/under, handicaps, team totalen en beide teams scoren, met alternatieve lijnen per wedstrijd.",
+    },
+    {
+      title: "Combi's in de bet slip",
+      body: "Meerdere selecties in één bet, met de totale quotering en je mogelijke uitbetaling direct in beeld.",
+    },
+    {
+      title: "Vastgelegd bij plaatsen",
+      body: "De quotering die je aantikt is de quotering die je krijgt, en de uitslag wordt automatisch afgerekend.",
     },
   ],
 };
@@ -112,7 +108,7 @@ export const betTypes = {
 export const potSection = {
   title: "Wat kun je winnen?",
   subtitle:
-    "De pot is simpelweg de inleg van iedereen die betaald heeft. Schuif eraan en zie wat er te verdelen valt.",
+    "De pot is de inleg van iedereen die betaald heeft. Schuif aan het aantal spelers en zie hoe de verdeling meegroeit.",
   disclaimerTitle: "De app raakt geen echt geld aan",
   disclaimer:
     "Inleg en uitbetaling regelen jullie onderling — contant of per overboeking. De app houdt alleen bij wie betaald heeft en wat er uitgekeerd moet worden.",
@@ -162,8 +158,8 @@ export const fairPlay = {
       body: "Je ziet de picks van medespelers pas als hun wedstrijd is begonnen. Niemand kopieert het veld.",
     },
     {
-      title: "Screenshots worden gecontroleerd",
-      body: "Elke bewijsbet gaat langs de admin. Een live-markering of tussenstand op de foto betekent afkeuring.",
+      title: "Odds staan een week vast",
+      body: "Iedereen wedt op dezelfde prijzen. Niemand wacht op een betere quotering die later binnenkomt.",
     },
     {
       title: "Iedereen kan betwisten",
@@ -181,11 +177,11 @@ export const faq = {
     },
     {
       q: "Heb ik een bookmaker-account nodig?",
-      a: "Nee. Het sportsbook in de app is genoeg om mee te doen. Een bewijsbet is optioneel, voor wie op iets wil wedden dat er niet in staat.",
+      a: "Nee. Je wedt uitsluitend in de app, met virtueel saldo. Een account bij een bookmaker heb je nergens voor nodig.",
     },
     {
       q: "Hoeveel spelers hebben we nodig?",
-      a: "Vanaf twee. Tot en met zes spelers pakt de winnaar de hele pot; vanaf zeven spelers wordt er verdeeld over de top 3 (50/30/20).",
+      a: "Vanaf twee. Tot en met zes spelers pakt de winnaar alles, daarboven wordt de pot verdeeld — hoe groter het veld, hoe meer plekken er in de prijzen vallen. Bij honderd spelers zijn dat er twaalf.",
     },
     {
       q: "Wat als iemand door zijn saldo heen is?",
