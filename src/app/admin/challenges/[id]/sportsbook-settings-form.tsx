@@ -1,11 +1,16 @@
 "use client";
 
+import { useActionState } from "react";
+
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { SPORT_GROUP_LABELS } from "@/lib/odds-provider/sports";
 import type { SportGroup } from "@/lib/odds-provider/available-sports";
-import { updateChallengeSportsbookSettings } from "@/actions/admin/challenge-settings";
+import {
+  updateChallengeSportsbookSettings,
+  type SettingsState,
+} from "@/actions/admin/challenge-settings";
+import { SaveBar } from "./save-bar";
 
 // Featured markets come free with the bulk call. The additional ones cost one
 // request per event, so the form says so rather than letting an admin quietly
@@ -37,7 +42,10 @@ export function SportsbookSettingsForm({
   defaultAutoPublish: boolean;
   defaultMidweekImport: boolean;
 }) {
-  const action = updateChallengeSportsbookSettings.bind(null, challengeId);
+  const [state, action] = useActionState<SettingsState, FormData>(
+    updateChallengeSportsbookSettings.bind(null, challengeId),
+    {}
+  );
 
   return (
     <form action={action} className="space-y-6">
@@ -125,9 +133,7 @@ export function SportsbookSettingsForm({
         </label>
       </div>
 
-      <Button type="submit" size="sm" className="h-11">
-        Opslaan
-      </Button>
+      <SaveBar label="Sporten & markten opslaan" saved={Boolean(state.saved)} />
     </form>
   );
 }

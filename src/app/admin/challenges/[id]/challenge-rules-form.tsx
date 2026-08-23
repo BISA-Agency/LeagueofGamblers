@@ -1,10 +1,14 @@
 "use client";
 
-import { updateChallengeRules } from "@/actions/admin/challenge-settings";
-import { Button } from "@/components/ui/button";
+import { useActionState } from "react";
+import {
+  updateChallengeRules,
+  type SettingsState,
+} from "@/actions/admin/challenge-settings";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SaveBar } from "./save-bar";
 
 export function ChallengeRulesForm({
   challengeId,
@@ -15,7 +19,10 @@ export function ChallengeRulesForm({
   defaultMissionBudget: number;
   defaultAllowRebuy: boolean;
 }) {
-  const action = updateChallengeRules.bind(null, challengeId);
+  const [state, action] = useActionState<SettingsState, FormData>(
+    updateChallengeRules.bind(null, challengeId),
+    {}
+  );
 
   return (
     <form action={action} className="space-y-4">
@@ -41,9 +48,7 @@ export function ChallengeRulesForm({
         Rebuy toestaan (een speler die bust is mag opnieuw inleggen)
       </label>
 
-      <Button type="submit" size="sm" className="h-11">
-        Opslaan
-      </Button>
+      <SaveBar label="Spelregels opslaan" saved={Boolean(state.saved)} />
     </form>
   );
 }

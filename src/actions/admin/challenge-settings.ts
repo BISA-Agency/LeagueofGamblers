@@ -17,10 +17,13 @@ async function requireAdmin() {
   return user;
 }
 
+export type SettingsState = { saved?: boolean };
+
 export async function updateChallengeSportsbookSettings(
   challengeId: string,
+  _prev: SettingsState,
   formData: FormData
-) {
+): Promise<SettingsState> {
   await requireAdmin();
 
   const sportKeys = formData.getAll("sportKeys").map(String);
@@ -40,18 +43,23 @@ export async function updateChallengeSportsbookSettings(
     .where(eq(challenges.id, challengeId));
 
   revalidatePath(`/admin/challenges/${challengeId}`);
+  return { saved: true };
 }
 
 /**
  * The two challenge knobs that had columns but no UI: the pot set aside for
  * mission payouts, and whether a bust player may buy back in (§5.2, §13).
  */
-export async function updateChallengeRules(challengeId: string, formData: FormData) {
+export async function updateChallengeRules(
+  challengeId: string,
+  _prev: SettingsState,
+  formData: FormData
+): Promise<SettingsState> {
   await requireAdmin();
 
   const budgetRaw = formData.get("missionBudget");
   const missionBudget = budgetRaw === null || budgetRaw === "" ? 0 : Number(budgetRaw);
-  if (!Number.isFinite(missionBudget) || missionBudget < 0) return;
+  if (!Number.isFinite(missionBudget) || missionBudget < 0) return {};
 
   await db
     .update(challenges)
@@ -63,4 +71,5 @@ export async function updateChallengeRules(challengeId: string, formData: FormDa
     .where(eq(challenges.id, challengeId));
 
   revalidatePath(`/admin/challenges/${challengeId}`);
+  return { saved: true };
 }
