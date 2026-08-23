@@ -1,9 +1,8 @@
 import { and, desc, eq, isNull, or } from "drizzle-orm";
 import type { Metadata } from "next";
+import { MissionCard } from "@/components/missions/mission-card";
+import { MissionSummary } from "@/components/missions/mission-summary";
 import { WeeklyStandings } from "@/components/missions/weekly-standings";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { db } from "@/lib/db";
 import { getActiveParticipation } from "@/lib/challenges/active";
 import { getWeeklyStandings } from "@/lib/challenges/week";
@@ -71,69 +70,82 @@ export default async function MissionsPage() {
     (m) => !m.hidden || m.completions.some((c) => c.userId === user.id)
   );
 
-  // Two kinds of missions (§missies-split): challenge missions belong to this
-  // challenge and can pay money from its missiebudget; League of Gamblers
-  // missions (challengeId null) are career-wide, once ever, XP-only.
-  const challengeMissions = visible.filter((m) => m.challengeId !== null);
-  const generalMissions = visible.filter((m) => m.challengeId === null);
+  type Row = (typeof visible)[number];
 
-  const sections = [
-    { key: "week", title: "Deze week", items: challengeMissions.filter((m) => bucketOf(m, now) === "week") },
-    { key: "ongoing", title: "Doorlopend", items: challengeMissions.filter((m) => bucketOf(m, now) === "ongoing") },
-    { key: "expired", title: "Afgelopen", items: challengeMissions.filter((m) => bucketOf(m, now) === "expired") },
-  ].filter((s) => s.items.length > 0);
+  const state = (mission: Row) => {
+    const completed = mission.completions.some((c) => c.userId === user.id);
+    const bucket = bucketOf(mission, now);
+    return {
+      completed,
+      bucket,
+      full: mission.maxWinners !== null && mission.completions.length >= mission.maxWinners,
+      expired: bucket === "expired",
+    };
+  };
 
-  const missionCard = (mission: (typeof visible)[number], sectionKey: string) => {
-    const myCompletion = mission.completions.find((c) => c.userId === user.id);
-    const full = mission.maxWinners !== null && mission.completions.length >= mission.maxWinners;
-    const progress =
-      myCompletion || sectionKey === "expired" ? null : getMissionProgress(mission, progressContext);
+  // Actionable first, then completed, then whatever's out of reach.
+  const byPriority = (a: Row, b: Row) => {
+    const sa = state(a);
+    const sb = state(b);
+    const rank = (s: ReturnType<typeof state>) => (s.completed ? 1 : s.expired || s.full ? 2 : 0);
+    return rank(sa) - rank(sb);
+  };
 
+  const card = (mission: Row) => {
+    const s = state(mission);
     return (
-      <Card key={mission.id} className={sectionKey === "expired" ? "opacity-60" : undefined}>
-        <CardHeader className="gap-1">
-          <div className="flex items-start justify-between gap-2">
-            <CardTitle className="text-sm">{mission.title}</CardTitle>
-            {myCompletion ? (
-              <Badge className="border-profit/30 bg-profit/15 text-profit">Behaald</Badge>
-            ) : full ? (
-              <Badge variant="secondary">Vol</Badge>
-            ) : null}
-          </div>
-          <CardDescription>{mission.description}</CardDescription>
-          {sectionKey === "week" && mission.validTo && (
-            <CardDescription>Loopt tot {deadlineFormatter.format(mission.validTo)}</CardDescription>
-          )}
-          {progress && (
-            <div className="space-y-1 pt-1">
-              <Progress value={(progress.current / progress.target) * 100} />
-              <p className="text-xs tabular-nums text-muted-foreground">
-                {progress.current} / {progress.target}
-              </p>
-            </div>
-          )}
-          <CardDescription className="tabular-nums">
-            {[
-              mission.rewardAmount && `€${mission.rewardAmount}`,
-              mission.rewardXp && `${mission.rewardXp} XP`,
-              mission.rewardBadgeId && "badge",
-            ]
-              .filter(Boolean)
-              .join(" · ") || "Geen beloning ingesteld"}
-            {mission.completions.length > 0 &&
-              ` · behaald door ${[...new Set(mission.completions.map((c) => c.user.username))].join(", ")}`}
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <MissionCard
+        key={mission.id}
+        title={mission.title}
+        description={mission.description}
+        rewardAmount={mission.rewardAmount}
+        rewardXp={mission.rewardXp}
+        hasBadge={Boolean(mission.rewardBadgeId)}
+        completed={s.completed}
+        full={s.full}
+        expired={s.expired}
+        deadline={
+          s.bucket === "week" && mission.validTo
+            ? `Loopt tot ${deadlineFormatter.format(mission.validTo)}`
+            : undefined
+        }
+        progress={
+          s.completed || s.expired ? null : getMissionProgress(mission, progressContext)
+        }
+        winners={[
+          ...new Set(
+            mission.completions
+              // Your own card already says "Behaald"; repeating your name
+              // under it is noise.
+              .filter((c) => c.userId !== user.id)
+              .map((c) => c.user.username)
+          ),
+        ]}
+      />
     );
   };
+
+  const challengeMissions = visible.filter((m) => m.challengeId !== null).sort(byPriority);
+  const generalMissions = visible.filter((m) => m.challengeId === null).sort(byPriority);
+
+  const completedCount = visible.filter((m) => state(m).completed).length;
+  const openCash = challengeMissions
+    .filter((m) => {
+      const s = state(m);
+      return !s.completed && !s.expired && !s.full;
+    })
+    .reduce((sum, m) => sum + (m.rewardAmount ?? 0), 0);
 
   return (
     <div className="mx-auto max-w-2xl space-y-8 px-4 py-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Missies</h1>
-        <p className="text-sm text-muted-foreground">{participation.challenge.name}</p>
+        <p className="text-sm text-muted-foreground">
+          Opdrachten naast de hoofdprijs — voor geld, XP en badges.
+        </p>
       </div>
+
+      <MissionSummary openCash={openCash} completed={completedCount} total={visible.length} />
 
       <WeeklyStandings standings={standings} currentUserId={user.id} />
 
@@ -141,18 +153,16 @@ export default async function MissionsPage() {
         <div>
           <h2 className="text-base font-semibold">Challenge-missies</h2>
           <p className="text-xs text-muted-foreground">
-            Horen bij {participation.challenge.name} — hier valt geld te winnen.
+            Horen bij {participation.challenge.name}. Hier valt geld te winnen.
           </p>
         </div>
-        {sections.length === 0 && (
-          <p className="text-sm text-muted-foreground">Nog geen missies voor deze challenge.</p>
+        {challengeMissions.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            Nog geen missies voor deze challenge.
+          </p>
+        ) : (
+          <div className="space-y-2">{challengeMissions.map(card)}</div>
         )}
-        {sections.map((section) => (
-          <div key={section.key} className="space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground">{section.title}</h3>
-            {section.items.map((mission) => missionCard(mission, section.key))}
-          </div>
-        ))}
       </section>
 
       <section className="space-y-3">
@@ -161,14 +171,16 @@ export default async function MissionsPage() {
             League of <span className="text-accent-brand">Gamblers</span>-missies
           </h2>
           <p className="text-xs text-muted-foreground">
-            Gelden altijd, in elke challenge, en zijn één keer te behalen. Hiermee verzamel je
-            XP voor je level.
+            Gelden in elke challenge en zijn één keer te behalen. Hiermee klim je in level.
           </p>
         </div>
-        {generalMissions.length === 0 && (
-          <p className="text-sm text-muted-foreground">Nog geen LoG-missies.</p>
+        {generalMissions.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            Nog geen LoG-missies.
+          </p>
+        ) : (
+          <div className="space-y-2">{generalMissions.map(card)}</div>
         )}
-        {generalMissions.map((mission) => missionCard(mission, "ongoing"))}
       </section>
     </div>
   );
