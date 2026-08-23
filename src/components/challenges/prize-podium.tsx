@@ -29,8 +29,15 @@ export function PrizePodium({
 }) {
   const amountFor = (rank: number) => split.find((s) => s.rank === rank)?.amount ?? 0;
 
+  // Above three places the podium tells only part of the story. In a field of
+  // 400 the prize pool runs 48 deep, and someone heading for 20th should know
+  // there is something waiting there.
+  const deeper = split.filter((s) => s.rank > 3);
+  const smallest = deeper.at(-1)?.amount ?? 0;
+
   return (
-    <div className={cn("flex items-end justify-center gap-2 sm:gap-3", className)}>
+    <div className={cn("space-y-3", className)}>
+    <div className="flex items-end justify-center gap-2 sm:gap-3">
       {PLACES.map((place) => {
         const amount = amountFor(place.rank);
         const empty = amount === 0;
@@ -79,6 +86,14 @@ export function PrizePodium({
           </div>
         );
       })}
+    </div>
+
+      {deeper.length > 0 && (
+        <p className="text-center text-xs text-muted-foreground">
+          En nog {deeper.length} {deeper.length === 1 ? "plek" : "plekken"} in de prijzen, tot en
+          met #{split.length} voor €{money.format(smallest)}.
+        </p>
+      )}
     </div>
   );
 }
