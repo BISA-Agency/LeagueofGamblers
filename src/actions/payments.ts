@@ -4,10 +4,12 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { getNetwork } from "@/lib/payments/networks";
+import { adminNotifyAddress, sendEmail } from "@/lib/email/send";
+import { buyInClaimEmail } from "@/lib/email/templates";
+import { explorerTxUrl, getNetwork } from "@/lib/payments/networks";
 import { quoteUsdt, totalWithFee } from "@/lib/payments/rate";
 import { uploadPaymentScreenshot, validateScreenshotFile } from "@/lib/storage/screenshots";
-import { challengeParticipants, challenges, payments } from "@drizzle/schema";
+import { challengeParticipants, challenges, payments, profiles } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
 export type CryptoPaymentState = { error?: string; fieldErrors?: Record<string, string> };
@@ -101,6 +103,29 @@ export async function submitCryptoPayment(
 
   const path = await uploadPaymentScreenshot(user.id, paymentId, screenshot);
   await db.update(payments).set({ screenshotUrl: path }).where(eq(payments.id, paymentId));
+
+  // Tell the admin there is something to check. The claim is already stored,
+  // so a mail failure must not surface to the player as a failed payment —
+  // sendEmail never throws, and this is deliberately not awaited into the
+  // error path.
+  const notifyTo = adminNotifyAddress();
+  if (notifyTo) {
+    const profile = await db.query.profiles.findFirst({
+      where: eq(profiles.id, user.id),
+      columns: { username: true },
+    });
+    const mail = buyInClaimEmail({
+      username: profile?.username ?? "onbekende speler",
+      challengeName: challenge.name,
+      amount: challenge.buyInAmount,
+      feeAmount: fee,
+      tokenAmount: quote.tokenAmount,
+      networkLabel: `${network.label} (${network.standard})`,
+      txHash,
+      explorerUrl: explorerTxUrl(network.id, txHash),
+    });
+    await sendEmail({ to: notifyTo, ...mail });
+  }
 
   revalidatePath("/app/pay");
   revalidatePath(`/app/pay/${challengeId}`);

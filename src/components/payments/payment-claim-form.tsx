@@ -6,6 +6,7 @@ import { submitCryptoPayment, type CryptoPaymentState } from "@/actions/payments
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TxidHelp } from "./txid-help";
 
 export function PaymentClaimForm({
   challengeId,
@@ -26,7 +27,10 @@ export function PaymentClaimForm({
       <input type="hidden" name="network" value={networkId} />
 
       <div className="space-y-1.5">
-        <Label htmlFor="txHash">Transactiehash</Label>
+        <div className="flex items-center gap-1">
+          <Label htmlFor="txHash">Transactiehash</Label>
+          <TxidHelp />
+        </div>
         <Input id="txHash" name="txHash" required placeholder="Plak hier de hash van je transactie" />
         <p className="text-[11px] text-muted-foreground">
           Te vinden in je wallet of op je exchange, bij de verzonden transactie. Hiermee kan ik je
