@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { Clock, Layers } from "lucide-react";
 import type { Category } from "@/lib/sportsbook/categories";
+import { sportIconPath } from "@/lib/sportsbook/sport-icons";
 import { cn } from "@/lib/utils";
 import { colorForName } from "./team-badge";
 
 /**
  * Horizontal filter rail. Plain links, so filtering costs no JavaScript and
- * survives a shared URL. Sports and competitions get a colour disc with their
- * initial rather than a pictogram — lucide has no honest icon for most sports,
- * and the disc language is already used for teams.
+ * survives a shared URL. Sports carry their own pictogram; competitions get a
+ * colour disc with their initial, because a league's real emblem is its
+ * trademark and not ours to ship.
  */
 export function CategoryRail({
   categories,
@@ -66,11 +67,40 @@ function CategoryGlyph({ category, active }: { category: Category; active: boole
   if (category.kind === "soon") {
     return <Clock className={cn("size-5", active ? "text-accent-brand" : "text-muted-foreground")} />;
   }
+
+  const iconPath = category.kind === "sport" ? sportIconPath(category.label) : null;
+  if (iconPath) {
+    // A mask, not an <img>: Tabler ships stroke="currentColor", which an image
+    // resolves to black and loses on a dark background. As a mask the glyph
+    // takes the surrounding text colour, so the active state just works.
+    return (
+      <span
+        aria-hidden
+        className={cn(
+          "size-6 bg-current",
+          active ? "text-accent-brand" : "text-muted-foreground"
+        )}
+        style={{
+          maskImage: `url(${iconPath})`,
+          WebkitMaskImage: `url(${iconPath})`,
+          maskSize: "contain",
+          WebkitMaskSize: "contain",
+          maskRepeat: "no-repeat",
+          WebkitMaskRepeat: "no-repeat",
+          maskPosition: "center",
+          WebkitMaskPosition: "center",
+        }}
+      />
+    );
+  }
+
+  // A ring rather than a solid fill, so a competition never shouts louder
+  // than the sport it belongs to. Same treatment as the medal discs.
   const color = colorForName(category.label);
   return (
     <span
-      className="flex size-7 items-center justify-center rounded-full text-xs font-semibold text-white"
-      style={{ backgroundColor: color }}
+      className="flex size-7 items-center justify-center rounded-full border-2 text-xs font-semibold"
+      style={{ borderColor: color, color, backgroundColor: `${color}1f` }}
       aria-hidden
     >
       {category.label.trim().charAt(0).toUpperCase()}

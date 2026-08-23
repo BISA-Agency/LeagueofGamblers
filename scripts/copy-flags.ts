@@ -23,7 +23,8 @@ async function main() {
   const existing = await readdir(OUT_DIR).catch(() => [] as string[]);
   const wanted = new Set(COUNTRY_OPTIONS.map((c) => `${c.code.toLowerCase()}.svg`));
   for (const file of existing) {
-    if (!wanted.has(file)) await rm(path.join(OUT_DIR, file));
+    // Only .svg: LICENSE.txt has to survive.
+    if (file.endsWith(".svg") && !wanted.has(file)) await rm(path.join(OUT_DIR, file));
   }
 
   let copied = 0;
@@ -39,6 +40,12 @@ async function main() {
       missing.push(country.code);
     }
   }
+
+  // These SVGs ship to every visitor, so the MIT notice ships with them.
+  await copyFile(
+    path.join(process.cwd(), "node_modules", "country-flag-icons", "LICENSE"),
+    path.join(OUT_DIR, "LICENSE.txt")
+  );
 
   console.log(`${copied} vlaggen gekopieerd naar public/flags/`);
   if (missing.length > 0) {

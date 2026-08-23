@@ -16,7 +16,8 @@
     "screenshots": "tsx scripts/screenshots.ts",
     "flags": "tsx scripts/copy-flags.ts",
     "db:apply-sql": "tsx scripts/apply-sql.ts",
-    "icons:generate": "node scripts/generate-icons.mjs"
+    "icons:generate": "node scripts/generate-icons.mjs",
+    "sport-icons": "tsx scripts/copy-sport-icons.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -39,6 +40,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@tabler/icons": "^3.46.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
