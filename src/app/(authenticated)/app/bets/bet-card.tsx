@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { AlertTriangle, Check, Clock, X } from "lucide-react";
 import { settleProofBetSelf } from "@/actions/proof-bets";
-import { LegMark, SLIP_STRIPE, SlipStatusPill, type SlipStatus } from "@/components/bets/slip-chrome";
+import { LegMark, SLIP_STRIPE, SlipStatusPill, slipStatusOf } from "@/components/bets/slip-chrome";
+import { ShareButton } from "@/components/share/share-button";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Bet, BetSelection } from "@drizzle/schema";
@@ -31,26 +32,25 @@ const euro = (n: number) =>
     maximumFractionDigits: 2,
   })}`;
 
-/** half_won/half_lost settle as a full win/loss for the slip's purposes. */
-function slipStatus(status: string): SlipStatus {
-  if (status === "won" || status === "half_won") return "won";
-  if (status === "lost" || status === "half_lost") return "lost";
-  if (status === "void") return "void";
-  return "open";
-}
-
 const VERIFICATION: Record<string, { label: string; icon: typeof Check; className: string }> = {
   pending: { label: "Wacht op controle", icon: Clock, className: "text-muted-foreground" },
   approved: { label: "Goedgekeurd", icon: Check, className: "text-profit" },
   rejected: { label: "Afgekeurd", icon: X, className: "text-loss" },
 };
 
-export function BetCard({ bet }: { bet: Bet & { selections: BetSelection[] } }) {
+export function BetCard({
+  bet,
+  shareUrl,
+}: {
+  bet: Bet & { selections: BetSelection[] };
+  /** Absolute link to the public slip, built server-side with the invite code on it. */
+  shareUrl: string;
+}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const canSelfSettle = bet.kind === "proof" && bet.status === "open" && bet.eventStart <= new Date();
 
-  const status = slipStatus(bet.status);
+  const status = slipStatusOf(bet.status);
   const settled = status !== "open";
   const verification = bet.kind === "proof" ? VERIFICATION[bet.verificationStatus] : null;
 
@@ -79,7 +79,15 @@ export function BetCard({ bet }: { bet: Bet & { selections: BetSelection[] } }) 
             {placedFormatter.format(bet.placedAt)}
           </p>
         </div>
-        <SlipStatusPill status={status} />
+        <div className="flex shrink-0 items-center gap-2">
+          <SlipStatusPill status={status} />
+          <ShareButton
+            url={shareUrl}
+            title={`Mijn ${bet.type === "combi" ? "combi" : "bet"} op League of Gamblers`}
+            text="Kijk deze bet op League of Gamblers."
+            variant="ghost"
+          />
+        </div>
       </header>
 
       <ul className="space-y-2.5 border-t border-border py-3 pl-4 pr-3">

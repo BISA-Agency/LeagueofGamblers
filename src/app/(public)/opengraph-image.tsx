@@ -10,13 +10,17 @@ export default async function Image() {
   return new ImageResponse(
     (
       <OgFrame>
-        <span style={{ fontSize: 68, fontWeight: 700, lineHeight: 1.1, maxWidth: 900 }}>
-          €10.000 virtueel. Eén maand. Hoogste saldo wint de pot.
-        </span>
-        <span style={{ fontSize: 30, color: OG_COLORS.muted, marginTop: 24, maxWidth: 820 }}>
-          De maandelijkse sportsbetting-challenge voor jouw vriendengroep.
-        </span>
-        <div style={{ display: "flex", gap: 20, marginTop: 40 }}>
+        {/* Both lines wrapped in a flex column: Satori mis-measures a bare
+            multi-line text node and prints the next line over it. */}
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <span style={{ fontSize: 58, fontWeight: 700, lineHeight: 1.15, maxWidth: 1000 }}>
+            €10.000 virtueel. Eén maand. Hoogste saldo wint de pot.
+          </span>
+          <span style={{ marginTop: 18, fontSize: 28, color: OG_COLORS.muted, maxWidth: 820 }}>
+            De maandelijkse sportsbetting-challenge voor jouw vriendengroep.
+          </span>
+        </div>
+        <div style={{ display: "flex", gap: 20, marginTop: 32 }}>
           <OgStat label="Startsaldo" value="€10.000" color={OG_COLORS.brand} />
           <OgStat label="Duur" value="1 maand" />
           <OgStat label="Winnaar" value="Pakt de pot" />

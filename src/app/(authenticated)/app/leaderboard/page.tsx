@@ -6,9 +6,12 @@ import { UsernameWithFlag } from "@/components/profile/username-with-flag";
 import { Countdown } from "@/components/challenges/countdown";
 import { LeaderboardAutoRefresh } from "@/components/leaderboard/auto-refresh";
 import { LeaderboardTabs } from "@/components/leaderboard/leaderboard-tabs";
+import { ShareButton } from "@/components/share/share-button";
 import { getActiveParticipation } from "@/lib/challenges/active";
 import { hasStarted } from "@/lib/challenges/stats";
 import { db } from "@/lib/db";
+import { ensureInviteCode } from "@/lib/referrals/assign";
+import { shareLink } from "@/lib/share/url";
 import { bets, challengeParticipants } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
@@ -58,15 +61,31 @@ export default async function LeaderboardPage() {
   const challenge = participation.challenge;
   const startingBalance = challenge.startingBalance;
 
+  // The board is shared as its public page: it already unfurls into a top-five
+  // card and it is the one screen a stranger can act on. The invite code rides
+  // along so a shared standing also recruits.
+  const inviteCode = await ensureInviteCode(user.id);
+  const boardShare = (
+    <ShareButton
+      url={shareLink(`/c/${challenge.slug}`, inviteCode)}
+      title={`${challenge.name} — de stand`}
+      text="Kijk waar we staan in deze challenge op League of Gamblers."
+      label="Deel"
+    />
+  );
+
   // Balances are only handed out when the challenge goes live, so ranking
   // before that showed everyone at -€10.000. There's nothing to rank yet
   // either — show who's in instead.
   if (!hasStarted(challenge.status)) {
     return (
       <div className="mx-auto max-w-2xl space-y-5 px-4 py-6">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Leaderboard</h1>
-          <p className="text-sm text-muted-foreground">{challenge.name}</p>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">Leaderboard</h1>
+            <p className="text-sm text-muted-foreground">{challenge.name}</p>
+          </div>
+          {boardShare}
         </div>
 
         <LeaderboardTabs active="challenge" />
@@ -158,12 +177,15 @@ export default async function LeaderboardPage() {
           <h1 className="text-xl font-semibold tracking-tight">Leaderboard</h1>
           <p className="text-sm text-muted-foreground">{participation.challenge.name}</p>
         </div>
-        <Link
-          href="/app/compare"
-          className="shrink-0 text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
-        >
-          Head-to-head
-        </Link>
+        <div className="flex shrink-0 items-center gap-3">
+          <Link
+            href="/app/compare"
+            className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            Head-to-head
+          </Link>
+          {boardShare}
+        </div>
       </div>
 
       <LeaderboardTabs active="challenge" />

@@ -37,6 +37,7 @@ function isPublicPath(pathname: string) {
   if (pathname.startsWith("/rules")) return true;
   if (pathname.startsWith("/login")) return true;
   if (pathname.startsWith("/c/")) return true;
+  if (pathname.startsWith("/b/")) return true;
   if (pathname.startsWith("/wrapped/")) return true;
   if (pathname.startsWith("/api/")) return true;
   if (pathname.startsWith("/auth/")) return true;

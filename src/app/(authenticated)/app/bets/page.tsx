@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getActiveParticipation } from "@/lib/challenges/active";
 import { db } from "@/lib/db";
+import { ensureInviteCode } from "@/lib/referrals/assign";
+import { shareLink } from "@/lib/share/url";
 import { bets } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 import { BetCard } from "./bet-card";
@@ -27,6 +29,10 @@ export default async function BetsPage() {
     orderBy: desc(bets.placedAt),
     with: { selections: true },
   });
+
+  // Every shared slip doubles as an invite, so the link carries the sharer's
+  // code — see shareLink().
+  const inviteCode = await ensureInviteCode(user.id);
 
   const open = myBets.filter((b) => b.status === "open");
   const settled = myBets.filter((b) => b.status !== "open");
@@ -57,7 +63,11 @@ export default async function BetsPage() {
           <h2 className="text-sm font-medium text-muted-foreground">Open ({open.length})</h2>
           <div className="space-y-2">
             {open.map((bet) => (
-              <BetCard key={bet.id} bet={bet} />
+              <BetCard
+                key={bet.id}
+                bet={bet}
+                shareUrl={shareLink(`/b/${bet.id}`, inviteCode)}
+              />
             ))}
           </div>
         </section>
@@ -68,7 +78,11 @@ export default async function BetsPage() {
           <h2 className="text-sm font-medium text-muted-foreground">Gesetteld ({settled.length})</h2>
           <div className="space-y-2">
             {settled.map((bet) => (
-              <BetCard key={bet.id} bet={bet} />
+              <BetCard
+                key={bet.id}
+                bet={bet}
+                shareUrl={shareLink(`/b/${bet.id}`, inviteCode)}
+              />
             ))}
           </div>
         </section>

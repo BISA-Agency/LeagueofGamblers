@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { getSiteUrl } from "@/lib/site-url";
 
 // Satori (what ImageResponse renders with) supports flexbox only — no grid,
 // and every multi-child element needs an explicit display: flex.
@@ -14,7 +15,20 @@ export const OG_COLORS = {
   loss: "#f87171",
 };
 
-export function OgFrame({ children }: { children: ReactNode }) {
+/**
+ * The address every share card advertises. Cards get screenshotted and
+ * re-posted stripped of their link, so the domain has to live in the pixels —
+ * it's the only thing in a passed-around image that leads anyone back here.
+ */
+function shareHost(): string {
+  try {
+    return new URL(getSiteUrl()).host.replace(/^www\./, "");
+  } catch {
+    return "League of Gamblers";
+  }
+}
+
+export function OgFrame({ children, cta }: { children: ReactNode; cta?: string }) {
   return (
     <div
       style={{
@@ -38,9 +52,25 @@ export function OgFrame({ children }: { children: ReactNode }) {
           flex: 1,
           flexDirection: "column",
           justifyContent: "center",
+          // Satori lets an over-tall child spill instead of shrinking it, which
+          // prints the card straight over the wordmark and the domain. Clip.
+          overflow: "hidden",
         }}
       >
         {children}
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingTop: 22,
+          borderTop: `1px solid ${OG_COLORS.border}`,
+          fontSize: 26,
+        }}
+      >
+        <span style={{ fontWeight: 600, color: OG_COLORS.brand }}>{shareHost()}</span>
+        <span style={{ color: OG_COLORS.muted }}>{cta ?? "Speel mee met je vrienden"}</span>
       </div>
     </div>
   );

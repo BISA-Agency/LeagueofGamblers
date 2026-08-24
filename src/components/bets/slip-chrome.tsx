@@ -1,5 +1,6 @@
 import { Check, Minus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { BetStatus } from "@drizzle/schema";
 
 /**
  * The shared vocabulary of a bet slip: the stripe that tells you the outcome
@@ -24,6 +25,14 @@ const PILL: Record<SlipStatus, { label: string; className: string }> = {
   lost: { label: "Verloren", className: "border-loss/40 bg-loss/15 text-loss" },
   void: { label: "Void", className: "border-border text-muted-foreground" },
 };
+
+/** half_won/half_lost settle as a full win/loss for the slip's purposes. */
+export function slipStatusOf(status: BetStatus | string): SlipStatus {
+  if (status === "won" || status === "half_won") return "won";
+  if (status === "lost" || status === "half_lost") return "lost";
+  if (status === "void") return "void";
+  return "open";
+}
 
 export function SlipStatusPill({ status }: { status: SlipStatus }) {
   const pill = PILL[status];
