@@ -1,8 +1,9 @@
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, or } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BadgeIcon } from "@/components/badges/badge-icon";
+import { CareerCard } from "@/components/profile/career-card";
 import { ChallengeHistory, type ChallengeHistoryRow } from "@/components/profile/challenge-history";
 import { InvitePanel } from "@/components/profile/invite-panel";
 import { FollowButton } from "@/components/profile/follow-button";
@@ -147,6 +148,21 @@ export default async function ProfilePage({
       })
     : [];
   const stats = summarizeBets(myBets);
+
+  // Career stats: every bet this player has ever placed, across every
+  // challenge. A proof bet only counts once it's approved (or is a plain
+  // sportsbook bet, verificationStatus "n/a") — same rule as the all-time
+  // Records boards, so an unverified or rejected proof bet can't permanently
+  // skew someone's career numbers.
+  const careerBets = await db.query.bets.findMany({
+    where: and(
+      eq(bets.userId, profile.id),
+      or(eq(bets.verificationStatus, "n/a"), eq(bets.verificationStatus, "approved"))
+    ),
+    with: { selections: true },
+  });
+  const careerStats = summarizeBets(careerBets);
+
   const totalWarnings = profile.participations.reduce((sum, p) => sum + p.warnings, 0);
 
   return (
@@ -295,6 +311,8 @@ export default async function ProfilePage({
           </dl>
         </section>
       )}
+
+      {careerStats.betsCount > 0 && <CareerCard stats={careerStats} />}
 
       {totalWarnings > 0 && (
         <p className="text-sm text-loss">

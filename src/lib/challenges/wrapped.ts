@@ -62,11 +62,14 @@ export async function getWrappedData(challengeId: string, username: string) {
     // Open stakes count back: usually zero by wrap time, but the page is
     // reachable during settling when a last bet may still be open.
     pl: effectiveBalance - challenge.startingBalance,
+    ...summary,
+    // Wrapped's ROI is balance growth vs. the challenge's starting balance —
+    // a different question than summary.roi (profit vs. total staked), so it
+    // must override the spread above rather than the other way round.
     roi:
       challenge.startingBalance > 0
         ? ((effectiveBalance - challenge.startingBalance) / challenge.startingBalance) * 100
         : 0,
-    ...summary,
     badges: badges.map((b) => b.badge),
     missions: missions.map((m) => m.mission.title),
     balanceHistory: snapshots.map((s) => ({ date: s.date, balance: s.balance })),

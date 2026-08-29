@@ -3,6 +3,7 @@ import type { Bet, BetSelection } from "@drizzle/schema";
 export type BetWithSelections = Bet & { selections: BetSelection[] };
 
 const WON = new Set(["won", "half_won"]);
+const LOST = new Set(["lost", "half_lost"]);
 
 /** What a settled bet actually returned to the player, minus what it cost. */
 export function profitOf(bet: Bet): number {
@@ -28,7 +29,11 @@ export type BetSummary = {
   openStake: number;
   settledCount: number;
   wonCount: number;
+  lostCount: number;
+  voidCount: number;
   winrate: number;
+  /** Total profit over total staked, as a percentage. 0 when nothing staked. */
+  roi: number;
   avgOdds: number;
   highestWonOdds: number;
   biggestWin: number;
@@ -49,7 +54,11 @@ export type BetSummary = {
 export function summarizeBets(playerBets: BetWithSelections[]): BetSummary {
   const settled = playerBets.filter((b) => b.status !== "open" && b.status !== "void");
   const won = settled.filter((b) => WON.has(b.status));
+  const lost = settled.filter((b) => LOST.has(b.status));
+  const voided = playerBets.filter((b) => b.status === "void");
   const profits = settled.map(profitOf);
+  const totalStaked = playerBets.reduce((sum, b) => sum + b.stake, 0);
+  const totalProfit = profits.reduce((sum, p) => sum + p, 0);
 
   let streak = 0;
   let longestWinStreak = 0;
@@ -80,7 +89,10 @@ export function summarizeBets(playerBets: BetWithSelections[]): BetSummary {
       .reduce((sum, b) => sum + b.stake, 0),
     settledCount: settled.length,
     wonCount: won.length,
+    lostCount: lost.length,
+    voidCount: voided.length,
     winrate: settled.length > 0 ? (won.length / settled.length) * 100 : 0,
+    roi: totalStaked > 0 ? (totalProfit / totalStaked) * 100 : 0,
     avgOdds:
       playerBets.length > 0
         ? playerBets.reduce((sum, b) => sum + b.totalOdds, 0) / playerBets.length
@@ -88,7 +100,7 @@ export function summarizeBets(playerBets: BetWithSelections[]): BetSummary {
     highestWonOdds: won.length > 0 ? Math.max(...won.map((b) => b.totalOdds)) : 0,
     biggestWin: profits.length > 0 ? Math.max(0, ...profits) : 0,
     biggestLoss: profits.length > 0 ? Math.min(0, ...profits) : 0,
-    totalStaked: playerBets.reduce((sum, b) => sum + b.stake, 0),
+    totalStaked,
     longestWinStreak,
     combiCount: playerBets.filter((b) => b.type === "combi").length,
     singleCount: playerBets.filter((b) => b.type === "single").length,
