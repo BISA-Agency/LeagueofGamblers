@@ -7,6 +7,7 @@ import { UserAvatar } from "@/components/profile/user-avatar";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { getChallengeStats } from "@/lib/challenges/stats";
+import { totalWithFee } from "@/lib/payments/rate";
 import type { PrizeTierRow } from "@/lib/settlement/payouts";
 import { challengeParticipants, challenges } from "@drizzle/schema";
 
@@ -54,6 +55,7 @@ export default async function PublicChallengePage({
     db.query.prizeTiers.findMany(),
   ]);
   const stats = getChallengeStats(challenge, participants, prizeTierRows as PrizeTierRow[]);
+  const { fee, total } = totalWithFee(challenge.buyInAmount, challenge.platformFeePercent);
 
   return (
     <main className="mx-auto max-w-xl px-6 py-14">
@@ -101,9 +103,19 @@ export default async function PublicChallengePage({
         </Button>
       </div>
 
+      {/* What it costs, said here rather than first on /app/pay: this is the
+          page a shared link lands on, and the fee should not be a surprise
+          waiting behind the join button. */}
       <p className="mt-4 text-xs text-muted-foreground">
         Je speelt met €{challenge.startingBalance.toLocaleString("nl-NL")} virtueel geld. De
-        inleg regel je onderling met de organisator — de app verwerkt zelf geen betalingen.
+        inleg van €{challenge.buyInAmount.toLocaleString("nl-NL")} gaat volledig in de pot
+        {fee > 0 ? (
+          <>
+            ; daar komt {challenge.platformFeePercent}% servicekosten bovenop, dus je betaalt{" "}
+            €{total.toLocaleString("nl-NL")}
+          </>
+        ) : null}
+        . Betalen doe je in USDT, in de app.
       </p>
     </main>
   );
