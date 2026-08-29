@@ -80,6 +80,6 @@ export const config = {
     // Anything with a file extension is a static asset and must skip the auth
     // check — otherwise /robots.txt and the landing-page screenshots get
     // redirected to /login for logged-out visitors (and crawlers).
-    "/((?!_next/static|_next/image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|txt|xml|json|webmanifest|woff|woff2)$).*)",
+    "/((?!_next/static|_next/image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|txt|xml|json|webmanifest|woff|woff2|pdf)$).*)",
   ],
 };
