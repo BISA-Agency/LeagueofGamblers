@@ -57,3 +57,109 @@ export function buyInClaimEmail(claim: {
     html: layout("Nieuwe inleg ingediend", body),
   };
 }
+
+function button(label: string, url: string): string {
+  return `<a href="${url}" style="display:inline-block;margin-top:20px;padding:10px 16px;background:#b8ff2e;border-radius:8px;color:#0f0f0f;text-decoration:none;font-size:13px;font-weight:600">${label}</a>`;
+}
+
+/** Sent the moment someone joins a challenge, before they've paid. */
+export function pendingPaymentEmail(data: {
+  username: string;
+  challengeName: string;
+  buyInAmount: number;
+  feeAmount: number;
+  payUrl: string;
+}): { subject: string; html: string } {
+  const money = (n: number) => `€${n.toLocaleString("nl-NL")}`;
+  const total = data.buyInAmount + data.feeAmount;
+
+  const body = `
+    <p style="margin:0 0 16px;font-size:14px;line-height:1.5">
+      Hoi ${data.username}, je staat ingeschreven voor <strong>${data.challengeName}</strong> —
+      alleen je inleg moet nog binnenkomen voordat je kunt meespelen.
+    </p>
+    <p style="margin:0;font-size:14px;line-height:1.5">
+      Je betaalt ${money(total)}${
+        data.feeAmount > 0
+          ? ` (${money(data.buyInAmount)} inleg + ${money(data.feeAmount)} servicekosten)`
+          : ""
+      } in USDT, rechtstreeks in de app.
+    </p>
+    ${button("Betaal je inleg", data.payUrl)}`;
+
+  return {
+    subject: `Nog even betalen — ${data.challengeName}`,
+    html: layout("Je inleg staat nog open", body),
+  };
+}
+
+/** Sent once an admin approves the crypto buy-in — this is what actually lets someone play. */
+export function challengeWelcomeEmail(data: {
+  username: string;
+  challengeName: string;
+  startingBalance: number;
+  appUrl: string;
+}): { subject: string; html: string } {
+  const body = `
+    <p style="margin:0 0 16px;font-size:14px;line-height:1.5">
+      Hoi ${data.username}, je inleg is bevestigd — je doet mee aan
+      <strong>${data.challengeName}</strong>.
+    </p>
+    <p style="margin:0;font-size:14px;line-height:1.5">
+      Je start met <strong>€${data.startingBalance.toLocaleString("nl-NL")}</strong> virtueel
+      geld. Zet 'm om in de hoogste eindstand.
+    </p>
+    ${button("Naar de challenge", data.appUrl)}`;
+
+  return {
+    subject: `Welkom in ${data.challengeName}`,
+    html: layout("Je doet mee!", body),
+  };
+}
+
+/** Sent to every paid participant once an admin closes out a finished challenge. */
+export function challengeFinishedEmail(data: {
+  username: string;
+  challengeName: string;
+  finalRank: number;
+  playerCount: number;
+  balance: number;
+  prizeAmount: number;
+  needsPayoutAddress: boolean;
+  payoutUrl: string;
+}): { subject: string; html: string } {
+  const money = (n: number) => `€${n.toLocaleString("nl-NL")}`;
+  const won = data.prizeAmount > 0;
+
+  const body = `
+    <p style="margin:0 0 16px;font-size:14px;line-height:1.5">
+      Hoi ${data.username}, <strong>${data.challengeName}</strong> zit erop. Je eindigde op
+      <strong>#${data.finalRank} van de ${data.playerCount}</strong>, met een eindsaldo van
+      ${money(data.balance)}.
+    </p>
+    ${
+      won
+        ? `<p style="margin:0 0 16px;font-size:14px;line-height:1.5">
+             Dat is goed voor <strong style="color:#b8ff2e">${money(data.prizeAmount)}</strong>
+             prijzengeld. Prijzengeld wordt buiten de app uitbetaald door de beheerder, naar het
+             USDT-adres in je profiel.
+           </p>`
+        : ""
+    }
+    ${
+      data.needsPayoutAddress
+        ? `<p style="margin:0;font-size:14px;line-height:1.5;color:#e0c25a">
+             Je hebt nog geen uitbetaaladres ingesteld — vul die in zodat je prijzengeld ergens
+             naartoe kan.
+           </p>
+           ${button("Uitbetaaladres instellen", data.payoutUrl)}`
+        : ""
+    }`;
+
+  return {
+    subject: won
+      ? `Je hebt geld gewonnen — ${data.challengeName}`
+      : `${data.challengeName} is afgelopen`,
+    html: layout("Challenge afgerond", body),
+  };
+}

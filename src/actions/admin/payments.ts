@@ -6,9 +6,12 @@ import { redirect } from "next/navigation";
 import { logAuditEvent } from "@/lib/audit";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getUserEmail, sendEmail } from "@/lib/email/send";
+import { challengeWelcomeEmail } from "@/lib/email/templates";
 import { evaluateReferralMissions } from "@/lib/referrals/evaluate";
+import { getSiteUrl } from "@/lib/site-url";
 import { getProofScreenshotSignedUrl } from "@/lib/storage/screenshots";
-import { challengeParticipants, payments } from "@drizzle/schema";
+import { challengeParticipants, challenges, profiles, payments } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
 async function requireAdmin() {
@@ -76,6 +79,32 @@ export async function approveCryptoBuyIn(paymentId: string) {
     entityId: paymentId,
     after: { network: payment.network, txHash: payment.txHash, amount: payment.amount },
   });
+
+  // The player is already in — a mail failure here must not undo that.
+  try {
+    const [challenge, profile, email] = await Promise.all([
+      db.query.challenges.findFirst({
+        where: eq(challenges.id, payment.challengeId),
+        columns: { name: true, startingBalance: true },
+      }),
+      db.query.profiles.findFirst({
+        where: eq(profiles.id, payment.userId),
+        columns: { username: true },
+      }),
+      getUserEmail(payment.userId),
+    ]);
+    if (challenge && email) {
+      const mail = challengeWelcomeEmail({
+        username: profile?.username ?? "speler",
+        challengeName: challenge.name,
+        startingBalance: challenge.startingBalance,
+        appUrl: `${getSiteUrl()}/app`,
+      });
+      await sendEmail({ to: email, ...mail });
+    }
+  } catch (err) {
+    console.error("[email] welkomstmail bij goedkeuring mislukt:", err instanceof Error ? err.message : err);
+  }
 
   revalidatePath("/admin/payments");
   revalidatePath("/app/pay");

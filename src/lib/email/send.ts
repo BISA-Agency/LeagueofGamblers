@@ -1,3 +1,5 @@
+import { createServiceRoleClient } from "@/lib/supabase/server";
+
 /**
  * Outgoing mail via Resend's REST API. No SDK: it is one POST, and a
  * dependency that only wraps fetch is not worth carrying.
@@ -7,6 +9,19 @@
  * is having a bad afternoon. Failures are logged and swallowed.
  */
 export type SendResult = "sent" | "skipped" | "failed";
+
+/**
+ * A player's email lives in Supabase Auth, not `profiles` — this is the one
+ * place player-facing mail needs to cross that gap. Returns null rather than
+ * throwing: a missing/undeliverable address should skip the mail, not break
+ * whatever action triggered it.
+ */
+export async function getUserEmail(userId: string): Promise<string | null> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin.auth.admin.getUserById(userId);
+  if (error || !data.user?.email) return null;
+  return data.user.email;
+}
 
 const FROM = process.env.EMAIL_FROM ?? "League of Gamblers <noreply@leagueofgamblers.nl>";
 

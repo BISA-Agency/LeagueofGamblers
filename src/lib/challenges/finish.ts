@@ -1,15 +1,19 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { logActivity } from "@/lib/activity/log";
 import { logAuditEvent } from "@/lib/audit";
 import { evaluateEndOfChallengeMissions } from "@/lib/missions/end-of-challenge";
 import { awardBadgeBySlug } from "@/lib/badges/award";
 import { db } from "@/lib/db";
+import { getUserEmail, sendEmail } from "@/lib/email/send";
+import { challengeFinishedEmail } from "@/lib/email/templates";
 import { calculatePrizeSplit, type PrizeTierRow } from "@/lib/settlement/payouts";
+import { getSiteUrl } from "@/lib/site-url";
 import {
   bets,
   challengeParticipants,
   challenges,
   payments,
+  profiles,
   rankSnapshots,
 } from "@drizzle/schema";
 
@@ -102,6 +106,9 @@ export async function finishChallenge(challengeId: string, actorId: string) {
   // rank, which only exists now that it has been frozen above.
   await evaluateEndOfChallengeMissions(challengeId);
 
+  const prizeByUserId = new Map(payouts.map((row) => [row.participant.userId, row.entry.amount]));
+  await notifyParticipants(challenge.name, ranked, prizeByUserId);
+
   await logAuditEvent({
     actorId,
     action: "challenge.transition_finished",
@@ -125,6 +132,53 @@ export async function finishChallenge(challengeId: string, actorId: string) {
   }
 
   return { pot, payouts: payouts.length, winnerId: ranked[0]?.userId ?? null };
+}
+
+/**
+ * Every paid participant gets their result mailed — rank, balance, and (for
+ * anyone who won something) the prize plus a nudge to set a payout address
+ * if they haven't. A mail failure for one player must not skip the rest.
+ */
+async function notifyParticipants(
+  challengeName: string,
+  ranked: RankedParticipant[],
+  prizeByUserId: Map<string, number>
+) {
+  const profileRows = await db.query.profiles.findMany({
+    where: inArray(
+      profiles.id,
+      ranked.map((p) => p.userId)
+    ),
+    columns: { id: true, username: true, payoutAddress: true },
+  });
+  const profileByUserId = new Map(profileRows.map((p) => [p.id, p]));
+
+  for (const [index, participant] of ranked.entries()) {
+    try {
+      const profile = profileByUserId.get(participant.userId);
+      const email = await getUserEmail(participant.userId);
+      if (!email) continue;
+
+      const prizeAmount = prizeByUserId.get(participant.userId) ?? 0;
+      const mail = challengeFinishedEmail({
+        username: profile?.username ?? "speler",
+        challengeName,
+        finalRank: index + 1,
+        playerCount: ranked.length,
+        balance: participant.balance,
+        prizeAmount,
+        needsPayoutAddress: prizeAmount > 0 && !profile?.payoutAddress,
+        payoutUrl: `${getSiteUrl()}/app/profile/edit`,
+      });
+      await sendEmail({ to: email, ...mail });
+    } catch (err) {
+      console.error(
+        "[email] eindmail challenge mislukt voor",
+        participant.userId,
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
 }
 
 type RankedParticipant = { userId: string; balance: number };
