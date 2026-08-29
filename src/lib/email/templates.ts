@@ -127,6 +127,7 @@ export function challengeFinishedEmail(data: {
   prizeAmount: number;
   needsPayoutAddress: boolean;
   payoutUrl: string;
+  nextChallengesUrl: string;
 }): { subject: string; html: string } {
   const money = (n: number) => `€${n.toLocaleString("nl-NL")}`;
   const won = data.prizeAmount > 0;
@@ -144,7 +145,11 @@ export function challengeFinishedEmail(data: {
              prijzengeld. Prijzengeld wordt buiten de app uitbetaald door de beheerder, naar het
              USDT-adres in je profiel.
            </p>`
-        : ""
+        : `<p style="margin:0 0 16px;font-size:14px;line-height:1.5">
+             Deze keer geen prijs — maar niet getreurd, er komen genoeg nieuwe challenges aan
+             waar je zeker weer kans maakt. Schrijf je in en pak revanche.
+           </p>
+           ${button("Bekijk komende challenges", data.nextChallengesUrl)}`
     }
     ${
       data.needsPayoutAddress

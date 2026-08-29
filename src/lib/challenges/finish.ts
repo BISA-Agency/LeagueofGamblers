@@ -169,6 +169,7 @@ async function notifyParticipants(
         prizeAmount,
         needsPayoutAddress: prizeAmount > 0 && !profile?.payoutAddress,
         payoutUrl: `${getSiteUrl()}/app/profile/edit`,
+        nextChallengesUrl: `${getSiteUrl()}/app/challenges`,
       });
       await sendEmail({ to: email, ...mail });
     } catch (err) {
