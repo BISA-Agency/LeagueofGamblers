@@ -3,6 +3,7 @@ import { logActivity } from "@/lib/activity/log";
 import { db } from "@/lib/db";
 import { challenges, events, markets, oddsImports, outcomes } from "@drizzle/schema";
 import { getOddsApiProvider } from "./index";
+import { settleableMarkets } from "./settleable-markets";
 import { ADDITIONAL_MARKETS, FEATURED_MARKETS, type MarketType, type ProviderEventOdds } from "./types";
 
 /** A bit over a week, so the Monday import still covers next Monday's early
@@ -63,7 +64,12 @@ export async function createImportPreview(challengeId: string, ranBy: string | n
   const horizon = now + IMPORT_HORIZON_DAYS * 86_400_000;
 
   for (const sportKey of challenge.sportKeys) {
-    const result = await provider.getOdds(sportKey, featured.length > 0 ? featured : ["h2h"]);
+    // A challenge picks its markets once, for every sport it runs. Tennis
+    // quotes a total in games and a handicap in sets, so importing those
+    // alongside football's would hand players bets that settle against the
+    // wrong unit — see settleable-markets.ts.
+    const forSport = settleableMarkets(sportKey, featured);
+    const result = await provider.getOdds(sportKey, forSport.length > 0 ? forSport : ["h2h"]);
     fetched.push(
       ...result.events.filter((e) => {
         const startsAt = e.event.startsAt.getTime();
@@ -84,11 +90,15 @@ export async function createImportPreview(challengeId: string, ranBy: string | n
     const cutoff = now + ADDITIONAL_WINDOW_HOURS * 3_600_000;
     for (const entry of fetched) {
       if (entry.event.startsAt.getTime() > cutoff) continue;
+      // Same guard, and it also saves the call entirely for a fight card,
+      // where none of these markets exist to begin with.
+      const forSport = settleableMarkets(entry.event.sportKey, additional);
+      if (forSport.length === 0) continue;
       try {
         const extra = await provider.getEventOdds(
           entry.event.sportKey,
           entry.event.externalId,
-          additional
+          forSport
         );
         entry.markets.push(...extra.markets.filter((m) => m.outcomes.length > 0));
         if (extra.creditsUsed) creditsUsed += extra.creditsUsed;
