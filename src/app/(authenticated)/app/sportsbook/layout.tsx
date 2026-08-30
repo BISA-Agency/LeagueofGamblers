@@ -15,17 +15,29 @@ export default async function SportsbookLayout({ children }: { children: React.R
   const { active } = await getActiveParticipation(user.id);
   const participation = active?.status === "active" ? active : null;
 
-  if (!participation) {
-    return <div className="mx-auto max-w-2xl">{children}</div>;
-  }
-
+  /**
+   * The provider wraps the page whether or not there is a bet slip to fill.
+   *
+   * It used to be mounted only for an active participation, and every odds
+   * button below calls useBetSlip() — so anyone browsing without one crashed
+   * the page instead of seeing the odds. That is not a rare state: a player
+   * is "joined" until the challenge actually starts, so before kick-off day
+   * it was everybody, and afterwards anyone who hasn't paid.
+   *
+   * Betting itself stays gated: no participation, no slip panel to submit
+   * from, and placeSportsbookBet refuses it server-side regardless.
+   */
   return (
     <BetSlipProvider>
       <div className="flex">
         <div className="min-w-0 flex-1">{children}</div>
-        <BetSlipPanel challengeId={participation.challengeId} balance={participation.balance} />
+        {participation && (
+          <BetSlipPanel challengeId={participation.challengeId} balance={participation.balance} />
+        )}
       </div>
-      <BetSlipSheet challengeId={participation.challengeId} balance={participation.balance} />
+      {participation && (
+        <BetSlipSheet challengeId={participation.challengeId} balance={participation.balance} />
+      )}
     </BetSlipProvider>
   );
 }
