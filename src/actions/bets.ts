@@ -121,6 +121,14 @@ export async function placeSportsbookBet(
       if (BUSTED_STATUSES.has(participant.status)) {
         throw new Error("Je kunt geen bets meer plaatsen.");
       }
+      // Until a challenge starts nobody is active yet, and the sportsbook says
+      // as much. Betting was blocked before this only because an unstarted
+      // participant happens to hold a balance of zero — which made the refusal
+      // read as "Je inzet is hoger dan je saldo", and would have opened up the
+      // moment anyone was given a balance early.
+      if (participant.status !== "active") {
+        throw new Error("Deze challenge is nog niet begonnen.");
+      }
       if (stake > participant.balance) {
         throw new Error("Je inzet is hoger dan je saldo.");
       }

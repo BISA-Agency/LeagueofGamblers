@@ -1,7 +1,14 @@
-import { and, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { logActivity } from "@/lib/activity/log";
 import { db } from "@/lib/db";
-import { challenges, events, markets, oddsImports, outcomes } from "@drizzle/schema";
+import {
+  betSelections,
+  challenges,
+  events,
+  markets,
+  oddsImports,
+  outcomes,
+} from "@drizzle/schema";
 import { getOddsApiProvider } from "./index";
 import { settleableMarkets } from "./settleable-markets";
 import { ADDITIONAL_MARKETS, FEATURED_MARKETS, type MarketType, type ProviderEventOdds } from "./types";
@@ -210,9 +217,32 @@ export async function publishImportRow(importId: string) {
       })
       .returning();
 
-    // Re-imports replace this event's markets/outcomes wholesale — safe
-    // because bet_selections denormalizes its own odds/label (see
-    // drizzle/schema/bet-selections.ts) and its outcome_id just goes null.
+    /**
+     * Re-imports replace an event's markets wholesale — but only while nobody
+     * has bet on it.
+     *
+     * bet_selections keeps its own copy of the odds and labels, so a bet slip
+     * still *reads* correctly after its outcome row is deleted. Settlement,
+     * though, finds selections solely by outcome_id (see
+     * settlement/execute.ts), and the foreign key nulls that on delete. A bet
+     * whose event got re-imported would therefore never be settled by any
+     * automatic path, would sit open for ever, and finishChallenge refuses to
+     * pay out a challenge with open bets — so one routine re-import could
+     * hold up the whole month's prize money.
+     *
+     * Keeping the existing board costs this fixture its odds refresh, which
+     * is the smaller problem by a wide margin: the players who already bet
+     * have their price locked in anyway, and a stale quote merely ages.
+     */
+    const [{ n: placedOnThisEvent }] = await db
+      .select({ n: count() })
+      .from(betSelections)
+      .innerJoin(outcomes, eq(outcomes.id, betSelections.outcomeId))
+      .innerJoin(markets, eq(markets.id, outcomes.marketId))
+      .where(eq(markets.eventId, eventRow.id));
+
+    if (placedOnThisEvent > 0) continue;
+
     await db.delete(markets).where(eq(markets.eventId, eventRow.id));
 
     for (const market of providerMarkets) {

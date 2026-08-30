@@ -1,6 +1,8 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { logActivity } from "@/lib/activity/log";
 import { db } from "@/lib/db";
+import { settleableMarkets } from "@/lib/odds-provider/settleable-markets";
+import type { MarketType } from "@/lib/odds-provider/types";
 import { runPostSettlementChecks } from "@/lib/settlement/after-settlement";
 import {
   betSelections,
@@ -29,9 +31,25 @@ export type EventResult = { homeScore: number; awayScore: number };
 function computeOutcomeResult(
   market: Market,
   outcome: Outcome,
-  event: { homeTeam: string | null; awayTeam: string | null },
+  event: { homeTeam: string | null; awayTeam: string | null; sportKey: string },
   result: EventResult
 ): SettlementOutcome {
+  /**
+   * The same guard the importer uses, applied at the other end.
+   *
+   * Filtering what gets fetched only protects fixtures imported after that
+   * rule existed. Rows already in the table — imported before the rule, or
+   * under a rule since narrowed — would still be settled here, and for a
+   * sport whose score is in different units than its line that means paying
+   * out a tennis total quoted in games against a count of sets.
+   *
+   * Voiding refunds the stake, which is the right answer for a market that
+   * should never have been on the board.
+   */
+  if (settleableMarkets(event.sportKey, [market.type as MarketType]).length === 0) {
+    return "void";
+  }
+
   if (market.type === "h2h" && event.homeTeam && event.awayTeam) {
     return settleH2h(outcome.label, event.homeTeam, event.awayTeam, result.homeScore, result.awayScore);
   }
