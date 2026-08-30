@@ -1,6 +1,7 @@
 import type { Market, Outcome } from "@drizzle/schema";
 import { dutchOutcomeLabel } from "@/lib/sportsbook/outcome-label";
 import { orderOutcomes } from "@/lib/sportsbook/outcome-order";
+import { CorrectScorePicker } from "./correct-score-picker";
 import { OutcomeButton } from "./outcome-button";
 
 type MarketWithOutcomes = Market & { outcomes: Outcome[] };
@@ -84,7 +85,26 @@ export function MarketGroups({
                 <h2 className="text-sm font-medium">
                   {team ? `${group.title} · ${team}` : group.title}
                 </h2>
-                {items.map((market) => {
+                {/* Correct score gets its own picker: two rows of goal
+                    tallies instead of forty-odd buttons. Needs both team
+                    names to label the rows, so it falls back to the grid
+                    when an event has none. */}
+                {group.type === "correct_score" && homeTeam && awayTeam
+                  ? items.map((market) => (
+                      <CorrectScorePicker
+                        key={market.id}
+                        market={market}
+                        eventId={eventId}
+                        eventName={eventName}
+                        eventStart={eventStart}
+                        sport={sport}
+                        competition={competition}
+                        homeTeam={homeTeam}
+                        awayTeam={awayTeam}
+                        bettable={bettable}
+                      />
+                    ))
+                  : items.map((market) => {
                   // Double chance labels ("Chelsea of Gelijkspel") are far too
                   // long to sit beside a price on a phone.
                   const stacked = market.outcomes.some(
@@ -128,6 +148,7 @@ export function MarketGroups({
                 })}
               </div>
             ))}
+
           </section>
         );
       })}
