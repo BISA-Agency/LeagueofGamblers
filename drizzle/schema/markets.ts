@@ -12,6 +12,9 @@ export const marketTypeEnum = pgEnum("market_type", [
   "btts",
   "double_chance",
   "draw_no_bet",
+  // Outcomes are stored normalised as "home-away" ("2-1"), never in the
+  // provider's own "Team:2|Team:1" wording — see odds-provider/correct-score.ts.
+  "correct_score",
 ]);
 export const marketStatusEnum = pgEnum("market_status", [
   "open",

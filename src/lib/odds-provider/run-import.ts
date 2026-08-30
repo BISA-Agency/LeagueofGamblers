@@ -14,11 +14,22 @@ const IMPORT_HORIZON_DAYS = 8;
  *
  * Featured markets come free with the bulk call — one request per sport, all
  * fixtures. Additional markets cost one request PER EVENT, billed on the
- * markets returned, so pulling them for the full 8-day window would multiply
- * a ~18-credit import into a ~240-credit one. Nobody bets a team total on a
- * fixture eight days out, so the sportsbook fills those in as kick-off nears.
+ * markets returned, which is why this used to sit at 48 hours: it kept a
+ * weekly import near 18 credits instead of a few hundred.
+ *
+ * That thrift had a cost nobody could see from the outside. The import runs
+ * Monday, so a Saturday fixture was five days out and never qualified — of 98
+ * imported events, six carried both-teams-to-score and two carried a team
+ * total. The markets were configured and simply never fetched.
+ *
+ * Defaulting to the whole import horizon fixes that: every fixture in the
+ * sportsbook now gets every market the challenge asks for. Set
+ * ADDITIONAL_MARKETS_WINDOW_HOURS to something smaller to go back to
+ * rationing credits.
  */
-const ADDITIONAL_WINDOW_HOURS = Number(process.env.ADDITIONAL_MARKETS_WINDOW_HOURS ?? 48);
+const ADDITIONAL_WINDOW_HOURS = Number(
+  process.env.ADDITIONAL_MARKETS_WINDOW_HOURS ?? IMPORT_HORIZON_DAYS * 24
+);
 
 export type ImportPayload = {
   events: ProviderEventOdds[];

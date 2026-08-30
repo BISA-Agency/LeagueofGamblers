@@ -13,6 +13,7 @@ import type {
   UsageInfo,
 } from "./types";
 import { sportLabelFromKey } from "./sports";
+import { normalizeCorrectScoreLabel } from "./correct-score";
 
 const BASE_URL = "https://api.the-odds-api.com/v4";
 
@@ -24,6 +25,7 @@ const MARKET_LABELS: Record<MarketType, string> = {
   btts: "Beide teams scoren",
   double_chance: "Dubbele kans",
   draw_no_bet: "Draw no bet",
+  correct_score: "Correcte score",
 };
 
 /**
@@ -40,6 +42,7 @@ const API_KEYS: Record<MarketType, string[]> = {
   btts: ["btts"],
   double_chance: ["double_chance"],
   draw_no_bet: ["draw_no_bet"],
+  correct_score: ["correct_score"],
 };
 
 const TYPE_BY_API_KEY = new Map<string, MarketType>(
@@ -144,13 +147,28 @@ function aggregateMarkets(
       if (!type || !marketTypes.includes(type)) continue;
 
       for (const outcome of market.outcomes) {
+        // "Leeds United:1|Brentford:0" becomes "1-0" before anything else sees
+        // it, so the bet slip and the settlement agree on one format. An
+        // unreadable label is dropped rather than stored — a correct-score
+        // outcome nobody can settle is worse than one that isn't offered.
+        let label = outcome.name;
+        if (type === "correct_score") {
+          const normalized = normalizeCorrectScoreLabel(
+            outcome.name,
+            raw.home_team,
+            raw.away_team
+          );
+          if (!normalized) continue;
+          label = normalized;
+        }
+
         const key = bucketKey(market.key, outcome);
         const bucket: Bucket =
           buckets.get(key) ?? { type, team: outcome.description, outcomeQuotes: new Map() };
 
-        const list = bucket.outcomeQuotes.get(outcome.name) ?? [];
+        const list = bucket.outcomeQuotes.get(label) ?? [];
         list.push({ odds: outcome.price, bookmakerKey: bookmaker.key });
-        bucket.outcomeQuotes.set(outcome.name, list);
+        bucket.outcomeQuotes.set(label, list);
 
         if (outcome.point !== undefined) {
           // Settlement reads a handicap as the HOME team's line, so take the

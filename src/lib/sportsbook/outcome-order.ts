@@ -20,12 +20,13 @@ export function orderOutcomes<T extends Outcome>(
   const rank = rankerFor(market, event);
   if (!rank) return outcomes;
 
-  return [...outcomes].sort((a, b) => {
-    const ra = rank(a.label);
-    const rb = rank(b.label);
-    // Anything unrecognised keeps to the back rather than jumping the queue.
-    return (ra === -1 ? 99 : ra) - (rb === -1 ? 99 : rb);
-  });
+  // Anything unrecognised keeps to the back rather than jumping the queue.
+  // Deliberately not a small sentinel like 99: a correct-score market ranks
+  // its outcomes into the thousands, and a low sentinel would have sorted
+  // every unreadable label to the front of that grid.
+  const toBack = (r: number) => (r === -1 ? Number.MAX_SAFE_INTEGER : r);
+
+  return [...outcomes].sort((a, b) => toBack(rank(a.label)) - toBack(rank(b.label)));
 }
 
 /**
@@ -78,6 +79,20 @@ function rankerFor(
         if (hasHome && !hasAway) return 0;
         if (hasHome && hasAway) return 1;
         return 2;
+      };
+
+    /**
+     * Correct score, stored as "2-1". Ordered by how many goals the match had
+     * and then by the home side's share, so the grid reads 0-0, then 1-0, 0-1,
+     * then 2-0, 1-1, 0-2. Sorting these as text would put 10-0 next to 1-0.
+     */
+    case "correct_score":
+      return (label) => {
+        const match = /^(\d+)-(\d+)$/.exec(label.trim());
+        if (!match) return -1;
+        const homeGoals = Number(match[1]);
+        const awayGoals = Number(match[2]);
+        return (homeGoals + awayGoals) * 100 + (99 - homeGoals);
       };
 
     default:

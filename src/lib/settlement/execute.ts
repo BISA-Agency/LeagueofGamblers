@@ -14,6 +14,7 @@ import {
 } from "@drizzle/schema";
 import {
   settleBtts,
+  settleCorrectScore,
   settleDoubleChance,
   settleDrawNoBet,
   settleH2h,
@@ -78,6 +79,9 @@ function computeOutcomeResult(
       result.homeScore,
       result.awayScore
     );
+  }
+  if (market.type === "correct_score") {
+    return settleCorrectScore(outcome.label, result.homeScore, result.awayScore);
   }
   // "custom" markets (admin events) can't be auto-settled from a score.
   return "void";

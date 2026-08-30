@@ -144,6 +144,22 @@ export function settleDoubleChance(
   return covered.includes(actual) ? "won" : "lost";
 }
 
+/**
+ * Correct score. Labels arrive already normalised to "home-away" by the
+ * importer (see odds-provider/correct-score.ts), so all this has to do is
+ * compare two numbers — and refuse anything it cannot read rather than
+ * settling it as a loss.
+ */
+export function settleCorrectScore(
+  outcomeLabel: string,
+  homeScore: number,
+  awayScore: number
+): SettlementOutcome {
+  const match = /^(\d+)\s*-\s*(\d+)$/.exec(outcomeLabel.trim());
+  if (!match) return "void";
+  return Number(match[1]) === homeScore && Number(match[2]) === awayScore ? "won" : "lost";
+}
+
 /** Draw no bet: the stake comes back on a draw, so a draw is a push. */
 export function settleDrawNoBet(
   outcomeLabel: string,

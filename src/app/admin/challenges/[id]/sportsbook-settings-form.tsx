@@ -23,6 +23,7 @@ const MARKET_OPTIONS: { value: string; label: string; hint?: string }[] = [
   { value: "btts", label: "Beide teams scoren", hint: "extra credits" },
   { value: "double_chance", label: "Dubbele kans", hint: "extra credits" },
   { value: "draw_no_bet", label: "Draw no bet", hint: "extra credits" },
+  { value: "correct_score", label: "Correcte score", hint: "extra credits" },
 ];
 
 export function SportsbookSettingsForm({

@@ -14,8 +14,16 @@ const GROUP_ORDER: { type: string; title: string }[] = [
   { type: "totals", title: "Over/Under" },
   { type: "spreads", title: "Handicap" },
   { type: "team_totals", title: "Team totaal" },
+  { type: "correct_score", title: "Correcte score" },
   { type: "custom", title: "Overig" },
 ];
+
+/**
+ * Above this many outcomes a single row squeezes each button to a sliver, so
+ * the market wraps into a grid instead. Correct score is the reason — it
+ * carries twenty-odd prices where every other market carries two or three.
+ */
+const GRID_FROM = 5;
 
 function lineLabel(market: MarketWithOutcomes): string | null {
   if (market.line === null) return null;
@@ -79,6 +87,7 @@ export function MarketGroups({
                   const stacked = market.outcomes.some(
                     (o) => dutchOutcomeLabel(o.label).length > 12
                   );
+                  const asGrid = market.outcomes.length >= GRID_FROM;
                   return (
                   <div key={market.id} className="flex items-center gap-2">
                     {lineLabel(market) && (
@@ -86,7 +95,13 @@ export function MarketGroups({
                         {lineLabel(market)}
                       </span>
                     )}
-                    <div className="flex min-w-0 flex-1 items-stretch gap-1.5">
+                    <div
+                      className={
+                        asGrid
+                          ? "grid min-w-0 flex-1 grid-cols-3 gap-1.5 sm:grid-cols-4"
+                          : "flex min-w-0 flex-1 items-stretch gap-1.5"
+                      }
+                    >
                       {orderOutcomes(market, market.outcomes, { homeTeam, awayTeam }).map((outcome) => (
                         <OutcomeButton
                           key={outcome.id}

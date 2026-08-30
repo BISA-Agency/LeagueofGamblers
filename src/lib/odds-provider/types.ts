@@ -28,7 +28,8 @@ export type MarketType =
   | "team_totals"
   | "btts"
   | "double_chance"
-  | "draw_no_bet";
+  | "draw_no_bet"
+  | "correct_score";
 
 /** Featured markets come from the bulk /odds call; the rest cost one request per event. */
 export const FEATURED_MARKETS: MarketType[] = ["h2h", "totals", "spreads"];
@@ -37,6 +38,7 @@ export const ADDITIONAL_MARKETS: MarketType[] = [
   "btts",
   "double_chance",
   "draw_no_bet",
+  "correct_score",
 ];
 
 export type ProviderMarket = {
