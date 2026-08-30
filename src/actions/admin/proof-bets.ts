@@ -36,8 +36,9 @@ export async function approveProofBet(betId: string) {
   });
 
   // If the player already self-settled it before this approval landed, the
-  // mission and badge checks still need a nudge now that it's approved.
-  await runPostSettlementChecks(betId);
+  // mission and badge checks still need a nudge now that it's approved. No
+  // notification: they know the outcome, they entered it.
+  await runPostSettlementChecks(betId, { notifyPlayer: false });
 
   const bet = await db.query.bets.findFirst({
     where: eq(bets.id, betId),

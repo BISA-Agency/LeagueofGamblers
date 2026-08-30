@@ -16,8 +16,12 @@ on:
     # Challenge open->live / live->settling. Hourly, so a challenge that
     # starts at 20:00 doesn't sit closed until the next morning.
     - cron: "0 * * * *"
-    # Settle finished events against real scores. 06:00 UTC.
-    - cron: "0 6 * * *"
+    # Settle finished events against real scores. Hourly at :20 — a win that
+    # lands on Saturday afternoon should not wait until the next morning to
+    # show up. Offset from :00 so it doesn't queue behind the hourly job
+    # above, and because two entries sharing a cron string can't be told
+    # apart by the case below.
+    - cron: "20 * * * *"
     # Weekly odds import, Monday 08:00 UTC.
     - cron: "0 8 * * 1"
     # Optional midweek top-up, Thursday 08:00 UTC (only for challenges that
@@ -55,7 +59,7 @@ jobs:
         run: |
           case "${MANUAL:-$SCHEDULE}" in
             "0 * * * *"|status-transitions)   path="/api/cron/status-transitions" ;;
-            "0 6 * * *"|results)              path="/api/cron/results" ;;
+            "20 * * * *"|results)             path="/api/cron/results" ;;
             "0 8 * * 1"|odds-import)          path="/api/cron/odds-import" ;;
             "0 8 * * 4"|odds-import-midweek)  path="/api/cron/odds-import?midweek=1" ;;
             "5 22 * * *"|snapshots)           path="/api/cron/snapshots" ;;

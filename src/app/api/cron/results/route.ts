@@ -1,4 +1,4 @@
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, gte, lte } from "drizzle-orm";
 import { NextResponse, type NextRequest } from "next/server";
 import { requireCronSecret } from "@/lib/cron-auth";
 import { db } from "@/lib/db";
@@ -6,16 +6,45 @@ import { getOddsApiProvider } from "@/lib/odds-provider";
 import { settleMarketFromScore } from "@/lib/settlement/execute";
 import { events } from "@drizzle/schema";
 
-/** Daily results fetch + auto-settlement (§5.3) for odds_api-sourced events. */
+/**
+ * How long after kick-off an event could plausibly be over. Nothing is asked
+ * of the API before this: a request during play costs the same two credits as
+ * one after the whistle and can never return a result.
+ *
+ * Set for football with extra time and a delay; the slowest sports settle a
+ * run or two later, which costs nothing but a few minutes.
+ */
+const SETTLE_AFTER_MINUTES = 130;
+
+/**
+ * And when to stop asking. The scores endpoint only looks three days back, so
+ * an event still unsettled after that is never going to resolve here —
+ * abandoned, postponed, or renamed upstream. Without this bound it would be
+ * re-queried on every single run, for ever.
+ */
+const GIVE_UP_AFTER_DAYS = 3;
+
+/**
+ * Hourly results fetch + auto-settlement (§5.3) for odds_api-sourced events.
+ *
+ * Costs two usage credits per sport per run, and only when something is
+ * actually inside the window above — with an empty queue this never reaches
+ * the network at all.
+ */
 export async function GET(request: NextRequest) {
   const authError = requireCronSecret(request);
   if (authError) return authError;
+
+  const now = Date.now();
+  const ripeBy = new Date(now - SETTLE_AFTER_MINUTES * 60_000);
+  const tooOld = new Date(now - GIVE_UP_AFTER_DAYS * 24 * 60 * 60_000);
 
   const pendingEvents = await db.query.events.findMany({
     where: and(
       eq(events.source, "odds_api"),
       eq(events.status, "upcoming"),
-      lte(events.startsAt, new Date())
+      lte(events.startsAt, ripeBy),
+      gte(events.startsAt, tooOld)
     ),
     with: { markets: true },
   });

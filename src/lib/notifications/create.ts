@@ -5,7 +5,8 @@ export type NotificationType =
   | "rank_update"
   | "mission_completed"
   | "new_follower"
-  | "feed_reply";
+  | "feed_reply"
+  | "bet_settled";
 
 export type NewNotificationInput = {
   userId: string;

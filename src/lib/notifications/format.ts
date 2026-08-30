@@ -46,6 +46,21 @@ export function formatNotification(notification: Notification): FormattedNotific
         body: payload.text ? String(payload.text) : null,
         href: "/app",
       };
+    case "bet_settled": {
+      // The one notification people actually wait for, so it leads with the
+      // money rather than with the word "bet".
+      const won = payload.won === 1 || payload.won === "1";
+      const profit = Number(payload.profit ?? 0);
+      const amount = Math.abs(profit).toLocaleString("nl-NL");
+      const odds = payload.odds ? Number(payload.odds).toFixed(2) : null;
+      const event = payload.eventName ? String(payload.eventName) : null;
+
+      return {
+        title: won ? `Binnen — +€${amount}` : `Verloren — €${amount}`,
+        body: [event, odds ? `@ ${odds}` : null].filter(Boolean).join(" · ") || null,
+        href: "/app/bets",
+      };
+    }
     default:
       return { title: notification.type, body: null, href: null };
   }

@@ -217,7 +217,8 @@ export async function settleProofBetSelf(betId: string, status: "won" | "lost" |
       payout: bet.potentialPayout,
       odds: bet.totalOdds,
     });
-    await runPostSettlementChecks(betId);
+    // No notification: the player just settled this bet themselves.
+    await runPostSettlementChecks(betId, { notifyPlayer: false });
   } else {
     await db
       .update(bets)
@@ -225,7 +226,8 @@ export async function settleProofBetSelf(betId: string, status: "won" | "lost" |
       .where(eq(bets.id, betId));
     await logActivity(bet.challengeId, bet.userId, "bet_lost", { betId, stake: bet.stake });
     await checkAndMarkBust(bet.challengeId, bet.userId);
-    await runPostSettlementChecks(betId);
+    // No notification: the player just settled this bet themselves.
+    await runPostSettlementChecks(betId, { notifyPlayer: false });
   }
 
   revalidatePath("/app/bets");
