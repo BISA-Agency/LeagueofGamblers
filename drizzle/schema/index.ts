@@ -7,6 +7,7 @@ export * from "./events";
 export * from "./markets";
 export * from "./outcomes";
 export * from "./odds-imports";
+export * from "./api-usage";
 export * from "./bets";
 export * from "./bet-selections";
 export * from "./bet-flags";

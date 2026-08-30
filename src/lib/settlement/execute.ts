@@ -184,11 +184,24 @@ export async function finalizeBetIfComplete(betId: string) {
     const recomputedOdds = activeSelections.reduce((acc, s) => acc * s.odds, 1);
     const payout = Math.round(bet.stake * recomputedOdds * 100) / 100;
 
-    await db.transaction(async (tx) => {
-      await tx
+    /**
+     * The status change is the lock, not the check at the top of this function.
+     *
+     * That check reads the bet outside this transaction, so two settlement
+     * runs — the hourly cron overlapping a manual one, or an admin settling
+     * while it fires — could both find it open and both credit the payout.
+     * Claiming the row with `status = 'open'` in the WHERE means exactly one
+     * of them gets a row back; the loser stops here, leaving the winner to log
+     * the activity and send the single notification.
+     */
+    const claimed = await db.transaction(async (tx) => {
+      const rows = await tx
         .update(bets)
         .set({ status: "won", totalOdds: recomputedOdds, potentialPayout: payout, settledAt: new Date() })
-        .where(eq(bets.id, betId));
+        .where(and(eq(bets.id, betId), eq(bets.status, "open")))
+        .returning({ id: bets.id });
+      if (rows.length === 0) return false;
+
       await tx
         .update(challengeParticipants)
         .set({ balance: sql`${challengeParticipants.balance} + ${payout}` })
@@ -198,7 +211,10 @@ export async function finalizeBetIfComplete(betId: string) {
             eq(challengeParticipants.userId, bet.userId)
           )
         );
+      return true;
     });
+    if (!claimed) return;
+
     await logActivity(bet.challengeId, bet.userId, "bet_won", {
       betId,
       payout,
@@ -236,7 +252,16 @@ export async function voidAndRefundBet(betId: string) {
   if (!bet) return;
 
   await db.transaction(async (tx) => {
-    await tx.update(bets).set({ status: "void", settledAt: new Date() }).where(eq(bets.id, betId));
+    // Claimed the same way a win is: the refund moves real balance, so two
+    // runs finding this bet open must not both hand the stake back. Every
+    // caller only voids an open bet, so nothing legitimate is turned away.
+    const claimed = await tx
+      .update(bets)
+      .set({ status: "void", settledAt: new Date() })
+      .where(and(eq(bets.id, betId), eq(bets.status, "open")))
+      .returning({ id: bets.id });
+    if (claimed.length === 0) return;
+
     await tx
       .update(challengeParticipants)
       .set({ balance: sql`${challengeParticipants.balance} + ${bet.stake}` })

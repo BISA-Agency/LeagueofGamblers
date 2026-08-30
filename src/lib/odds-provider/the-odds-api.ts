@@ -329,7 +329,10 @@ export class TheOddsApiProvider implements OddsProvider {
     };
   }
 
-  async getResults(sportKey: string, eventExternalIds: string[]): Promise<ProviderResult[]> {
+  async getResults(
+    sportKey: string,
+    eventExternalIds: string[]
+  ): Promise<{ results: ProviderResult[] } & UsageInfo> {
     const url = new URL(`${BASE_URL}/sports/${sportKey}/scores`);
     url.searchParams.set("apiKey", this.apiKey);
     url.searchParams.set("daysFrom", "3");
@@ -342,13 +345,19 @@ export class TheOddsApiProvider implements OddsProvider {
     const raw = (await res.json()) as RawScoreEvent[];
     const wanted = new Set(eventExternalIds);
 
-    return raw
-      .filter((e) => wanted.has(e.id))
-      .map((e) => ({
-        externalId: e.id,
-        completed: e.completed,
-        scores: e.scores?.map((s) => ({ name: s.name, score: Number(s.score) })),
-      }));
+    return {
+      results: raw
+        .filter((e) => wanted.has(e.id))
+        .map((e) => ({
+          externalId: e.id,
+          completed: e.completed,
+          scores: e.scores?.map((s) => ({ name: s.name, score: Number(s.score) })),
+        })),
+      // This runs hourly across every sport, so it is the biggest recurring
+      // cost of the three calls — and the only one that used to report nothing.
+      creditsUsed: parseIntHeader(res.headers.get("x-requests-last")),
+      creditsRemaining: parseIntHeader(res.headers.get("x-requests-remaining")),
+    };
   }
 }
 

@@ -1,4 +1,4 @@
-import { and, eq, lte, ne } from "drizzle-orm";
+import { and, eq, lte, ne, or } from "drizzle-orm";
 import type { Metadata } from "next";
 import { settleCustomMarket } from "@/actions/admin/custom-events";
 import { Button } from "@/components/ui/button";
@@ -23,13 +23,30 @@ export default async function SettlementQueuePage({
 }) {
   const { id } = await params;
 
+  /**
+   * How long after kick-off an imported fixture is treated as stuck.
+   *
+   * The results cron keeps polling for three days, so a result that simply
+   * arrives late still settles itself and never reaches this page. What lands
+   * here is the fixture that was abandoned, postponed, or renamed upstream —
+   * and until it is settled by hand its bets stay open, which blocks the
+   * challenge from being finished and paid out.
+   */
+  const OVERDUE_HOURS = 24;
+  const now = new Date();
+  const overdueBefore = new Date(now.getTime() - OVERDUE_HOURS * 3_600_000);
+
   const pendingEvents = await db.query.events.findMany({
     where: and(
       eq(events.challengeId, id),
-      eq(events.source, "admin"),
       ne(events.status, "finished"),
       ne(events.status, "void"),
-      lte(events.startsAt, new Date())
+      or(
+        // Admin events never settle themselves — they belong here from kick-off.
+        and(eq(events.source, "admin"), lte(events.startsAt, now)),
+        // Imported ones only once the automatic path has clearly given up.
+        and(eq(events.source, "odds_api"), lte(events.startsAt, overdueBefore))
+      )
     ),
     with: { markets: { with: { outcomes: true } } },
     orderBy: (e, { asc }) => asc(e.startsAt),
@@ -40,7 +57,8 @@ export default async function SettlementQueuePage({
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Settlement-queue</h1>
         <p className="text-sm text-muted-foreground">
-          Custom events die al begonnen zijn en nog een uitslag nodig hebben.
+          Custom events vanaf hun aftrap, plus geïmporteerde wedstrijden waar na 24 uur nog
+          geen uitslag voor binnen is. Zolang die openstaan kan de challenge niet afgerond worden.
         </p>
       </div>
 

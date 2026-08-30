@@ -11,6 +11,7 @@ import {
 } from "@drizzle/schema";
 import { getOddsApiProvider } from "./index";
 import { settleableMarkets } from "./settleable-markets";
+import { recordApiUsage } from "./usage";
 import { ADDITIONAL_MARKETS, FEATURED_MARKETS, type MarketType, type ProviderEventOdds } from "./types";
 
 /** A bit over a week, so the Monday import still covers next Monday's early
@@ -99,6 +100,7 @@ export async function createImportPreview(challengeId: string, ranBy: string | n
         return e.markets.some((m) => m.outcomes.length > 0);
       })
     );
+    await recordApiUsage("odds", result, sportKey);
     if (result.creditsUsed) creditsUsed += result.creditsUsed;
     if (result.creditsRemaining !== null) creditsRemaining = result.creditsRemaining;
   }
@@ -121,6 +123,7 @@ export async function createImportPreview(challengeId: string, ranBy: string | n
           forSport
         );
         entry.markets.push(...extra.markets.filter((m) => m.outcomes.length > 0));
+        await recordApiUsage("event_odds", extra, entry.event.sportKey);
         if (extra.creditsUsed) creditsUsed += extra.creditsUsed;
         if (extra.creditsRemaining !== null) creditsRemaining = extra.creditsRemaining;
       } catch (err) {

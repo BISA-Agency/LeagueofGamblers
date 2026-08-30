@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireCronSecret } from "@/lib/cron-auth";
 import { db } from "@/lib/db";
 import { getOddsApiProvider } from "@/lib/odds-provider";
+import { recordApiUsage } from "@/lib/odds-provider/usage";
 import { settleMarketFromScore } from "@/lib/settlement/execute";
 import { events } from "@drizzle/schema";
 
@@ -64,10 +65,24 @@ export async function GET(request: NextRequest) {
   const settled: string[] = [];
 
   for (const [sportKey, sportEvents] of bySport) {
-    const results = await provider.getResults(
-      sportKey,
-      sportEvents.map((e) => e.externalId).filter((id): id is string => !!id)
-    );
+    // One bad sport key or a transient 502 must not abort settlement for every
+    // other sport in the run — the same reasoning the import already applies
+    // to its per-event calls.
+    let results: Awaited<ReturnType<typeof provider.getResults>>["results"];
+    try {
+      const response = await provider.getResults(
+        sportKey,
+        sportEvents.map((e) => e.externalId).filter((id): id is string => !!id)
+      );
+      results = response.results;
+      await recordApiUsage("scores", response, sportKey);
+    } catch (err) {
+      console.error(
+        `[cron/results] uitslagen ophalen mislukt voor ${sportKey}:`,
+        err instanceof Error ? err.message : err
+      );
+      continue;
+    }
 
     for (const result of results) {
       if (!result.completed || !result.scores || result.scores.length < 2) continue;

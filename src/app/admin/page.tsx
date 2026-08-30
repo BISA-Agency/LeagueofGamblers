@@ -1,6 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ApiUsageCard } from "@/components/admin/api-usage-card";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/db";
 import { bets, betFlags, challenges, oddsImports, payments } from "@drizzle/schema";
@@ -63,11 +64,11 @@ export default async function AdminDashboardPage() {
         </Link>
       </div>
 
+      <ApiUsageCard />
+
       {lastImport && (
         <p className="text-sm text-muted-foreground">
           Laatste odds-import: {lastImport.eventsCount} events
-          {lastImport.creditsRemaining !== null &&
-            ` · ${lastImport.creditsRemaining} The Odds API-credits resterend`}
         </p>
       )}
     </div>

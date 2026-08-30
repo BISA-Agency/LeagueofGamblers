@@ -6,7 +6,6 @@ import type {
   OddsProvider,
   ProviderEvent,
   ProviderEventOdds,
-  ProviderResult,
   ProviderSport,
   UsageInfo,
 } from "./types";
@@ -92,13 +91,18 @@ export class ManualProvider implements OddsProvider {
     return { markets: [], creditsUsed: null, creditsRemaining: null };
   }
 
-  async getResults(_sportKey: string, eventExternalIds: string[]): Promise<ProviderResult[]> {
+  async getResults(_sportKey: string, eventExternalIds: string[]) {
     const rows = await db.query.events.findMany({
       where: and(eq(events.source, "admin"), inArray(events.id, eventExternalIds)),
     });
-    return rows.map((e) => ({
-      externalId: e.id,
-      completed: e.status === "finished" || e.status === "void",
-    }));
+    return {
+      results: rows.map((e) => ({
+        externalId: e.id,
+        completed: e.status === "finished" || e.status === "void",
+      })),
+      // Admin events are read from our own database — nothing is metered.
+      creditsUsed: null,
+      creditsRemaining: null,
+    };
   }
 }

@@ -102,5 +102,8 @@ export interface OddsProvider {
     eventExternalId: string,
     markets: MarketType[]
   ): Promise<{ markets: ProviderMarket[] } & UsageInfo>;
-  getResults(sportKey: string, eventExternalIds: string[]): Promise<ProviderResult[]>;
+  getResults(
+    sportKey: string,
+    eventExternalIds: string[]
+  ): Promise<{ results: ProviderResult[] } & UsageInfo>;
 }
