@@ -28,7 +28,7 @@ export default async function SportsbookLayout({ children }: { children: React.R
    * from, and placeSportsbookBet refuses it server-side regardless.
    */
   return (
-    <BetSlipProvider>
+    <BetSlipProvider canBet={participation !== null}>
       <div className="flex">
         <div className="min-w-0 flex-1">{children}</div>
         {participation && (

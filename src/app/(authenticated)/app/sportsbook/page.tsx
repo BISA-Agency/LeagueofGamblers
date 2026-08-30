@@ -36,17 +36,13 @@ export default async function SportsbookPage({
     );
   }
 
-  if (participation.status !== "active") {
-    return (
-      <div className="mx-auto max-w-md px-4 py-24 text-center">
-        <h1 className="text-lg font-semibold">Sportsbook</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {participation.challenge.name} is nog niet live — het sportsbook opent zodra de
-          challenge start.
-        </p>
-      </div>
-    );
-  }
+  /**
+   * Before kick-off the sportsbook is readable but not playable. It used to be
+   * a closed door, which meant the weeks of build-up to a challenge had nothing
+   * to look at — the odds are half the anticipation. Staking is blocked in the
+   * bet slip and refused server-side either way.
+   */
+  const open = participation.status === "active";
 
   const { c: categoryKey } = await searchParams;
 
@@ -97,6 +93,14 @@ export default async function SportsbookPage({
           )}
         </Link>
       </div>
+
+      {!open && (
+        <p className="mb-4 rounded-lg border border-border bg-secondary/30 px-3.5 py-2.5 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Kijken mag, wedden nog niet.</span>{" "}
+          {participation.challenge.name} is nog niet begonnen — zodra de challenge start, kun je
+          hier inzetten.
+        </p>
+      )}
 
       {upcomingEvents.length === 0 ? (
         <p className="text-sm text-muted-foreground">

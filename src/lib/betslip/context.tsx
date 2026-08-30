@@ -20,11 +20,23 @@ type BetSlipContextValue = {
   removeSelection: (outcomeId: string) => void;
   clear: () => void;
   isSelected: (outcomeId: string) => boolean;
+  /**
+   * Whether this viewer can actually stake anything right now. False while a
+   * challenge is still counting down, so the sportsbook can be browsed before
+   * it opens without the prices pretending to be tappable.
+   */
+  canBet: boolean;
 };
 
 const BetSlipContext = createContext<BetSlipContextValue | null>(null);
 
-export function BetSlipProvider({ children }: { children: React.ReactNode }) {
+export function BetSlipProvider({
+  canBet,
+  children,
+}: {
+  canBet: boolean;
+  children: React.ReactNode;
+}) {
   const [selections, setSelections] = useState<BetSlipSelection[]>([]);
 
   const addSelection = useCallback((selection: BetSlipSelection) => {
@@ -52,8 +64,8 @@ export function BetSlipProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ selections, addSelection, removeSelection, clear, isSelected }),
-    [selections, addSelection, removeSelection, clear, isSelected]
+    () => ({ selections, addSelection, removeSelection, clear, isSelected, canBet }),
+    [selections, addSelection, removeSelection, clear, isSelected, canBet]
   );
 
   return <BetSlipContext.Provider value={value}>{children}</BetSlipContext.Provider>;

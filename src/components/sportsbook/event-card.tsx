@@ -2,19 +2,12 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { formatEventDayTime } from "@/lib/format-event-time";
 import { orderOutcomes } from "@/lib/sportsbook/outcome-order";
+import { pickPrimaryMarket } from "@/lib/sportsbook/primary-market";
 import type { Event, Market, Outcome } from "@drizzle/schema";
 import { OutcomeButton } from "./outcome-button";
 import { TeamBadge } from "./team-badge";
 
 export type EventWithOdds = Event & { markets: (Market & { outcomes: Outcome[] })[] };
-
-const MARKET_PRIORITY = ["h2h", "totals", "spreads", "custom"];
-
-function primaryMarket(markets: EventWithOdds["markets"]) {
-  return [...markets].sort(
-    (a, b) => MARKET_PRIORITY.indexOf(a.type) - MARKET_PRIORITY.indexOf(b.type)
-  )[0];
-}
 
 /**
  * 1 / X / 2 on the card, because the teams are already named directly above
@@ -32,7 +25,7 @@ function shortLabel(
 }
 
 export function EventCard({ event }: { event: EventWithOdds }) {
-  const market = primaryMarket(event.markets);
+  const market = pickPrimaryMarket(event.markets);
   const extraMarkets = event.markets.length - (market ? 1 : 0);
   const { day, time } = formatEventDayTime(event.startsAt);
   const hasTeams = Boolean(event.homeTeam && event.awayTeam);

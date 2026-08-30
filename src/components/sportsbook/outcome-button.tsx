@@ -31,12 +31,16 @@ export function OutcomeButton({
   /** Label above the price instead of beside it, for labels too long to sit on one line. */
   stacked?: boolean;
 }) {
-  const { addSelection, isSelected } = useBetSlip();
+  const { addSelection, isSelected, canBet } = useBetSlip();
   const selected = isSelected(outcomeId);
 
   return (
     <button
       type="button"
+      // Before a challenge opens the prices are worth looking at but nothing
+      // can be staked on them, so the button says so by not responding rather
+      // than by filling a slip that has nowhere to go.
+      disabled={!canBet}
       onClick={() => {
         addSelection({
           outcomeId,
@@ -63,7 +67,9 @@ export function OutcomeButton({
           : "items-center justify-between gap-2",
         selected
           ? "border-accent-brand bg-accent-brand/10"
-          : "border-border bg-secondary/40 hover:border-foreground/25 hover:bg-secondary/70"
+          : "border-border bg-secondary/40",
+        canBet && !selected && "hover:border-foreground/25 hover:bg-secondary/70",
+        !canBet && "cursor-default opacity-70"
       )}
     >
       <span
