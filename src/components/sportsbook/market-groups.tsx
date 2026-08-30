@@ -46,6 +46,7 @@ export function MarketGroups({
   competition,
   homeTeam,
   awayTeam,
+  bettable = true,
 }: {
   markets: MarketWithOutcomes[];
   eventId: string;
@@ -55,6 +56,8 @@ export function MarketGroups({
   competition?: string | null;
   homeTeam?: string | null;
   awayTeam?: string | null;
+  /** False once the match has kicked off — prices stay readable, not tappable. */
+  bettable?: boolean;
 }) {
   const groups = GROUP_ORDER.map((group) => ({
     ...group,
@@ -116,6 +119,7 @@ export function MarketGroups({
                           competition={competition}
                           marketLabel={market.label}
                           stacked={stacked}
+                          bettable={bettable}
                         />
                       ))}
                     </div>

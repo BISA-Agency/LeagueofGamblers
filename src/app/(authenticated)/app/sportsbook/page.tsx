@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, gt } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ReceiptText } from "lucide-react";
@@ -46,8 +46,21 @@ export default async function SportsbookPage({
 
   const { c: categoryKey } = await searchParams;
 
+  /**
+   * Kick-off, not status, is what closes a fixture for betting.
+   *
+   * An event stays "upcoming" until its result lands, which is a couple of
+   * hours after the whistle — so filtering on status alone left matches that
+   * were already being played sitting in the list at full price. Nothing could
+   * come of tapping one: placeSportsbookBet refuses a started event. It was
+   * simply a dead end wearing a price tag.
+   */
   const upcomingEvents = await db.query.events.findMany({
-    where: and(eq(events.challengeId, participation.challengeId), eq(events.status, "upcoming")),
+    where: and(
+      eq(events.challengeId, participation.challengeId),
+      eq(events.status, "upcoming"),
+      gt(events.startsAt, new Date())
+    ),
     orderBy: asc(events.startsAt),
     // A suspended market must not be offered — placing on it fails server-side
     // anyway, so showing a clickable price would only produce a dead end.

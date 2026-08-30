@@ -15,6 +15,7 @@ export function OutcomeButton({
   competition,
   marketLabel,
   stacked = false,
+  bettable = true,
 }: {
   outcomeId: string;
   /** What the bet slip and settlement see — always the real outcome label. */
@@ -30,9 +31,14 @@ export function OutcomeButton({
   marketLabel: string;
   /** Label above the price instead of beside it, for labels too long to sit on one line. */
   stacked?: boolean;
+  /** False once this particular fixture has kicked off. */
+  bettable?: boolean;
 }) {
   const { addSelection, isSelected, canBet } = useBetSlip();
   const selected = isSelected(outcomeId);
+  // Two different reasons a price can be look-but-don't-touch: the challenge
+  // hasn't opened, or this match has already started.
+  const live = canBet && bettable;
 
   return (
     <button
@@ -40,7 +46,7 @@ export function OutcomeButton({
       // Before a challenge opens the prices are worth looking at but nothing
       // can be staked on them, so the button says so by not responding rather
       // than by filling a slip that has nowhere to go.
-      disabled={!canBet}
+      disabled={!live}
       onClick={() => {
         addSelection({
           outcomeId,
@@ -68,8 +74,8 @@ export function OutcomeButton({
         selected
           ? "border-accent-brand bg-accent-brand/10"
           : "border-border bg-secondary/40",
-        canBet && !selected && "hover:border-foreground/25 hover:bg-secondary/70",
-        !canBet && "cursor-default opacity-70"
+        live && !selected && "hover:border-foreground/25 hover:bg-secondary/70",
+        !live && "cursor-default opacity-70"
       )}
     >
       <span

@@ -71,6 +71,13 @@ export default async function EventDetailPage({
         <h1 className="mb-6 text-lg font-semibold">{event.name}</h1>
       )}
 
+      {event.startsAt <= new Date() && (
+        <p className="mb-4 rounded-lg border border-border bg-secondary/30 px-3.5 py-2.5 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Deze wedstrijd is al begonnen.</span>{" "}
+          Inzetten kan niet meer — de uitslag wordt automatisch verwerkt zodra hij bekend is.
+        </p>
+      )}
+
       {event.markets.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nog geen markten voor deze wedstrijd.</p>
       ) : (
@@ -83,6 +90,7 @@ export default async function EventDetailPage({
           competition={event.competition}
           homeTeam={event.homeTeam}
           awayTeam={event.awayTeam}
+          bettable={event.startsAt > new Date()}
         />
       )}
     </div>
