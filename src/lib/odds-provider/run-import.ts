@@ -61,7 +61,20 @@ export async function createImportPreview(challengeId: string, ranBy: string | n
   // dead weight in the list, and far-future fixtures get re-imported with
   // fresher odds next week anyway.
   const now = Date.now();
-  const horizon = now + IMPORT_HORIZON_DAYS * 86_400_000;
+  /**
+   * Never past the challenge's own finish line.
+   *
+   * The eight-day window runs on regardless of when the month ends, so the
+   * last import of September would have offered fixtures in October. A bet on
+   * one of those is still open when the challenge closes, and finishChallenge
+   * refuses to pay out while anything is unsettled — so the prize money would
+   * have waited on a match played days after the standings were supposed to
+   * be final, with the ranking still able to move.
+   */
+  const horizon = Math.min(
+    now + IMPORT_HORIZON_DAYS * 86_400_000,
+    challenge.endAt.getTime()
+  );
 
   for (const sportKey of challenge.sportKeys) {
     // A challenge picks its markets once, for every sport it runs. Tennis

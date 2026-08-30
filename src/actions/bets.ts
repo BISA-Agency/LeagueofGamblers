@@ -6,7 +6,15 @@ import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/activity/log";
 import { db } from "@/lib/db";
 import { RateLimitError, assertBetRateLimit } from "@/lib/rate-limit";
-import { bets, betSelections, challengeParticipants, events, markets, outcomes } from "@drizzle/schema";
+import {
+  bets,
+  betSelections,
+  challengeParticipants,
+  challenges,
+  events,
+  markets,
+  outcomes,
+} from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
 export type PlaceBetState = { error?: string; success?: boolean };
@@ -56,11 +64,25 @@ export async function placeSportsbookBet(
     return { error: "Eén of meer selecties bestaan niet meer." };
   }
 
+  // The importer already stops offering fixtures past the finish line; this is
+  // the guarantee behind it, because a bet that settles after the challenge
+  // closes would hold up the payout and could still move the final ranking.
+  const challenge = await db.query.challenges.findFirst({
+    where: eq(challenges.id, challengeId),
+    columns: { endAt: true },
+  });
+  if (!challenge) return { error: "Challenge niet gevonden." };
+
   const now = new Date();
   const seenEventIds = new Set<string>();
   for (const row of rows) {
     if (row.eventStartsAt <= now || row.eventStatus !== "upcoming") {
       return { error: `${row.eventName} is al begonnen — deze selectie kan niet meer.` };
+    }
+    if (row.eventStartsAt >= challenge.endAt) {
+      return {
+        error: `${row.eventName} begint pas na afloop van deze challenge.`,
+      };
     }
     if (row.marketStatus !== "open") {
       return { error: `De markt voor ${row.eventName} is geschorst of gesloten.` };
