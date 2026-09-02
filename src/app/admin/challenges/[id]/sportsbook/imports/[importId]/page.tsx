@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/db";
 import type { ProviderEventOdds } from "@/lib/odds-provider";
+import { revivePayload } from "@/lib/odds-provider/run-import";
 import { oddsImports } from "@drizzle/schema";
 
 export const metadata: Metadata = { title: "Import-preview" };
@@ -27,11 +28,16 @@ export default async function ImportPreviewPage({
   const importRow = await db.query.oddsImports.findFirst({ where: eq(oddsImports.id, importId) });
   if (!importRow || importRow.challengeId !== id) notFound();
 
-  const payload = importRow.diff as {
-    events: ProviderEventOdds[];
-    newExternalIds: string[];
-    removedExternalIds: string[];
-  };
+  // Straight out of jsonb every date is a string, and formatting one throws
+  // "Invalid time value" — so revive before rendering, the same way publishing
+  // does before writing.
+  const payload = revivePayload(
+    importRow.diff as {
+      events: ProviderEventOdds[];
+      newExternalIds: string[];
+      removedExternalIds: string[];
+    }
+  );
 
   return (
     <div className="space-y-6">

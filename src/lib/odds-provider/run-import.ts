@@ -169,11 +169,16 @@ export async function createImportPreview(challengeId: string, ranBy: string | n
 
 /**
  * The preview is parked in a jsonb column, so every Date in it comes back as
- * an ISO string. Drizzle's timestamp columns expect real Dates and throw
- * ("value.toISOString is not a function") otherwise, so revive them on the
- * way out.
+ * an ISO string. Anything reading that payload has to put the Dates back
+ * before using them, and both ways of getting it wrong have now been seen:
+ * Drizzle's timestamp columns throw "value.toISOString is not a function",
+ * and Intl.DateTimeFormat throws "Invalid time value" — which took the whole
+ * import-preview page down with a server error, on every import.
+ *
+ * Exported for that reason: one place to revive, so a second reader cannot
+ * quietly skip it again.
  */
-function revivePayload(payload: ImportPayload): ImportPayload {
+export function revivePayload(payload: ImportPayload): ImportPayload {
   return {
     ...payload,
     events: payload.events.map((entry) => ({
