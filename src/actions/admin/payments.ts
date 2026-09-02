@@ -54,6 +54,23 @@ export async function approveCryptoBuyIn(paymentId: string) {
   if (!payment) throw new Error("Betaling niet gevonden.");
   if (payment.status !== "pending") throw new Error("Deze betaling is al afgehandeld.");
 
+  /**
+   * A buy-in approved after the challenge already went live has to seed the
+   * balance here, because nothing else ever will.
+   *
+   * open->live runs once per challenge and hands a starting balance to
+   * everyone who had paid by then (see challenges/lifecycle.ts). Approve a
+   * payment an hour later and the player was left marked paid, still "joined",
+   * on a balance of zero — unable to bet and stuck at the bottom of the table
+   * for the rest of the month, with no error anywhere to say so. That is not a
+   * corner case: it only takes an admin approving the morning after.
+   */
+  const challenge = await db.query.challenges.findFirst({
+    where: eq(challenges.id, payment.challengeId),
+    columns: { status: true, startingBalance: true },
+  });
+  const alreadyRunning = challenge?.status === "live" || challenge?.status === "settling";
+
   await db.transaction(async (tx) => {
     await tx
       .update(payments)
@@ -68,6 +85,21 @@ export async function approveCryptoBuyIn(paymentId: string) {
           eq(challengeParticipants.userId, payment.userId)
         )
       );
+
+    if (alreadyRunning && challenge) {
+      // Scoped to a participant still sitting at "joined": someone already
+      // playing must never have their balance reset by a second approval.
+      await tx
+        .update(challengeParticipants)
+        .set({ status: "active", balance: challenge.startingBalance })
+        .where(
+          and(
+            eq(challengeParticipants.challengeId, payment.challengeId),
+            eq(challengeParticipants.userId, payment.userId),
+            eq(challengeParticipants.status, "joined")
+          )
+        );
+    }
   });
 
   await evaluateReferralMissions(payment.userId);
