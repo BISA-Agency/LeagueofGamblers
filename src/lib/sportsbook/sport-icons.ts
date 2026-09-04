@@ -4,9 +4,9 @@
  * public/sports/ by `npm run sport-icons` and committed — Tabler is a
  * devDependency, the files are the artifact, same arrangement as the flags.
  *
- * Two deliberate collisions: Tabler has no boxing glove, so boxing borrows the
- * karate figure; and it has no rugby ball, so rugby and Aussie rules borrow
- * the (equally oval) American football.
+ * Two deliberate collisions: Tabler has no boxing glove, so boxing and
+ * kickboxing borrow the karate figure; and it has no rugby ball, so rugby and
+ * Aussie rules borrow the (equally oval) American football.
  */
 export const SPORT_ICONS: Record<string, string> = {
   Voetbal: "ball-football",
@@ -15,6 +15,7 @@ export const SPORT_ICONS: Record<string, string> = {
   "American football": "ball-american-football",
   MMA: "karate",
   Boksen: "karate",
+  Kickboksen: "karate",
   IJshockey: "ice-skating",
   Honkbal: "ball-baseball",
   Golf: "golf",

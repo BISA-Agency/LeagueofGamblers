@@ -71,19 +71,25 @@ export function MarketGroups({
   return (
     <div className="space-y-6">
       {groups.map((group) => {
-        // One sub-heading per team when a group is split by team.
-        const byTeam = new Map<string, MarketWithOutcomes[]>();
+        /**
+         * One sub-heading per team when a group is split by team — except for
+         * a hand-made market, which heads itself. "Overig" throws away the one
+         * name we were actually given: the admin typed "Winnaar", the bet slip
+         * shows "Winnaar", and only this page called it something else.
+         */
+        const isCustom = group.type === "custom";
+        const subgroups = new Map<string, MarketWithOutcomes[]>();
         for (const m of group.items) {
-          const key = m.team ?? "";
-          byTeam.set(key, [...(byTeam.get(key) ?? []), m]);
+          const key = isCustom ? m.label : (m.team ?? "");
+          subgroups.set(key, [...(subgroups.get(key) ?? []), m]);
         }
 
         return (
           <section key={group.type} className="space-y-2">
-            {[...byTeam.entries()].map(([team, items]) => (
-              <div key={team || group.type} className="space-y-1.5">
+            {[...subgroups.entries()].map(([key, items]) => (
+              <div key={key || group.type} className="space-y-1.5">
                 <h2 className="text-sm font-medium">
-                  {team ? `${group.title} · ${team}` : group.title}
+                  {!key ? group.title : isCustom ? key : `${group.title} · ${key}`}
                 </h2>
                 {/* Correct score gets its own picker: two rows of goal
                     tallies instead of forty-odd buttons. Needs both team

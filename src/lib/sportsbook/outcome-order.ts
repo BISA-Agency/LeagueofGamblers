@@ -60,6 +60,10 @@ function rankerFor(
 
     case "spreads":
     case "draw_no_bet":
+    // A hand-made two-way market — a fight, say — is named after its sides
+    // like any other, and nothing guarantees the rows come back in the order
+    // they went in. A label that is neither simply keeps its place.
+    case "custom":
       return (label) => [home, away].indexOf(label);
 
     case "totals":
