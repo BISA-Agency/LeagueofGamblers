@@ -20,12 +20,23 @@ function dayKeyDiff(date: Date, now: Date): number {
   return Math.round(diffMs / 86_400_000);
 }
 
-/** Same labels, split so a card can stack the day over the time. */
-export function formatEventDayTime(date: Date, now = new Date()): { day: string; time: string } {
+/** Kick-off close enough that a card marks it in the brand colour. */
+const IMMINENT_MS = 2 * 3_600_000;
+
+/**
+ * Same labels, split so a card can stack the day over the time — plus whether
+ * the match is nearly on, which belongs here rather than in the component:
+ * reading the clock during render is exactly what the purity rule forbids.
+ */
+export function formatEventDayTime(
+  date: Date,
+  now = new Date()
+): { day: string; time: string; imminent: boolean } {
   const time = timeFormatter.format(date);
   const dayDiff = dayKeyDiff(date, now);
+  const imminent = date.getTime() - now.getTime() <= IMMINENT_MS;
 
-  if (dayDiff === 0) return { day: "Vandaag", time };
-  if (dayDiff === 1) return { day: "Morgen", time };
-  return { day: weekdayFormatter.format(date), time };
+  if (dayDiff === 0) return { day: "Vandaag", time, imminent };
+  if (dayDiff === 1) return { day: "Morgen", time, imminent };
+  return { day: weekdayFormatter.format(date), time, imminent };
 }

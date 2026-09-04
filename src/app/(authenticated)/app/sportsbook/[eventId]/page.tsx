@@ -1,12 +1,14 @@
 import { eq } from "drizzle-orm";
-import { ArrowLeft, Trophy } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { MarketGroups } from "@/components/sportsbook/market-groups";
+import { CompetitionCrest } from "@/components/sportsbook/sportsbook-nav";
 import { TeamBadge } from "@/components/sportsbook/team-badge";
 import { db } from "@/lib/db";
 import { formatEventTime } from "@/lib/format-event-time";
+import { competitionMeta } from "@/lib/sportsbook/competitions";
 import { events, markets } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
@@ -41,6 +43,8 @@ export default async function EventDetailPage({
     if (!participation) notFound();
   }
 
+  const competition = competitionMeta(event.sportKey, event.competition, event.sportLabel);
+
   return (
     <div className="px-4 py-6">
       <Link
@@ -50,9 +54,10 @@ export default async function EventDetailPage({
         <ArrowLeft className="size-4" /> Sportsbook
       </Link>
 
-      <div className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Trophy className="size-3.5" />
-        <span>{event.competition ?? event.sportLabel}</span>
+      <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+        <CompetitionCrest league={competition} />
+        <span className="font-medium text-foreground">{competition.name}</span>
+        <span>{event.sportLabel}</span>
         <span className="tabular-nums">· {formatEventTime(event.startsAt)}</span>
       </div>
 

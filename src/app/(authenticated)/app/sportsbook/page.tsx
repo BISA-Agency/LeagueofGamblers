@@ -2,10 +2,10 @@ import { and, asc, eq, gt } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ReceiptText } from "lucide-react";
-import { CategoryRail } from "@/components/sportsbook/category-rail";
 import { EventList } from "@/components/sportsbook/event-list";
+import { SportsbookNav } from "@/components/sportsbook/sportsbook-nav";
 import { getActiveParticipation } from "@/lib/challenges/active";
-import { buildCategories, filterEvents } from "@/lib/sportsbook/categories";
+import { buildNav, filterEvents, filterHref, resolveFilter } from "@/lib/sportsbook/categories";
 import { db } from "@/lib/db";
 import { bets, events, markets } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Sportsbook" };
 export default async function SportsbookPage({
   searchParams,
 }: {
-  searchParams: Promise<{ c?: string }>;
+  searchParams: Promise<{ s?: string; l?: string; soon?: string }>;
 }) {
   const supabase = await createClient();
   const {
@@ -44,8 +44,6 @@ export default async function SportsbookPage({
    */
   const open = participation.status === "active";
 
-  const { c: categoryKey } = await searchParams;
-
   /**
    * Kick-off, not status, is what closes a fixture for betting.
    *
@@ -71,9 +69,9 @@ export default async function SportsbookPage({
 
   // Filtering happens in memory: a challenge's fixture list is a page or two
   // at most, and this keeps the rail's counts and the list from disagreeing.
-  const categories = buildCategories(upcomingEvents);
-  const active = categories.some((cat) => cat.key === categoryKey) ? categoryKey! : "alles";
-  const visible = filterEvents(upcomingEvents, active);
+  const filter = resolveFilter(upcomingEvents, await searchParams);
+  const { sports, leagues, soonCount } = buildNav(upcomingEvents, filter);
+  const visible = filterEvents(upcomingEvents, filter);
 
   const openBets = await db.$count(
     bets,
@@ -95,7 +93,7 @@ export default async function SportsbookPage({
             only place in the sportsbook that says a bet is still running. */}
         <Link
           href="/app/bets"
-          className="flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs transition-colors hover:bg-secondary/60"
+          className="flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-xs font-medium transition-colors hover:border-foreground/25 hover:bg-secondary/60"
         >
           <ReceiptText className="size-3.5 text-muted-foreground" />
           Mijn bets
@@ -108,7 +106,7 @@ export default async function SportsbookPage({
       </div>
 
       {!open && (
-        <p className="mb-4 rounded-lg border border-border bg-secondary/30 px-3.5 py-2.5 text-xs text-muted-foreground">
+        <p className="mb-4 rounded-lg border border-accent-brand/30 bg-accent-brand/5 px-3.5 py-2.5 text-xs text-muted-foreground">
           <span className="font-medium text-foreground">Kijken mag, wedden nog niet.</span>{" "}
           {participation.challenge.name} is nog niet begonnen — zodra de challenge start, kun je
           hier inzetten.
@@ -120,14 +118,31 @@ export default async function SportsbookPage({
           Nog geen wedstrijden geïmporteerd voor deze challenge.
         </p>
       ) : (
-        <div className="space-y-5">
-          <CategoryRail categories={categories} active={active} />
-          {visible.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Geen wedstrijden in deze categorie.</p>
-          ) : (
-            <EventList events={visible} />
-          )}
-        </div>
+        <>
+          <SportsbookNav
+            sports={sports}
+            leagues={leagues}
+            filter={filter}
+            soonCount={soonCount}
+          />
+          <div className="pt-5">
+            {visible.length === 0 ? (
+              <div className="rounded-xl border border-border bg-card/50 px-4 py-10 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Geen wedstrijden binnen deze filters.
+                </p>
+                <Link
+                  href={filterHref({})}
+                  className="mt-2 inline-block text-xs font-medium text-accent-brand hover:underline"
+                >
+                  Toon alles
+                </Link>
+              </div>
+            ) : (
+              <EventList events={visible} />
+            )}
+          </div>
+        </>
       )}
     </div>
   );

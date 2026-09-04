@@ -1,17 +1,45 @@
 import type { Event } from "@drizzle/schema";
+import { competitionMeta } from "./competitions";
 
-export type Category = {
-  /** URL-safe value for ?c= */
+/**
+ * The sportsbook filter used to be one flat rail: every sport, then every
+ * competition, in a single row of identical discs. With four sports and
+ * twenty-one leagues on offer that is twenty-five circles to scroll past, and
+ * "Voetbal" sits next to "Serie B" as if they were the same kind of choice.
+ *
+ * They are not. Picking a sport narrows the board; picking a league narrows it
+ * again. So the rail is two rows now — sports on top, the leagues *inside*
+ * that sport underneath — and "binnenkort" stops being a category at all: it
+ * is a time filter that combines with either.
+ */
+
+export type SportTab = {
+  /** URL value for ?s= */
   key: string;
   label: string;
-  /** Only "alles" and "binnenkort" get an icon; the rest use a colour disc. */
-  kind: "all" | "soon" | "sport" | "competition";
   count: number;
 };
 
+export type LeagueChip = {
+  /** URL value for ?l= — the provider sport key, unique per league. */
+  key: string;
+  name: string;
+  /** Lowercase ISO country code when we ship a flag for it. */
+  country: string | null;
+  count: number;
+};
+
+export type SportsbookFilter = {
+  sport: string;
+  league: string | null;
+  soon: boolean;
+};
+
+export const ALL_SPORTS = "alles";
+
 const SOON_HOURS = 24;
 
-function slug(value: string): string {
+export function slug(value: string): string {
   return value
     .toLowerCase()
     .normalize("NFD")
@@ -20,7 +48,7 @@ function slug(value: string): string {
     .replace(/^-|-$/g, "");
 }
 
-type Filterable = Pick<Event, "startsAt" | "sportLabel" | "competition">;
+type Filterable = Pick<Event, "startsAt" | "sportKey" | "sportLabel" | "competition">;
 
 function isSoon(event: Filterable, now: Date): boolean {
   const diff = event.startsAt.getTime() - now.getTime();
@@ -28,55 +56,120 @@ function isSoon(event: Filterable, now: Date): boolean {
 }
 
 /**
- * The rail is built from the events actually on offer, so it can never point
- * at an empty page — and it grows by itself when a new sport is imported.
+ * Reads the query string into a filter that can never point at an empty page:
+ * an unknown sport or a league that isn't on offer falls back to everything.
  */
-export function buildCategories(events: Filterable[], now = new Date()): Category[] {
-  const sports = new Map<string, number>();
-  const competitions = new Map<string, number>();
-  let soon = 0;
+export function resolveFilter(
+  events: Filterable[],
+  params: { s?: string; l?: string; soon?: string }
+): SportsbookFilter {
+  const soon = params.soon === "1";
 
-  for (const event of events) {
-    if (isSoon(event, now)) soon++;
-    sports.set(event.sportLabel, (sports.get(event.sportLabel) ?? 0) + 1);
-    if (event.competition) {
-      competitions.set(event.competition, (competitions.get(event.competition) ?? 0) + 1);
-    }
-  }
+  const league =
+    params.l && events.some((e) => e.sportKey === params.l) ? params.l : null;
 
-  const byCountDesc = (a: [string, number], b: [string, number]) => b[1] - a[1];
+  // A league implies its sport, so a shared link only ever needs ?l=.
+  const impliedSport = league
+    ? events.find((e) => e.sportKey === league)?.sportLabel
+    : undefined;
 
-  return [
-    { key: "alles", label: "Alles", kind: "all" as const, count: events.length },
-    ...(soon > 0
-      ? [{ key: "binnenkort", label: "Binnenkort", kind: "soon" as const, count: soon }]
-      : []),
-    ...[...sports.entries()].sort(byCountDesc).map(([label, count]) => ({
-      key: `s-${slug(label)}`,
-      label,
-      kind: "sport" as const,
-      count,
-    })),
-    ...[...competitions.entries()].sort(byCountDesc).map(([label, count]) => ({
-      key: `c-${slug(label)}`,
-      label,
-      kind: "competition" as const,
-      count,
-    })),
-  ];
+  const sport = impliedSport
+    ? slug(impliedSport)
+    : params.s && events.some((e) => slug(e.sportLabel) === params.s)
+      ? params.s
+      : ALL_SPORTS;
+
+  return { sport, league, soon };
 }
 
-/** Applies the ?c= value. An unknown key falls back to showing everything. */
+/**
+ * Both rows of the rail. Counts always reflect the *other* filters, so the
+ * number on a chip is the number of cards you get by tapping it — a league
+ * count shrinks when "binnen 24 uur" is on, and never reads as a promise the
+ * list can't keep.
+ */
+export function buildNav(
+  events: Filterable[],
+  filter: SportsbookFilter,
+  now = new Date()
+): { sports: SportTab[]; leagues: LeagueChip[]; soonCount: number } {
+  const inWindow = filter.soon ? events.filter((e) => isSoon(e, now)) : events;
+
+  const sportCounts = new Map<string, { label: string; count: number }>();
+  for (const event of inWindow) {
+    const key = slug(event.sportLabel);
+    const entry = sportCounts.get(key) ?? { label: event.sportLabel, count: 0 };
+    entry.count += 1;
+    sportCounts.set(key, entry);
+  }
+
+  const sports: SportTab[] = [
+    { key: ALL_SPORTS, label: "Alles", count: inWindow.length },
+    ...[...sportCounts.entries()]
+      .map(([key, { label, count }]) => ({ key, label, count }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "nl")),
+  ];
+
+  // Only the leagues inside the chosen sport — that is the whole point of the
+  // second row. With "Alles" active it lists them all, biggest first.
+  const forLeagues =
+    filter.sport === ALL_SPORTS
+      ? inWindow
+      : inWindow.filter((e) => slug(e.sportLabel) === filter.sport);
+
+  const leagueCounts = new Map<string, LeagueChip & { sportLabel: string }>();
+  for (const event of forLeagues) {
+    const existing = leagueCounts.get(event.sportKey);
+    if (existing) {
+      existing.count += 1;
+      continue;
+    }
+    const meta = competitionMeta(event.sportKey, event.competition, event.sportLabel);
+    leagueCounts.set(event.sportKey, {
+      key: event.sportKey,
+      name: meta.name,
+      country: meta.country,
+      sportLabel: event.sportLabel,
+      count: 1,
+    });
+  }
+
+  // A sport that is its own only competition — boxing, MMA — would otherwise
+  // appear twice in a row: once as a sport, once as a league with the same
+  // name and the same count. The sport tab already filters it.
+  const leaguesPerSport = new Map<string, number>();
+  for (const league of leagueCounts.values()) {
+    leaguesPerSport.set(league.sportLabel, (leaguesPerSport.get(league.sportLabel) ?? 0) + 1);
+  }
+
+  const leagues = [...leagueCounts.values()]
+    .filter((l) => !(l.name === l.sportLabel && leaguesPerSport.get(l.sportLabel) === 1))
+    .map(({ sportLabel: _sportLabel, ...chip }) => chip)
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "nl"));
+
+  return { sports, leagues, soonCount: events.filter((e) => isSoon(e, now)).length };
+}
+
+/** Applies the resolved filter to the fixture list. */
 export function filterEvents<T extends Filterable>(
   events: T[],
-  key: string | undefined,
+  filter: SportsbookFilter,
   now = new Date()
 ): T[] {
-  if (!key || key === "alles") return events;
-  if (key === "binnenkort") return events.filter((e) => isSoon(e, now));
-  if (key.startsWith("s-")) return events.filter((e) => `s-${slug(e.sportLabel)}` === key);
-  if (key.startsWith("c-")) {
-    return events.filter((e) => e.competition && `c-${slug(e.competition)}` === key);
-  }
-  return events;
+  return events.filter((event) => {
+    if (filter.soon && !isSoon(event, now)) return false;
+    if (filter.league) return event.sportKey === filter.league;
+    if (filter.sport !== ALL_SPORTS && slug(event.sportLabel) !== filter.sport) return false;
+    return true;
+  });
+}
+
+/** Query string for a rail link, dropping every default so URLs stay short. */
+export function filterHref(filter: Partial<SportsbookFilter>): string {
+  const params = new URLSearchParams();
+  if (filter.league) params.set("l", filter.league);
+  else if (filter.sport && filter.sport !== ALL_SPORTS) params.set("s", filter.sport);
+  if (filter.soon) params.set("soon", "1");
+  const query = params.toString();
+  return query ? `/app/sportsbook?${query}` : "/app/sportsbook";
 }
