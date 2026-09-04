@@ -1,26 +1,37 @@
 import Link from "next/link";
-import { Clock, Trophy } from "lucide-react";
+import { Clock } from "lucide-react";
 import {
   ALL_SPORTS,
   filterHref,
+  groupLeaguesByCountry,
   type LeagueChip,
   type SportsbookFilter,
   type SportTab,
 } from "@/lib/sportsbook/categories";
-import { flagPath } from "@/lib/sportsbook/competitions";
 import { sportIconPath } from "@/lib/sportsbook/sport-icons";
 import { cn } from "@/lib/utils";
+import { CompetitionCrest } from "./competition-crest";
 import { FilterScroller } from "./filter-scroller";
+import { LeagueMenu } from "./league-menu";
 
 /**
- * Two rows of links: sport on top, the leagues inside it underneath. Links,
- * not state, so a filter costs no round trip to apply and survives a shared
- * URL — and no dropdown, because with four sports a menu would hide the whole
- * choice behind a tap to save a row we have room for.
+ * Two rows: sport on top, the leagues inside it underneath. Links, not state,
+ * so a filter costs no round trip to apply and survives a shared URL — and no
+ * dropdown for the sports, because with four of them a menu would hide the
+ * whole choice behind a tap to save a row we have room for.
  *
  * The rail sticks under the app header, because the fixture list is long and a
  * filter you have to scroll back up to reach is a filter nobody uses twice.
  */
+
+/**
+ * How many league chips the second row shows before the rest is left to the
+ * country menu. Seventeen football leagues already run well off the side of a
+ * phone, and the admin can switch on more at any time; past a handful, chips
+ * stop being a row you scan and become a row you drag.
+ */
+const VISIBLE_LEAGUE_PILLS = 6;
+
 export function SportsbookNav({
   sports,
   leagues,
@@ -32,6 +43,16 @@ export function SportsbookNav({
   filter: SportsbookFilter;
   soonCount: number;
 }) {
+  const countries = groupLeaguesByCountry(leagues);
+  const leagueTotal = leagues.reduce((sum, l) => sum + l.count, 0);
+
+  // The chosen league always gets a chip, even when it is not one of the
+  // biggest — otherwise picking Superettan from the menu leaves a row in which
+  // nothing is highlighted and no sign of what is being filtered.
+  const pills = leagues.slice(0, VISIBLE_LEAGUE_PILLS);
+  const active = leagues.find((l) => l.key === filter.league);
+  if (active && !pills.includes(active)) pills.push(active);
+
   return (
     <nav
       aria-label="Filter wedstrijden"
@@ -79,25 +100,22 @@ export function SportsbookNav({
       </div>
 
       {leagues.length > 1 && (
-        <FilterScroller>
-          <Pill
-            href={filterHref({ sport: filter.sport, soon: filter.soon })}
-            active={filter.league === null}
-          >
-            Alle competities
-          </Pill>
-          {leagues.map((league) => (
-            <Pill
-              key={league.key}
-              href={filterHref({ league: league.key, soon: filter.soon })}
-              active={filter.league === league.key}
-              count={league.count}
-            >
-              <CompetitionCrest league={league} />
-              {league.name}
-            </Pill>
-          ))}
-        </FilterScroller>
+        <div className="flex items-center gap-2">
+          <LeagueMenu countries={countries} filter={filter} totalCount={leagueTotal} />
+          <FilterScroller className="min-w-0 flex-1">
+            {pills.map((league) => (
+              <Pill
+                key={league.key}
+                href={filterHref({ league: league.key, soon: filter.soon })}
+                active={filter.league === league.key}
+                count={league.count}
+              >
+                <CompetitionCrest country={league.country} />
+                {league.name}
+              </Pill>
+            ))}
+          </FilterScroller>
+        </div>
       )}
     </nav>
   );
@@ -161,47 +179,5 @@ function SportGlyph({ label, active }: { label: string; active: boolean }) {
         WebkitMaskPosition: "center",
       }}
     />
-  );
-}
-
-/**
- * The flag, or a trophy in the same rectangle for anything supranational — a
- * Champions League night belongs to no country, and forcing one on it would be
- * wrong as well as ugly.
- */
-export function CompetitionCrest({
-  league,
-  className,
-}: {
-  league: Pick<LeagueChip, "name" | "country">;
-  className?: string;
-}) {
-  const flag = flagPath(league.country);
-  if (flag) {
-    return (
-      // Plain <img>: these are tiny local SVGs, and next/image would add a
-      // request to the optimiser for something already 400 bytes.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={flag}
-        alt=""
-        aria-hidden
-        className={cn(
-          "h-3.5 w-5 shrink-0 rounded-[2px] object-cover ring-1 ring-white/15",
-          className
-        )}
-      />
-    );
-  }
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "flex h-3.5 w-5 shrink-0 items-center justify-center rounded-[2px] bg-secondary ring-1 ring-white/10",
-        className
-      )}
-    >
-      <Trophy className="size-2.5 text-muted-foreground" />
-    </span>
   );
 }

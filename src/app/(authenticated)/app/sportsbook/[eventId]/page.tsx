@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { MarketGroups } from "@/components/sportsbook/market-groups";
-import { CompetitionCrest } from "@/components/sportsbook/sportsbook-nav";
+import { CompetitionCrest } from "@/components/sportsbook/competition-crest";
 import { TeamBadge } from "@/components/sportsbook/team-badge";
 import { db } from "@/lib/db";
 import { formatEventTime } from "@/lib/format-event-time";
@@ -55,7 +55,7 @@ export default async function EventDetailPage({
       </Link>
 
       <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
-        <CompetitionCrest league={competition} />
+        <CompetitionCrest country={competition.country} />
         <span className="font-medium text-foreground">{competition.name}</span>
         <span>{event.sportLabel}</span>
         <span className="tabular-nums">· {formatEventTime(event.startsAt)}</span>

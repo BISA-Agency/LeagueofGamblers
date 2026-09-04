@@ -1,30 +1,36 @@
 import { describe, expect, it } from "vitest";
-import { competitionMeta, flagPath } from "./competitions";
+import { competitionMeta, flagPath, regionName } from "./competitions";
 
 describe("competitionMeta", () => {
   it("gives a known league a short name and its flag", () => {
     expect(competitionMeta("soccer_spain_la_liga", "La Liga - Spain", "Voetbal")).toEqual({
       name: "LaLiga",
       country: "es",
+      tier: 1,
     });
+    // Football is filed by home nation, not by sovereign state.
     expect(competitionMeta("soccer_epl", "EPL", "Voetbal")).toEqual({
       name: "Premier League",
-      country: "gb",
+      country: "gb-eng",
+      tier: 1,
     });
   });
 
   it("leaves supranational competitions without a flag", () => {
     expect(
       competitionMeta("soccer_uefa_champs_league", "UEFA Champions League", "Voetbal")
-    ).toEqual({ name: "Champions League", country: null });
+    ).toEqual({ name: "Champions League", country: null, tier: 1 });
   });
 
   // The admin can switch on a league we have no entry for; it must still get a
   // usable pill rather than the raw provider title.
+  // A league we have no entry for still needs a flag and a place in the
+  // country menu; unranked means "behind everything we do rank".
   it("falls back to the sport key for the country", () => {
     expect(competitionMeta("soccer_spain_copa_del_rey", "Copa del Rey", "Voetbal")).toEqual({
       name: "Copa del Rey",
       country: "es",
+      tier: 99,
     });
   });
 
@@ -32,10 +38,12 @@ describe("competitionMeta", () => {
     expect(competitionMeta("soccer_x_cup", "Beker - Netherlands", "Voetbal")).toEqual({
       name: "Beker",
       country: "nl",
+      tier: 99,
     });
     expect(competitionMeta("soccer_x_league", "Dutch Eredivisie", "Voetbal")).toEqual({
       name: "Eredivisie",
       country: "nl",
+      tier: 99,
     });
   });
 
@@ -49,6 +57,7 @@ describe("competitionMeta", () => {
     expect(competitionMeta("manual", null, "Handmatig")).toEqual({
       name: "Handmatig",
       country: null,
+      tier: 99,
     });
   });
 
@@ -59,8 +68,14 @@ describe("competitionMeta", () => {
       .country).toBeNull();
   });
 
+  it("names the home nations in Dutch", () => {
+    expect(regionName("gb-eng")).toBe("Engeland");
+    expect(regionName("nl")).toBe("Nederland");
+  });
+
   it("builds the flag path", () => {
     expect(flagPath("nl")).toBe("/flags/nl.svg");
+    expect(flagPath("gb-eng")).toBe("/flags/gb-eng.svg");
     expect(flagPath(null)).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 import { competitionMeta } from "@/lib/sportsbook/competitions";
 import { EventCard, type EventWithOdds } from "./event-card";
-import { CompetitionCrest } from "./sportsbook-nav";
+import { CompetitionCrest } from "./competition-crest";
 
 /**
  * Grouped by competition, because that is how anyone reads a fixture list —
@@ -38,7 +38,7 @@ export function EventList({ events }: { events: EventWithOdds[] }) {
         return (
           <section key={sportKey} className="space-y-2.5">
             <h2 className="flex items-center gap-2 border-b border-border/70 pb-2">
-              <CompetitionCrest league={meta} className="h-4 w-6" />
+              <CompetitionCrest country={meta.country} className="h-4 w-6" />
               <span className="truncate text-sm font-semibold tracking-tight">{meta.name}</span>
               {/* Boxing is its own competition; "Boksen Boksen" helps nobody. */}
               {meta.name !== group.sport && (

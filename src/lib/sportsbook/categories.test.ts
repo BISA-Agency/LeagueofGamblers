@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildNav, filterEvents, filterHref, resolveFilter } from "./categories";
+import {
+  buildNav,
+  filterEvents,
+  filterHref,
+  groupLeaguesByCountry,
+  resolveFilter,
+} from "./categories";
 
 const NOW = new Date("2026-09-05T12:00:00Z");
 const inHours = (h: number) => new Date(NOW.getTime() + h * 3_600_000);
@@ -77,10 +83,10 @@ describe("buildNav", () => {
   it("names and flags the leagues, biggest first", () => {
     const { leagues } = buildNav(EVENTS, { ...all, sport: "voetbal" }, NOW);
     expect(leagues).toEqual([
-      { key: "soccer_epl", name: "Premier League", country: "gb", count: 2 },
+      { key: "soccer_epl", name: "Premier League", country: "gb-eng", tier: 1, count: 2 },
       // Equal counts fall back to the name, so the order never wobbles.
-      { key: "soccer_spain_la_liga", name: "LaLiga", country: "es", count: 1 },
-      { key: "soccer_italy_serie_a", name: "Serie A", country: "it", count: 1 },
+      { key: "soccer_spain_la_liga", name: "LaLiga", country: "es", tier: 1, count: 1 },
+      { key: "soccer_italy_serie_a", name: "Serie A", country: "it", tier: 1, count: 1 },
     ]);
   });
 
@@ -93,6 +99,64 @@ describe("buildNav", () => {
 
   it("reports the soon count regardless of the active filter", () => {
     expect(buildNav(EVENTS, { ...all, sport: "mma" }, NOW).soonCount).toBe(3);
+  });
+});
+
+describe("groupLeaguesByCountry", () => {
+  const leaguesOf = (sport: string) =>
+    buildNav(EVENTS, { sport, league: null, soon: false }, NOW).leagues;
+
+  it("files each league under its country", () => {
+    const groups = groupLeaguesByCountry(leaguesOf("voetbal"));
+    expect(groups[0]).toMatchObject({ code: "gb-eng", count: 2, featured: true });
+  });
+
+  // These seven are where nearly every slip comes from; alphabetical would
+  // bury Engeland and Spanje behind Brazilië and Denemarken.
+  it("puts the seven big leagues first, in their own order", () => {
+    const groups = groupLeaguesByCountry([
+      { key: "a", name: "A", country: "br", tier: 1, count: 1 },
+      { key: "b", name: "B", country: "pt", tier: 1, count: 1 },
+      { key: "c", name: "C", country: "gb-eng", tier: 1, count: 1 },
+      { key: "d", name: "D", country: "dk", tier: 1, count: 1 },
+      { key: "e", name: "E", country: "de", tier: 1, count: 1 },
+    ]);
+    expect(groups.map((g) => g.name)).toEqual([
+      "Engeland",
+      "Duitsland",
+      "Portugal",
+      // Everything outside the seven stays alphabetical underneath.
+      "Brazilië",
+      "Denemarken",
+    ]);
+    expect(groups.map((g) => g.featured)).toEqual([true, true, true, false, false]);
+  });
+
+  // The second tier plays more midweek rounds, so counting alone put
+  // Championship above the Premier League — which reads as a bug.
+  it("adds up the fixtures and puts the top division first anyway", () => {
+    const groups = groupLeaguesByCountry([
+      { key: "soccer_efl_champ", name: "Championship", country: "gb-eng", tier: 2, count: 12 },
+      { key: "soccer_epl", name: "Premier League", country: "gb-eng", tier: 1, count: 2 },
+      { key: "soccer_fa_cup", name: "FA Cup", country: "gb-eng", tier: 5, count: 30 },
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].count).toBe(44);
+    expect(groups[0].leagues.map((l) => l.name)).toEqual([
+      "Premier League",
+      "Championship",
+      "FA Cup",
+    ]);
+  });
+
+  // "Internationaal" is not a country, so sorting it among them reads as a bug.
+  it("pins the supranational bucket to the end", () => {
+    const groups = groupLeaguesByCountry([
+      { key: "soccer_uefa_champs_league", name: "Champions League", country: null, tier: 1, count: 18 },
+      { key: "soccer_spain_la_liga", name: "LaLiga", country: "es", tier: 1, count: 1 },
+    ]);
+    expect(groups.map((g) => g.name)).toEqual(["Spanje", "Internationaal"]);
+    expect(groups[1].featured).toBe(false);
   });
 });
 

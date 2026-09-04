@@ -15,13 +15,20 @@ const OUT_DIR = path.join(process.cwd(), "public", "flags");
 
 async function main() {
   const { COUNTRY_OPTIONS } = await import("../src/lib/countries");
+  // The sportsbook needs a few flags the profile picker does not offer, so
+  // football can be filed by home nation rather than by sovereign state.
+  const { SUBDIVISION_FLAGS } = await import("../src/lib/sportsbook/competitions");
+  const extra = Object.keys(SUBDIVISION_FLAGS);
 
   await mkdir(OUT_DIR, { recursive: true });
 
   // Drop anything no longer in the list, so removing a country doesn't leave
   // an orphan file behind.
   const existing = await readdir(OUT_DIR).catch(() => [] as string[]);
-  const wanted = new Set(COUNTRY_OPTIONS.map((c) => `${c.code.toLowerCase()}.svg`));
+  const wanted = new Set([
+    ...COUNTRY_OPTIONS.map((c) => `${c.code.toLowerCase()}.svg`),
+    ...extra.map((code) => `${code}.svg`),
+  ]);
   for (const file of existing) {
     // Only .svg: LICENSE.txt has to survive.
     if (file.endsWith(".svg") && !wanted.has(file)) await rm(path.join(OUT_DIR, file));
@@ -30,14 +37,14 @@ async function main() {
   let copied = 0;
   const missing: string[] = [];
 
-  for (const country of COUNTRY_OPTIONS) {
-    const from = path.join(SRC_DIR, `${country.code.toUpperCase()}.svg`);
-    const to = path.join(OUT_DIR, `${country.code.toLowerCase()}.svg`);
+  for (const code of [...COUNTRY_OPTIONS.map((c) => c.code), ...extra]) {
+    const from = path.join(SRC_DIR, `${code.toUpperCase()}.svg`);
+    const to = path.join(OUT_DIR, `${code.toLowerCase()}.svg`);
     try {
       await copyFile(from, to);
       copied += 1;
     } catch {
-      missing.push(country.code);
+      missing.push(code);
     }
   }
 
