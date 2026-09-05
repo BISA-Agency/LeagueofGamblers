@@ -11,7 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getActiveParticipation } from "@/lib/challenges/active";
 import { getChallengeResults } from "@/lib/challenges/results";
+import { ensureInviteCode } from "@/lib/referrals/assign";
 import { CREDIT_SHARE_OF_FEE } from "@/lib/referrals/credits";
+import { getSiteUrl } from "@/lib/site-url";
 import { displayBalance, getChallengeStats, hasStarted } from "@/lib/challenges/stats";
 import { db } from "@/lib/db";
 import type { PrizeTierRow } from "@/lib/settlement/payouts";
@@ -88,11 +90,19 @@ export default async function AppHomePage() {
       ) / 100
     : 0;
 
+  // The popup copies the link itself, so it needs it — every screen between
+  // the idea and the clipboard is somewhere to give up.
+  const inviteCode = await ensureInviteCode(user.id);
+
   const otherParticipations = participations.filter((p) => p.challengeId !== active.challengeId);
 
   return (
     <div className="mx-auto max-w-2xl space-y-5 px-4 py-6">
-      <ReferralNudge perReferral={perReferral} />
+      <ReferralNudge
+        inviteLink={inviteCode ? `${getSiteUrl()}/?ref=${inviteCode}` : null}
+        buyIn={joinable?.buyInAmount ?? challenge.buyInAmount}
+        perReferral={perReferral}
+      />
 
       {/* When the month is done this is the news, so it goes above everything
           else — including your own balance, which is now history. */}

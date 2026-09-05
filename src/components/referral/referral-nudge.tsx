@@ -1,52 +1,78 @@
 "use client";
 
-import { Coins } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "log_referral_nudge";
 const EVERY_MS = 7 * 24 * 60 * 60 * 1000;
 /** Long enough that the page is up first — nothing lands on top of a blank screen. */
 const DELAY_MS = 1500;
+/** How long the button admits it copied before going back to normal. */
+const COPIED_MS = 2200;
+
+/** Cents only when there are cents: "€100" and "€5", but "€1,25". */
+const euro = (value: number) =>
+  new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(
+    value
+  );
 
 /**
- * A weekly reminder that inviting someone pays.
+ * A weekly reminder that inviting someone pays, shaped like the thing everyone
+ * here already reads twenty times a week: a bet slip.
+ *
+ * Two lines, label left and figure right, exactly like the totals at the foot
+ * of a coupon. It borrows the one layout this audience parses without
+ * thinking, which is worth more than any amount of decoration.
+ *
+ * It leads with the pot rather than the personal cut on purpose. Five euro is
+ * not why anyone texts a friend; a bigger prize to play for is. The fee share
+ * is the second line because it is the smaller argument, not the first because
+ * it is the newer feature.
  *
  * Timed per browser in localStorage rather than per account: this is a nudge,
- * not a record, and it is not worth a column, a write on every visit, or a
- * migration. Someone who switches phones sees it again a week early, which is
- * a smaller problem than any of those.
- *
- * Storage is wrapped, because a private window throws on access rather than
+ * not a record, and it is not worth a column or a write on every visit.
+ * Storage access is wrapped, because a private window throws rather than
  * returning null — and a popup that cannot remember being dismissed would
- * appear on every single page view, which is far worse than never appearing.
+ * appear on every single page view.
  */
-export function ReferralNudge({ perReferral }: { perReferral: number }) {
+export function ReferralNudge({
+  inviteLink,
+  buyIn,
+  perReferral,
+}: {
+  inviteLink: string | null;
+  /** What a new player pays, and therefore what each one adds to the pot. */
+  buyIn: number;
+  perReferral: number;
+}) {
   const [open, setOpen] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
+  const heading = useRef<HTMLDivElement>(null);
+  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let last = 0;
     try {
       last = Number(window.localStorage.getItem(STORAGE_KEY) ?? 0);
     } catch {
-      // Storage blocked: treat it as never shown, and the dismissal below
-      // simply won't stick for this visit.
+      // Storage blocked: treat it as never shown. The dismissal below simply
+      // won't stick for this visit.
     }
     if (Date.now() - last < EVERY_MS) return;
 
-    timer.current = setTimeout(() => setOpen(true), DELAY_MS);
+    openTimer.current = setTimeout(() => setOpen(true), DELAY_MS);
     return () => {
-      if (timer.current) clearTimeout(timer.current);
+      if (openTimer.current) clearTimeout(openTimer.current);
+      if (copyTimer.current) clearTimeout(copyTimer.current);
     };
   }, []);
 
@@ -58,55 +84,128 @@ export function ReferralNudge({ perReferral }: { perReferral: number }) {
     }
   };
 
+  /**
+   * Copying here rather than sending people to another page to do it: the
+   * whole ask is "send this to someone", and every screen between the idea and
+   * the clipboard is somewhere to give up.
+   */
+  const copy = async () => {
+    if (!inviteLink) return;
+    remember();
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setCopied(true);
+      copyTimer.current = setTimeout(() => setCopied(false), COPIED_MS);
+    } catch {
+      // No clipboard (insecure context, or the browser said no): show the link
+      // so it can be selected by hand instead of failing silently.
+      setCopyFailed(true);
+    }
+  };
+
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        // Dismissing counts, however it happens — Escape, the X, or the
-        // backdrop. Only marking it on the button would bring it straight back.
+        // Dismissing counts however it happens — Escape, the X, the backdrop.
+        // Marking it only on the button would bring it straight back.
         if (!next) remember();
         setOpen(next);
       }}
     >
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Coins className="size-5 text-accent-brand" />
-            Verdien mee aan wie jij meeneemt
-          </DialogTitle>
-          <DialogDescription>
-            Voor iedereen die jij binnenbrengt en zijn inleg betaalt, krijg jij de helft van de
-            servicekosten — elke maand dat hij meespeelt.
-            {perReferral > 0 && (
-              <>
-                {" "}
-                Op de eerstvolgende challenge is dat{" "}
-                <span className="font-medium text-accent-brand">
-                  €{perReferral.toFixed(2).replace(".", ",")}
-                </span>{" "}
-                per speler.
-              </>
-            )}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent
+        className="gap-0 overflow-hidden p-0 sm:max-w-sm"
+        // Radix focuses the first tabbable child, which put a ring around the
+        // green button the moment the dialog appeared. Focus lands on the
+        // heading instead — still inside the dialog, so the keyboard is fine.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          heading.current?.focus();
+        }}
+      >
+        {/* The slip's own top edge. Unibet's is yellow; ours is the green this
+            app already uses for money going the right way. */}
+        <div className="h-1 bg-accent-brand" />
 
-        {/* flex-col-reverse is the footer default, so the primary action is
-            listed last to end up on top on a phone. */}
-        <DialogFooter className="gap-2 sm:flex-row-reverse sm:justify-end">
-          <Button
-            variant="ghost"
-            className="h-11"
-            onClick={() => {
-              remember();
-              setOpen(false);
-            }}
-          >
-            Later
-          </Button>
-          <Button asChild className="h-11" onClick={remember}>
-            <Link href="/referral">Bekijk je link</Link>
-          </Button>
-        </DialogFooter>
+        <div ref={heading} tabIndex={-1} className="space-y-1 px-5 pt-5 outline-none">
+          <DialogTitle className="text-lg font-semibold tracking-tight">
+            Meer spelers, grotere pot
+          </DialogTitle>
+          <DialogDescription className="text-sm leading-relaxed">
+            Wie via jouw link meedoet, legt zijn inleg in de pot waar om gespeeld wordt.
+          </DialogDescription>
+        </div>
+
+        {/* Label left, figure right, hairline between — the totals block at the
+            foot of every coupon these players fill in. */}
+        <dl className="mt-4 divide-y divide-border border-y border-border">
+          <div className="flex items-baseline justify-between gap-4 px-5 py-3">
+            <dt className="text-sm text-muted-foreground">In de pot, per speler</dt>
+            <dd className="shrink-0 text-xl font-semibold tabular-nums text-accent-brand">
+              +€{euro(buyIn)}
+            </dd>
+          </div>
+          <div className="flex items-baseline justify-between gap-4 px-5 py-3">
+            <dt className="text-sm text-muted-foreground">
+              Voor jou
+              <span className="mt-0.5 block text-xs">elke maand dat hij meespeelt</span>
+            </dt>
+            <dd className="shrink-0 text-xl font-semibold tabular-nums text-accent-brand">
+              {perReferral > 0 ? `+€${euro(perReferral)}` : "de helft van de servicekosten"}
+            </dd>
+          </div>
+        </dl>
+
+        <div className="space-y-3 px-5 pb-5 pt-4">
+          {inviteLink ? (
+            <button
+              type="button"
+              onClick={copy}
+              className={cn(
+                "flex h-12 w-full items-center justify-center rounded-lg text-sm font-semibold transition-colors",
+                copied
+                  ? "bg-accent-brand/20 text-accent-brand"
+                  : "bg-accent-brand text-accent-brand-foreground hover:brightness-95"
+              )}
+            >
+              {copied ? "Gekopieerd — plak hem in je app" : "Kopieer je link"}
+            </button>
+          ) : (
+            <Link
+              href="/referral"
+              onClick={remember}
+              className="flex h-12 w-full items-center justify-center rounded-lg bg-accent-brand text-sm font-semibold text-accent-brand-foreground"
+            >
+              Haal je link op
+            </Link>
+          )}
+
+          {copyFailed && inviteLink && (
+            <p className="break-all rounded-md border border-border bg-secondary/40 p-2 text-xs">
+              {inviteLink}
+            </p>
+          )}
+
+          <div className="flex items-center justify-between gap-3 text-xs">
+            <Link
+              href="/referral"
+              onClick={remember}
+              className="text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            >
+              Alles over uitnodigen
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                remember();
+                setOpen(false);
+              }}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Niet nu
+            </button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
