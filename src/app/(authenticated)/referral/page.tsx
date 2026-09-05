@@ -68,19 +68,28 @@ export default async function ReferralPage() {
       <header>
         <h1 className="text-xl font-semibold tracking-tight">Neem iemand mee, verdien mee</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {perReferral > 0 ? (
-            <>
-              Voor elke speler die jij binnenbrengt krijg jij{" "}
-              <span className="font-medium text-accent-brand">€{euro.format(perReferral)}</span> —
-              elke maand dat hij meebetaalt, niet één keer.
-            </>
-          ) : (
-            <>
-              Voor elke speler die jij binnenbrengt deel je mee in de inleg die hij betaalt, elke
-              maand dat hij meespeelt.
-            </>
-          )}
+          Je krijgt de <span className="font-medium text-foreground">helft van de servicekosten</span>{" "}
+          op de inleg van iedereen die jij binnenbrengt — elke maand dat hij meebetaalt, niet één
+          keer.
         </p>
+        {/* The share is the rule; the euros depend on what a challenge costs,
+            so the amount is shown as an example with its sum next to it rather
+            than as a rate. A €25 buy-in pays a quarter of what a €100 one does. */}
+        {feeChallenge && perReferral > 0 && (
+          <p className="mt-2 text-sm tabular-nums">
+            Bij <span className="font-medium">{feeChallenge.name}</span> is dat{" "}
+            <span className="font-medium text-accent-brand">€{euro.format(perReferral)}</span>{" "}
+            <span className="text-muted-foreground">
+              (€{euro.format(feeChallenge.buyInAmount)} inleg × {feeChallenge.platformFeePercent}% ÷
+              2)
+            </span>
+          </p>
+        )}
+        {feeChallenge && perReferral === 0 && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Op {feeChallenge.name} zitten geen servicekosten, dus daar valt niets te delen.
+          </p>
+        )}
       </header>
 
       {link ? (

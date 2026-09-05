@@ -6,14 +6,16 @@ import { BetOfTheDay } from "@/components/activity/bet-of-the-day";
 import { ChallengeResults } from "@/components/challenges/challenge-results";
 import { ChallengeStatsPanel } from "@/components/challenges/challenge-stats";
 import { Countdown } from "@/components/challenges/countdown";
+import { ReferralNudge } from "@/components/referral/referral-nudge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getActiveParticipation } from "@/lib/challenges/active";
 import { getChallengeResults } from "@/lib/challenges/results";
+import { CREDIT_SHARE_OF_FEE } from "@/lib/referrals/credits";
 import { displayBalance, getChallengeStats, hasStarted } from "@/lib/challenges/stats";
 import { db } from "@/lib/db";
 import type { PrizeTierRow } from "@/lib/settlement/payouts";
-import { challengeParticipants } from "@drizzle/schema";
+import { challengeParticipants, challenges } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Home" };
@@ -69,10 +71,29 @@ export default async function AppHomePage() {
   const results =
     challenge.status === "finished" ? await getChallengeResults(challenge.id) : null;
 
+  /**
+   * What a referral is worth on the challenge you would be inviting someone
+   * into — the next open one, whether or not this player joined it yet.
+   * Reading it off their own participations quoted the running challenge, and
+   * that one is closed to newcomers.
+   */
+  const joinable = await db.query.challenges.findFirst({
+    where: eq(challenges.status, "open"),
+    orderBy: (c, { asc }) => asc(c.startAt),
+    columns: { buyInAmount: true, platformFeePercent: true },
+  });
+  const perReferral = joinable
+    ? Math.round(
+        ((joinable.buyInAmount * joinable.platformFeePercent) / 100) * CREDIT_SHARE_OF_FEE * 100
+      ) / 100
+    : 0;
+
   const otherParticipations = participations.filter((p) => p.challengeId !== active.challengeId);
 
   return (
     <div className="mx-auto max-w-2xl space-y-5 px-4 py-6">
+      <ReferralNudge perReferral={perReferral} />
+
       {/* When the month is done this is the news, so it goes above everything
           else — including your own balance, which is now history. */}
       {results && <ChallengeResults results={results} />}
