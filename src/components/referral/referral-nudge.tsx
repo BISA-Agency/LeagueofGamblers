@@ -11,7 +11,15 @@ import {
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "log_referral_nudge";
-const EVERY_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * The campaign runs until this moment and then stops by itself.
+ *
+ * A week of telling everyone once per visit, not once per week — the point is
+ * that nobody misses it while it is new. Move the date to extend it; let it
+ * pass and the popup simply never opens again.
+ */
+const CAMPAIGN_ENDS = new Date("2026-09-12T23:59:00+02:00").getTime();
 /** Long enough that the page is up first — nothing lands on top of a blank screen. */
 const DELAY_MS = 1500;
 /** How long the button admits it copied before going back to normal. */
@@ -36,11 +44,15 @@ const euro = (value: number) =>
  * is the second line because it is the smaller argument, not the first because
  * it is the newer feature.
  *
- * Timed per browser in localStorage rather than per account: this is a nudge,
- * not a record, and it is not worth a column or a write on every visit.
- * Storage access is wrapped, because a private window throws rather than
- * returning null — and a popup that cannot remember being dismissed would
- * appear on every single page view.
+ * It runs for one week and then stops on its own (see CAMPAIGN_ENDS), showing
+ * once on every visit rather than once a week — while the thing is new, nobody
+ * should be able to miss it.
+ *
+ * "Once per visit" is sessionStorage, not localStorage: it comes back the next
+ * time the app is opened, but not again when you tap Home a second time in the
+ * same session. Storage access is wrapped, because a private window throws
+ * rather than returning null, and a popup that cannot remember being dismissed
+ * would reappear on every single page view.
  */
 export function ReferralNudge({
   inviteLink,
@@ -60,14 +72,19 @@ export function ReferralNudge({
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    let last = 0;
+    if (Date.now() > CAMPAIGN_ENDS) return;
+
+    let seenThisVisit = false;
     try {
-      last = Number(window.localStorage.getItem(STORAGE_KEY) ?? 0);
+      // sessionStorage, not localStorage: it should come back every time the
+      // app is opened, but not again when you tap Home a second time in the
+      // same visit. That is the difference between a reminder and a nag.
+      seenThisVisit = window.sessionStorage.getItem(STORAGE_KEY) !== null;
     } catch {
-      // Storage blocked: treat it as never shown. The dismissal below simply
+      // Storage blocked: treat it as unseen. The dismissal below simply
       // won't stick for this visit.
     }
-    if (Date.now() - last < EVERY_MS) return;
+    if (seenThisVisit) return;
 
     openTimer.current = setTimeout(() => setOpen(true), DELAY_MS);
     return () => {
@@ -76,9 +93,10 @@ export function ReferralNudge({
     };
   }, []);
 
+  /** Closed for this visit; it opens again next time the app is opened. */
   const remember = () => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, String(Date.now()));
+      window.sessionStorage.setItem(STORAGE_KEY, "1");
     } catch {
       // See above.
     }
