@@ -8,6 +8,7 @@ import {
   type SportsbookFilter,
   type SportTab,
 } from "@/lib/sportsbook/categories";
+import { PendingHint } from "@/components/ui/pending-hint";
 import { sportIconPath } from "@/lib/sportsbook/sport-icons";
 import { cn } from "@/lib/utils";
 import { CompetitionCrest } from "./competition-crest";
@@ -78,12 +79,13 @@ export function SportsbookNav({
             href={filterHref({ sport: filter.sport, league: filter.league, soon: !filter.soon })}
             aria-pressed={filter.soon}
             className={cn(
-              "flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+              "relative flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
               filter.soon
                 ? "border-accent-brand bg-accent-brand/12 text-accent-brand"
                 : "border-border bg-card/60 text-muted-foreground hover:border-foreground/25 hover:text-foreground"
             )}
           >
+            <PendingHint className="inset-0 rounded-full bg-accent-brand/10 ring-1 ring-inset ring-accent-brand/70" />
             <Clock className="size-3.5" />
             <span className="hidden sm:inline">Binnen 24 uur</span>
             <span className="sm:hidden">24u</span>
@@ -137,13 +139,17 @@ function Pill({
       href={href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs font-medium transition-colors",
+        "relative flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs font-medium transition-colors",
         active
           ? // The green frame the rest of the app uses for "this is the one".
             "border-accent-brand bg-accent-brand/12 text-accent-brand"
           : "border-border bg-card/60 text-muted-foreground hover:border-foreground/25 hover:text-foreground"
       )}
     >
+      {/* Filtering only changes the query string, and React keeps the old
+          list on screen while the new one loads. Without this the tap has no
+          answer at all until the page swaps. */}
+      <PendingHint className="inset-0 rounded-full bg-accent-brand/10 ring-1 ring-inset ring-accent-brand/70" />
       {children}
       {count !== undefined && (
         <span

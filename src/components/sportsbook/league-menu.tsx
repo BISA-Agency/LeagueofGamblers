@@ -13,6 +13,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { PendingHint } from "@/components/ui/pending-hint";
 import { filterHref, type CountryGroup } from "@/lib/sportsbook/categories";
 import { cn } from "@/lib/utils";
 import { CompetitionCrest } from "./competition-crest";
@@ -77,6 +78,9 @@ export function LeagueMenu({
 
   return (
     <DropdownMenu
+      // Remounting on a new filter resets `open` to false, which is how the
+      // menu closes: not on the tap, but when the page it asked for arrives.
+      key={`${filter.sport}|${filter.league}|${filter.soon}`}
       open={open}
       onOpenChange={(next) => {
         if (!next) cancelClose();
@@ -107,11 +111,12 @@ export function LeagueMenu({
         collisionPadding={12}
         className="max-h-[70vh] w-56 overflow-y-auto"
       >
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild onSelect={(e) => e.preventDefault()}>
           <Link
             href={filterHref({ sport: filter.sport, soon: filter.soon })}
-            className={cn("justify-between", isActive && "text-accent-brand")}
+            className={cn("relative justify-between", isActive && "text-accent-brand")}
           >
+            <PendingHint className="inset-0 rounded-md bg-accent-brand/15" />
             Alle competities
             <span className="text-xs tabular-nums text-muted-foreground">{totalCount}</span>
           </Link>
@@ -143,14 +148,24 @@ export function LeagueMenu({
                 className="max-h-[60vh] w-52 max-w-[var(--radix-dropdown-menu-content-available-width)] overflow-y-auto"
               >
                 {country.leagues.map((league) => (
-                  <DropdownMenuItem key={league.key} asChild>
+                  <DropdownMenuItem
+                    key={league.key}
+                    asChild
+                    // Keep the panel up while the page loads; the remount below
+                    // closes it the moment the new filter actually lands.
+                    onSelect={(e) => e.preventDefault()}
+                  >
                     <Link
                       href={filterHref({ league: league.key, soon: filter.soon })}
                       className={cn(
-                        "justify-between gap-3",
+                        "relative justify-between gap-3",
                         filter.league === league.key && "text-accent-brand"
                       )}
                     >
+                      {/* Radix would close the menu on select and unmount this
+                          with it, so the row keeps itself open (see onSelect)
+                          long enough to say the tap landed. */}
+                      <PendingHint className="inset-0 rounded-md bg-accent-brand/15" />
                       <span className="truncate">{league.name}</span>
                       <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                         {league.count}

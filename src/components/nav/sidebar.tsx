@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LevelProgressBar } from "@/components/profile/level-progress-bar";
+import { PendingHint } from "@/components/ui/pending-hint";
 import { cn } from "@/lib/utils";
 import { getNavItems, isNavItemActive } from "./nav-items";
 
@@ -56,12 +57,13 @@ export function Sidebar({
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex h-11 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors",
+                    "relative flex h-11 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors",
                     active
                       ? "bg-secondary text-accent-brand"
                       : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
                   )}
                 >
+                  <PendingHint className="bg-accent-brand inset-y-1.5 left-0 w-0.5 rounded-full" />
                   <Icon className="size-4" />
                   {item.label}
                 </Link>

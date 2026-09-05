@@ -127,3 +127,31 @@
     @apply font-sans;
   }
 }
+
+/*
+ * Pending hint for links (see components/ui/pending-hint.tsx).
+ *
+ * Starts invisible and only fades in after 120ms, so a navigation that lands
+ * quickly never flashes anything at you, while a slow one still says "yes, I
+ * heard you" long before the page arrives.
+ */
+@keyframes pending-hint-in {
+  to {
+    opacity: 1;
+  }
+}
+
+.pending-hint {
+  opacity: 0;
+}
+
+.pending-hint[data-pending="true"] {
+  animation: pending-hint-in 160ms ease-out 120ms forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pending-hint[data-pending="true"] {
+    animation: none;
+    opacity: 1;
+  }
+}
