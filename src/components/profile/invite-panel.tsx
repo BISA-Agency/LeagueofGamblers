@@ -1,4 +1,5 @@
-import { Users } from "lucide-react";
+import { ArrowRight, Users } from "lucide-react";
+import Link from "next/link";
 import { CopyField } from "@/components/payments/copy-field";
 import { getSiteUrl } from "@/lib/site-url";
 import { cn } from "@/lib/utils";
@@ -65,6 +66,16 @@ export function InvitePanel({
           ))}
         </div>
       </div>
+
+      {/* The ladder above is the summary; the money, who came in and how it
+          is paid out live on their own page, because they do not fit here. */}
+      <Link
+        href="/referral"
+        className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-accent-brand/50 bg-accent-brand/10 px-3 text-sm font-medium text-accent-brand transition-colors hover:bg-accent-brand/15"
+      >
+        Verdien geld met uitnodigen
+        <ArrowRight className="size-4 shrink-0" />
+      </Link>
 
       <p className="text-[11px] text-muted-foreground">
         Code: <code className="font-mono text-foreground">{code}</code> — werkt ook achter een

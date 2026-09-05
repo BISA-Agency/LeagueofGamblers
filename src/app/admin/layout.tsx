@@ -11,6 +11,8 @@ const ADMIN_NAV = [
   { href: "/admin/badges", label: "Badges" },
   { href: "/admin/payments", label: "Pot & betalingen" },
   { href: "/admin/prize-tiers", label: "Prize tiers" },
+  // Testweergave; verwijderen als het aanbrengtegoed niet doorgaat.
+  { href: "/admin/referrals", label: "Aanbrengtegoed" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
