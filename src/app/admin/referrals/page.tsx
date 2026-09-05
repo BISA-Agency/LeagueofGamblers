@@ -9,7 +9,7 @@ import {
   type ReferralCredits as ReferralCreditsData,
 } from "@/lib/referrals/credits";
 
-export const metadata: Metadata = { title: "Aanbrengtegoed (test)" };
+export const metadata: Metadata = { title: "Aanbrengtegoed" };
 
 const euro = new Intl.NumberFormat("nl-NL", {
   minimumFractionDigits: 2,
@@ -41,12 +41,21 @@ const EXAMPLE: ReferralCreditsData = {
  */
 export default async function ReferralsPreviewPage() {
   const everyone = await db.query.profiles.findMany({
-    columns: { id: true, username: true, payoutAddress: true, payoutNetwork: true },
+    columns: { id: true, username: true, payoutAddress: true, payoutNetwork: true, invitedBy: true },
     orderBy: (p, { asc }) => asc(p.username),
   });
 
+  // Only the people who actually invited someone need the full calculation.
+  // Running it for every profile meant a fistful of queries each and pushed
+  // this page past the build timeout — for eleven rows of which one earns.
+  const hasInvitees = new Set(everyone.map((p) => p.invitedBy).filter(Boolean) as string[]);
+
   const [rows, payouts] = await Promise.all([
-    Promise.all(everyone.map(async (p) => ({ ...p, credits: await getReferralCredits(p.id) }))),
+    Promise.all(
+      everyone
+        .filter((p) => hasInvitees.has(p.id))
+        .map(async (p) => ({ ...p, credits: await getReferralCredits(p.id) }))
+    ),
     db.query.referralPayouts.findMany({ orderBy: (r, { desc }) => desc(r.createdAt) }),
   ]);
 
@@ -58,10 +67,10 @@ export default async function ReferralsPreviewPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Aanbrengtegoed — testweergave</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Aanbrengtegoed</h1>
         <p className="text-sm text-muted-foreground">
-          Wat verdiend is wordt hier uitgerekend uit wie wie heeft uitgenodigd; alleen wat je
-          uitbetaalt wordt vastgelegd. Spelers zien hier niets van.
+          Wat verdiend is wordt uitgerekend uit wie wie heeft uitgenodigd; alleen wat je uitbetaalt
+          wordt vastgelegd. Spelers zien hun eigen tegoed op /referral, deze pagina is van jou.
         </p>
       </div>
 
@@ -175,7 +184,7 @@ export default async function ReferralsPreviewPage() {
       </section>
 
       <div className="rounded-xl border border-border bg-secondary/30 p-4 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground">Wat je moet weten voor je dit aanzet</p>
+        <p className="font-medium text-foreground">Waar je op moet letten</p>
         <ul className="mt-2 list-disc space-y-1 pl-4">
           <li>
             Er wordt hier niets verstuurd. Jij stuurt de USDT zelf en legt hier vast dát het is
@@ -187,8 +196,8 @@ export default async function ReferralsPreviewPage() {
             scheelt het meest.
           </li>
           <li>
-            Het tegoed staat nergens op een spelerspagina. Zonder dat werkt het niet — mensen
-            werven niet voor iets dat ze niet zien groeien.
+            Spelers zien hun tegoed zelf op /referral en kunnen het niet opvragen — ze moeten het
+            jou zeggen. Er is nog geen knop voor.
           </li>
           <li>
             Uitbetalen in geld is juridisch iets anders dan korting op de inleg. Dit is de stap
