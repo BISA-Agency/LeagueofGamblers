@@ -215,20 +215,31 @@ export default async function LeaderboardPage() {
                 >
                   <td className="py-2.5">{i + 1}</td>
                   <td className="py-2.5">
-                    <div className="flex items-center gap-2">
+                    {/* The avatar comes inside the link too: on a phone a name
+                        on its own is a thin target, and the standings are the
+                        one place people go looking for someone else. */}
+                    <Link
+                      href={`/app/profile/${row.participant.user.username}`}
+                      className="-my-1 flex items-center gap-2 py-1 hover:underline"
+                    >
                       <UserAvatar
                         username={row.participant.user.username}
                         avatarUrl={row.participant.user.avatarUrl}
                         size={24}
                       />
                       <span className="truncate">
+                        {/* xp and levelFloor are what draw the rank emblem —
+                            without them the component quietly renders the name
+                            and flag only, which is how it went missing here. */}
                         <UsernameWithFlag
                           username={row.participant.user.username}
                           country={row.participant.user.country}
+                          xp={row.participant.user.xp}
+                          levelFloor={row.participant.user.levelFloor}
                         />
                         {isBust && " 💀"}
                       </span>
-                    </div>
+                    </Link>
                   </td>
                   <td className="py-2.5 text-right font-medium">
                     €{moneyFormatter.format(row.participant.balance)}

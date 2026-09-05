@@ -3,11 +3,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ActivityFeed } from "@/components/activity/activity-feed";
 import { BetOfTheDay } from "@/components/activity/bet-of-the-day";
+import { ChallengeResults } from "@/components/challenges/challenge-results";
 import { ChallengeStatsPanel } from "@/components/challenges/challenge-stats";
 import { Countdown } from "@/components/challenges/countdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getActiveParticipation } from "@/lib/challenges/active";
+import { getChallengeResults } from "@/lib/challenges/results";
 import { displayBalance, getChallengeStats, hasStarted } from "@/lib/challenges/stats";
 import { db } from "@/lib/db";
 import type { PrizeTierRow } from "@/lib/settlement/payouts";
@@ -62,10 +64,19 @@ export default async function AppHomePage() {
   ]);
   const stats = getChallengeStats(challenge, participants, prizeTiers as PrizeTierRow[]);
 
+  // Only once it is actually over: before that the ranking can still move,
+  // and a board headed "Eindstand" that is not final would be a lie.
+  const results =
+    challenge.status === "finished" ? await getChallengeResults(challenge.id) : null;
+
   const otherParticipations = participations.filter((p) => p.challengeId !== active.challengeId);
 
   return (
     <div className="mx-auto max-w-2xl space-y-5 px-4 py-6">
+      {/* When the month is done this is the news, so it goes above everything
+          else — including your own balance, which is now history. */}
+      {results && <ChallengeResults results={results} />}
+
       {/* Your own position first: balance if playing, countdown if not yet. */}
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="flex items-start justify-between gap-3">

@@ -148,7 +148,12 @@ export default async function ChallengeDetailPage({
                     href={`/app/profile/${p.user.username}`}
                     className="truncate text-sm hover:underline"
                   >
-                    <UsernameWithFlag username={p.user.username} country={p.user.country} />
+                    <UsernameWithFlag
+                      username={p.user.username}
+                      country={p.user.country}
+                      xp={p.user.xp}
+                      levelFloor={p.user.levelFloor}
+                    />
                   </Link>
                 </div>
                 <div className="flex items-center gap-3">
