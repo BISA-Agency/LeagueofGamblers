@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { settleableMarkets } from "@/lib/odds-provider/settleable-markets";
 import type { MarketType } from "@/lib/odds-provider/types";
 import { runPostSettlementChecks } from "@/lib/settlement/after-settlement";
+import { decideBet } from "./decide-bet";
 import {
   betSelections,
   bets,
@@ -151,13 +152,15 @@ async function finalizeAffectedBets(outcomeIds: string[]) {
 }
 
 /**
- * Once every selection on a bet has a result, settles the bet as a whole:
- * void selections are dropped and the odds/payout recomputed from what's
- * left (§5.3 "combi's worden herberekend zonder die selectie"); any
- * remaining lost leg loses the whole bet; otherwise it's a win. Simplifying
- * assumption: half_won/half_lost legs inside a combi count as a full
- * win/loss at the leg's original odds — real split-stake Asian-handicap
- * combi payouts are out of scope for this MVP.
+ * Settles a bet as a whole, as soon as its outcome is decided — which for a
+ * loss is the first losing leg, and for anything else is the last leg in. See
+ * decideBet() for the rule; this is the part that acts on it.
+ *
+ * A win drops the void selections and recomputes odds and payout from what is
+ * left (§5.3 "combi's worden herberekend zonder die selectie"). Simplifying
+ * assumption: half_won/half_lost legs inside a combi count as a full win/loss
+ * at the leg's original odds — real split-stake Asian-handicap combi payouts
+ * are out of scope for this MVP.
  */
 export async function finalizeBetIfComplete(betId: string) {
   const bet = await db.query.bets.findFirst({
@@ -165,19 +168,48 @@ export async function finalizeBetIfComplete(betId: string) {
     with: { selections: true },
   });
   if (!bet || bet.status !== "open") return;
-  if (!bet.selections.every((s) => s.result !== null)) return;
+
+  const decision = decideBet(bet.selections);
+  if (decision === "pending") return;
 
   const activeSelections = bet.selections.filter((s) => s.result !== "void");
 
-  if (activeSelections.length === 0) {
+  if (decision === "void") {
     await voidAndRefundBet(betId);
     await checkAndMarkBust(bet.challengeId, bet.userId);
-  } else if (activeSelections.some((s) => s.result === "lost" || s.result === "half_lost")) {
-    await db.update(bets).set({ status: "lost", settledAt: new Date() }).where(eq(bets.id, betId));
+  } else if (decision === "lost") {
+    /**
+     * Settled the moment a leg loses, without waiting for the rest.
+     *
+     * Nothing the remaining matches do can bring a combi back, so making
+     * someone wait until Sunday to hear what Saturday decided served nobody —
+     * and worse, the standings count the stake of an open bet as money still
+     * in play, so a player who was already out kept reading higher than he
+     * stood.
+     *
+     * Safe to do early precisely because losing moves no money. A win pays
+     * out and would be ugly to unwind; a loss only stops. Should a leg later
+     * be corrected or voided, reopening the bet is the whole repair.
+     */
+    const losing = bet.selections.find(
+      (s) => s.result === "lost" || s.result === "half_lost"
+    );
+
+    // Same claim-the-row lock as the win below, and it matters more here: this
+    // now fires on every leg that resolves rather than once at the end, so two
+    // overlapping settlement runs would otherwise both log the loss.
+    const claimed = await db
+      .update(bets)
+      .set({ status: "lost", settledAt: new Date() })
+      .where(and(eq(bets.id, betId), eq(bets.status, "open")))
+      .returning({ id: bets.id });
+    if (claimed.length === 0) return;
+
     await logActivity(bet.challengeId, bet.userId, "bet_lost", {
       betId,
       stake: bet.stake,
-      selection: activeSelections[0]?.selectionLabel,
+      // The leg that actually lost, not whichever one happened to be first.
+      selection: losing?.selectionLabel,
     });
     await checkAndMarkBust(bet.challengeId, bet.userId);
   } else {
