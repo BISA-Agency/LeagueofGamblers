@@ -1,4 +1,4 @@
-import { CircleUserRound, Home, Target, Trophy, TrendingUp, Swords } from "lucide-react";
+import { CircleUserRound, Home, Shield, Target, Trophy, TrendingUp, Swords } from "lucide-react";
 
 export type NavItem = {
   href: string;
@@ -8,7 +8,15 @@ export type NavItem = {
   icon: typeof Home;
 };
 
-export function getNavItems(username: string): NavItem[] {
+/**
+ * The nav, plus a way into the admin panel for the one account that has one.
+ *
+ * It rides along in the same bar rather than sitting somewhere separate: the
+ * admin is also a player, and switching between running the league and
+ * playing in it happens constantly. Everyone else gets the six they always
+ * had — the seventh item only exists for the account that can open it.
+ */
+export function getNavItems(username: string, isAdmin = false): NavItem[] {
   return [
     { href: "/app", label: "Home", icon: Home },
     { href: "/app/challenges", label: "Challenges", icon: Swords },
@@ -16,6 +24,7 @@ export function getNavItems(username: string): NavItem[] {
     { href: "/app/leaderboard", label: "Leaderboard", shortLabel: "Stand", icon: Trophy },
     { href: "/app/missions", label: "Missies", icon: Target },
     { href: `/app/profile/${username}`, label: "Profiel", icon: CircleUserRound },
+    ...(isAdmin ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
   ];
 }
 

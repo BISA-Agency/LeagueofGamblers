@@ -6,9 +6,9 @@ import { PendingHint } from "@/components/ui/pending-hint";
 import { cn } from "@/lib/utils";
 import { getNavItems, isNavItemActive } from "./nav-items";
 
-export function BottomNav({ username }: { username: string }) {
+export function BottomNav({ username, isAdmin }: { username: string; isAdmin: boolean }) {
   const pathname = usePathname();
-  const items = getNavItems(username);
+  const items = getNavItems(username, isAdmin);
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 md:hidden">

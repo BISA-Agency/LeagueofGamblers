@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChallengeSwitcher } from "@/components/challenges/challenge-switcher";
 import { UnpaidBuyInBanner } from "@/components/challenges/unpaid-buy-in-banner";
+import { isAdminEmail } from "@/lib/auth/admin";
 import { getActiveParticipation } from "@/lib/challenges/active";
 import { displayBalance, hasStarted } from "@/lib/challenges/stats";
 import { BottomNav } from "@/components/nav/bottom-nav";
@@ -23,6 +24,11 @@ export default async function AuthenticatedLayout({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Decided here, on the server: ADMIN_EMAILS is not a public env var and the
+  // nav components are client ones, so they get a boolean rather than a way to
+  // work it out for themselves.
+  const isAdmin = isAdminEmail(user.email);
+
   const profile = await db.query.profiles.findFirst({ where: eq(profiles.id, user.id) });
   if (!profile?.rulesAcceptedAt) redirect("/onboarding");
 
@@ -37,6 +43,7 @@ export default async function AuthenticatedLayout({
   return (
     <div className="flex min-h-dvh">
       <Sidebar
+        isAdmin={isAdmin}
         username={profile.username}
         xp={profile.xp}
         balance={active ? displayBalance(active, active.challenge) : null}
@@ -65,7 +72,7 @@ export default async function AuthenticatedLayout({
         <UnpaidBuyInBanner userId={user.id} />
         <main className="flex-1 pb-20 md:pb-0">{children}</main>
       </div>
-      <BottomNav username={profile.username} />
+      <BottomNav username={profile.username} isAdmin={isAdmin} />
     </div>
   );
 }

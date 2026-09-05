@@ -17,15 +17,17 @@ export function Sidebar({
   xp,
   balance,
   challengeName,
+  isAdmin,
 }: {
   username: string;
   xp: number;
+  isAdmin: boolean;
   /** Null when the player isn't in a challenge yet. */
   balance: number | null;
   challengeName: string | null;
 }) {
   const pathname = usePathname();
-  const items = getNavItems(username);
+  const items = getNavItems(username, isAdmin);
 
   return (
     <aside className="hidden w-60 shrink-0 border-r border-border md:flex md:flex-col">
