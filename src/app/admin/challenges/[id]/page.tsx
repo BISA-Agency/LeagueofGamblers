@@ -39,6 +39,9 @@ export default async function AdminChallengeDetailPage({
             <Link href={`/admin/challenges/${challenge.id}/missions`}>Missies</Link>
           </Button>
           <Button asChild size="sm" variant="outline" className="h-11">
+            <Link href={`/admin/challenges/${challenge.id}/daily`}>Wedstrijd van de dag</Link>
+          </Button>
+          <Button asChild size="sm" variant="outline" className="h-11">
             <Link href={`/admin/challenges/${challenge.id}/results`}>Eindstand</Link>
           </Button>
         </div>

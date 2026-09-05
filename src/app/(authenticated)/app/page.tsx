@@ -6,11 +6,13 @@ import { BetOfTheDay } from "@/components/activity/bet-of-the-day";
 import { ChallengeResults } from "@/components/challenges/challenge-results";
 import { ChallengeStatsPanel } from "@/components/challenges/challenge-stats";
 import { Countdown } from "@/components/challenges/countdown";
+import { DailyPredictionCard } from "@/components/predictions/daily-prediction-card";
 import { ReferralNudge } from "@/components/referral/referral-nudge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getActiveParticipation } from "@/lib/challenges/active";
 import { getChallengeResults } from "@/lib/challenges/results";
+import { getDailyMatch } from "@/lib/predictions/daily";
 import { ensureInviteCode } from "@/lib/referrals/assign";
 import { CREDIT_SHARE_OF_FEE } from "@/lib/referrals/credits";
 import { getSiteUrl } from "@/lib/site-url";
@@ -94,6 +96,12 @@ export default async function AppHomePage() {
   // the idea and the clipboard is somewhere to give up.
   const inviteCode = await ensureInviteCode(user.id);
 
+  // Match of the day sits with the actions, not with the standings: it is
+  // something to do, not something to read.
+  const dailyMatch = started
+    ? await getDailyMatch(challenge.id, user.id, challenge.startingBalance)
+    : null;
+
   const otherParticipations = participations.filter((p) => p.challengeId !== active.challengeId);
 
   return (
@@ -156,6 +164,8 @@ export default async function AppHomePage() {
           </div>
         )}
       </div>
+
+      {dailyMatch && <DailyPredictionCard match={dailyMatch} />}
 
       <ChallengeStatsPanel stats={stats} buyIn={challenge.buyInAmount} />
 

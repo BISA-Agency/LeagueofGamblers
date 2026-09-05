@@ -127,6 +127,13 @@
       "when": 1788616724902,
       "tag": "0017_groovy_sunspot",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788651627359,
+      "tag": "0018_nostalgic_giant_man",
+      "breakpoints": true
     }
   ]
 }

@@ -25,6 +25,7 @@ export * from "./feed-reactions";
 export * from "./follows";
 export * from "./notifications";
 export * from "./predictions";
+export * from "./score-predictions";
 // Op proef — zie lib/referrals/credits.ts.
 export * from "./referral-payouts";
 export * from "./relations";

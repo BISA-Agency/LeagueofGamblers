@@ -1,6 +1,7 @@
 import { and, eq, gte, lte } from "drizzle-orm";
 import { NextResponse, type NextRequest } from "next/server";
 import { requireCronSecret } from "@/lib/cron-auth";
+import { settleScorePredictions } from "@/lib/predictions/daily";
 import { db } from "@/lib/db";
 import { getOddsApiProvider } from "@/lib/odds-provider";
 import { recordApiUsage } from "@/lib/odds-provider/usage";
@@ -96,7 +97,17 @@ export async function GET(request: NextRequest) {
       for (const market of event.markets) {
         await settleMarketFromScore(market.id, { homeScore, awayScore });
       }
-      await db.update(events).set({ status: "finished", settledAt: new Date() }).where(eq(events.id, event.id));
+      // The score itself is worth keeping: the result column existed and was
+      // never filled, so nothing outside settlement could say what happened.
+      await db
+        .update(events)
+        .set({ status: "finished", settledAt: new Date(), result: { homeScore, awayScore } })
+        .where(eq(events.id, event.id));
+
+      // Match of the day: whoever called the score gets paid here, on the same
+      // final score the markets were settled against.
+      await settleScorePredictions(event.id, homeScore, awayScore);
+
       settled.push(event.id);
     }
   }

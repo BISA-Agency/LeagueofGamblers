@@ -18,6 +18,7 @@ import { outcomes } from "./outcomes";
 import { payments } from "./payments";
 import { challengeParticipants } from "./participants";
 import { predictions } from "./predictions";
+import { dailyMatches, scorePredictions } from "./score-predictions";
 import { profiles } from "./profiles";
 import { rankSnapshots } from "./rank-snapshots";
 import { sanctions } from "./sanctions";
@@ -191,4 +192,18 @@ export const predictionsRelations = relations(predictions, ({ one }) => ({
     references: [profiles.id],
     relationName: "predictedWinner",
   }),
+}));
+
+export const dailyMatchesRelations = relations(dailyMatches, ({ one, many }) => ({
+  challenge: one(challenges, { fields: [dailyMatches.challengeId], references: [challenges.id] }),
+  event: one(events, { fields: [dailyMatches.eventId], references: [events.id] }),
+  predictions: many(scorePredictions),
+}));
+
+export const scorePredictionsRelations = relations(scorePredictions, ({ one }) => ({
+  dailyMatch: one(dailyMatches, {
+    fields: [scorePredictions.dailyMatchId],
+    references: [dailyMatches.id],
+  }),
+  user: one(profiles, { fields: [scorePredictions.userId], references: [profiles.id] }),
 }));
