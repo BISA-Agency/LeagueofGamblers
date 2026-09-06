@@ -7,18 +7,10 @@ import {
   scorePredictions,
 } from "@drizzle/schema";
 
-/**
- * The prize for a correct score, as a share of what everyone started with.
- *
- * A fifth of the starting balance is enormous — on €10.000 it is €2.000, more
- * than most players' whole month of profit. That is the point: it has to be
- * worth opening the app for. It is a gift, not a pot, so several correct
- * guesses each get the full amount rather than splitting it.
- */
-export const PREDICTION_REWARD_SHARE = 0.2;
+import { PREDICTION_REWARD_SHARE } from "./constants";
 
-/** Highest score either side can be given. Beyond this it stops being a guess. */
-export const MAX_GOALS = 7;
+// Re-exported so server callers can keep importing everything from one place.
+export { MAX_GOALS, PREDICTION_REWARD_SHARE } from "./constants";
 
 /** The Amsterdam calendar day, as the yyyy-mm-dd the table stores. */
 export function matchDayFor(now = new Date()): string {

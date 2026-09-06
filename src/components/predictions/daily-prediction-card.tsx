@@ -4,35 +4,40 @@ import { useActionState, useState } from "react";
 import { submitScorePrediction, type PredictionState } from "@/actions/predictions-daily";
 import { TeamBadge } from "@/components/sportsbook/team-badge";
 import { formatEventTime } from "@/lib/format-event-time";
+import { MAX_GOALS } from "@/lib/predictions/constants";
 import type { DailyMatchView } from "@/lib/predictions/daily";
 import { cn } from "@/lib/utils";
 
 const EMPTY: PredictionState = {};
 const money = new Intl.NumberFormat("nl-NL", { maximumFractionDigits: 0 });
-/** Nought to five covers all but a handful of football scores. */
-const TALLIES = [0, 1, 2, 3, 4, 5];
+
+/** Digits only, and never more goals than a football match plausibly has. */
+function clean(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 1);
+  if (digits === "") return "";
+  return Number(digits) > MAX_GOALS ? String(MAX_GOALS) : digits;
+}
 
 /**
  * The match of the day: call the score, win a fifth of what you started with.
  *
- * Built as a scoreboard rather than a form. Two crests with a number between
- * them is how a result is written everywhere in football, so the thing you are
- * filling in looks like the thing you are predicting — and the two rows of
- * tallies underneath are the betting-shop layout the sportsbook already uses
- * for correct score.
+ * The scoreboard is the form. Two crests with a score between them is how a
+ * result is written everywhere in football, so rather than ask for the score
+ * underneath and echo it above, the two numbers are simply the boxes you type
+ * in. One thing on screen instead of two saying the same.
  *
  * One guess each, so the state after submitting is the point of the card, not
- * an afterthought: it keeps showing your score, all evening, until the match
- * decides it.
+ * an afterthought: your score stays there all evening until the match decides
+ * it.
  */
 export function DailyPredictionCard({ match }: { match: DailyMatchView }) {
   const [state, action, pending] = useActionState(submitScorePrediction, EMPTY);
-  const [home, setHome] = useState<number | null>(null);
-  const [away, setAway] = useState<number | null>(null);
+  const [home, setHome] = useState("");
+  const [away, setAway] = useState("");
 
   const decided = match.mine?.settledAt != null;
   const won = (match.mine?.rewardAmount ?? 0) > 0;
-  const chosen = home !== null && away !== null;
+  const filled = home !== "" && away !== "";
 
   return (
     <section
@@ -48,94 +53,95 @@ export function DailyPredictionCard({ match }: { match: DailyMatchView }) {
         </p>
       </header>
 
-      {/* The scoreboard: two sides with the score between them. Before anyone
-          picks it shows dashes, which is what an unplayed match looks like. */}
-      <div className="flex items-center gap-3 px-4 py-4">
-        <Side name={match.homeTeam ?? match.name} />
-        <div className="shrink-0 text-center">
-          <p className="text-3xl font-semibold tabular-nums leading-none">
-            <span className={cn(home !== null && "text-accent-brand")}>
-              {match.mine ? match.mine.homeGoals : (home ?? "–")}
-            </span>
-            <span className="mx-1.5 text-muted-foreground">:</span>
-            <span className={cn(away !== null && "text-accent-brand")}>
-              {match.mine ? match.mine.awayGoals : (away ?? "–")}
-            </span>
-          </p>
-          {match.finalScore && (
-            <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">
-              eindstand {match.finalScore.home}–{match.finalScore.away}
-            </p>
-          )}
-        </div>
-        <Side name={match.awayTeam ?? ""} align="right" />
-      </div>
+      <form action={action}>
+        <input type="hidden" name="dailyMatchId" value={match.dailyMatchId} />
 
-      {match.mine ? (
-        <div
-          className={cn(
-            "border-t px-4 py-3 text-sm",
-            decided
-              ? won
+        <div className="flex items-center gap-3 px-4 py-4">
+          <Side name={match.homeTeam ?? match.name} />
+
+          <div className="shrink-0 text-center">
+            {match.mine ? (
+              <p className="text-3xl font-semibold tabular-nums leading-none">
+                {match.mine.homeGoals}
+                <span className="mx-1.5 text-muted-foreground">:</span>
+                {match.mine.awayGoals}
+              </p>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <GoalInput
+                  name="homeGoals"
+                  label={`Doelpunten ${match.homeTeam ?? "thuis"}`}
+                  value={home}
+                  onChange={setHome}
+                  disabled={!match.open || pending}
+                />
+                <span className="text-xl text-muted-foreground">:</span>
+                <GoalInput
+                  name="awayGoals"
+                  label={`Doelpunten ${match.awayTeam ?? "uit"}`}
+                  value={away}
+                  onChange={setAway}
+                  disabled={!match.open || pending}
+                />
+              </div>
+            )}
+            {match.finalScore && (
+              <p className="mt-1.5 text-[11px] tabular-nums text-muted-foreground">
+                eindstand {match.finalScore.home}–{match.finalScore.away}
+              </p>
+            )}
+          </div>
+
+          <Side name={match.awayTeam ?? ""} align="right" />
+        </div>
+
+        {match.mine ? (
+          <div
+            className={cn(
+              "border-t px-4 py-3 text-sm",
+              decided && won
                 ? "border-accent-brand/40 bg-accent-brand/10 text-accent-brand"
                 : "border-border text-muted-foreground"
-              : "border-border text-muted-foreground"
-          )}
-        >
-          {decided
-            ? won
-              ? `Goed gegokt — €${money.format(match.mine.rewardAmount ?? 0)} erbij.`
-              : "Deze keer niet. Morgen een nieuwe wedstrijd."
-            : "Je score staat vast. Succes."}
-        </div>
-      ) : match.open ? (
-        <form action={action} className="space-y-3 border-t border-border px-4 pb-4 pt-3">
-          <input type="hidden" name="dailyMatchId" value={match.dailyMatchId} />
-          <input type="hidden" name="homeGoals" value={home ?? ""} />
-          <input type="hidden" name="awayGoals" value={away ?? ""} />
-
-          <TallyRow
-            label={match.homeTeam ?? "Thuis"}
-            value={home}
-            onPick={setHome}
-            disabled={pending}
-          />
-          <TallyRow
-            label={match.awayTeam ?? "Uit"}
-            value={away}
-            onPick={setAway}
-            disabled={pending}
-          />
-
-          <button
-            type="submit"
-            disabled={!chosen || pending}
-            className={cn(
-              "flex h-11 w-full items-center justify-center rounded-lg text-sm font-semibold transition-colors",
-              chosen
-                ? "bg-accent-brand text-accent-brand-foreground hover:brightness-95"
-                : "cursor-not-allowed bg-secondary text-muted-foreground"
             )}
           >
-            {pending
-              ? "Bezig…"
-              : chosen
-                ? `Zet ${home}–${away} vast voor €${money.format(match.reward)}`
-                : "Kies een score"}
-          </button>
+            {decided
+              ? won
+                ? `Goed gegokt — €${money.format(match.mine.rewardAmount ?? 0)} erbij.`
+                : "Deze keer niet. Morgen een nieuwe wedstrijd."
+              : "Je score staat vast. Succes."}
+          </div>
+        ) : match.open ? (
+          <div className="space-y-2 border-t border-border px-4 pb-4 pt-3">
+            <button
+              type="submit"
+              disabled={!filled || pending}
+              className={cn(
+                "flex h-11 w-full items-center justify-center rounded-lg text-sm font-semibold transition-colors",
+                filled
+                  ? "bg-accent-brand text-accent-brand-foreground hover:brightness-95"
+                  : "cursor-not-allowed bg-secondary text-muted-foreground"
+              )}
+            >
+              {pending
+                ? "Bezig…"
+                : filled
+                  ? `Zet ${home}–${away} vast voor €${money.format(match.reward)}`
+                  : "Vul de eindstand in"}
+            </button>
 
-          {state.error && <p className="text-xs text-loss">{state.error}</p>}
+            {state.error && <p className="text-xs text-loss">{state.error}</p>}
 
-          <p className="text-center text-[11px] text-muted-foreground">
-            Eén score per persoon · goed = €{money.format(match.reward)} cadeau ·{" "}
-            {match.playerCount} {match.playerCount === 1 ? "speler deed" : "spelers deden"} mee
-          </p>
-        </form>
-      ) : (
-        <div className="border-t border-border px-4 py-3 text-sm text-muted-foreground">
-          Je hebt deze niet ingevuld. Morgen weer een kans.
-        </div>
-      )}
+            <p className="text-center text-[11px] text-muted-foreground">
+              Eén score per persoon · goed = €{money.format(match.reward)} cadeau ·{" "}
+              {match.playerCount} {match.playerCount === 1 ? "speler deed" : "spelers deden"} mee
+            </p>
+          </div>
+        ) : (
+          <div className="border-t border-border px-4 py-3 text-sm text-muted-foreground">
+            Je hebt deze niet ingevuld. Morgen weer een kans.
+          </div>
+        )}
+      </form>
 
       {match.winners.length > 0 && (
         <div className="border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
@@ -149,6 +155,49 @@ export function DailyPredictionCard({ match }: { match: DailyMatchView }) {
   );
 }
 
+/**
+ * One goal tally.
+ *
+ * type="text" with inputMode="numeric" rather than type="number": it brings up
+ * the number pad on a phone all the same, without the desktop spinners and
+ * without a scroll wheel over the field silently changing someone's score.
+ */
+function GoalInput({
+  name,
+  label,
+  value,
+  onChange,
+  disabled,
+}: {
+  name: string;
+  label: string;
+  value: string;
+  onChange: (next: string) => void;
+  disabled: boolean;
+}) {
+  return (
+    <input
+      name={name}
+      value={value}
+      onChange={(e) => onChange(clean(e.target.value))}
+      disabled={disabled}
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
+      aria-label={label}
+      placeholder="–"
+      className={cn(
+        "size-12 rounded-lg border bg-secondary/40 text-center text-2xl font-semibold tabular-nums outline-none transition-colors",
+        "placeholder:text-muted-foreground/50",
+        "focus:border-accent-brand focus:bg-accent-brand/10",
+        value !== ""
+          ? "border-accent-brand text-accent-brand"
+          : "border-border text-foreground hover:border-foreground/25"
+      )}
+    />
+  );
+}
+
 function Side({ name, align = "left" }: { name: string; align?: "left" | "right" }) {
   return (
     <div
@@ -159,43 +208,6 @@ function Side({ name, align = "left" }: { name: string; align?: "left" | "right"
     >
       <TeamBadge name={name} size={26} />
       <span className="truncate text-sm font-medium">{name}</span>
-    </div>
-  );
-}
-
-function TallyRow({
-  label,
-  value,
-  onPick,
-  disabled,
-}: {
-  label: string;
-  value: number | null;
-  onPick: (goals: number) => void;
-  disabled: boolean;
-}) {
-  return (
-    <div className="space-y-1">
-      <p className="truncate text-[11px] text-muted-foreground">{label}</p>
-      <div className="flex gap-1.5">
-        {TALLIES.map((goals) => (
-          <button
-            key={goals}
-            type="button"
-            disabled={disabled}
-            onClick={() => onPick(goals)}
-            aria-pressed={value === goals}
-            className={cn(
-              "h-10 flex-1 rounded-md border text-sm font-medium tabular-nums transition-colors",
-              value === goals
-                ? "border-accent-brand bg-accent-brand/15 text-accent-brand"
-                : "border-border bg-secondary/40 text-foreground hover:border-foreground/25"
-            )}
-          >
-            {goals}
-          </button>
-        ))}
-      </div>
     </div>
   );
 }

@@ -6,7 +6,8 @@ import { redirect } from "next/navigation";
 import { logAuditEvent } from "@/lib/audit";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
-import { MAX_GOALS, matchDayFor } from "@/lib/predictions/daily";
+import { MAX_GOALS } from "@/lib/predictions/constants";
+import { matchDayFor } from "@/lib/predictions/daily";
 import { challengeParticipants, dailyMatches, events, scorePredictions } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
@@ -31,12 +32,22 @@ export async function submitScorePrediction(
   if (!user) redirect("/login");
 
   const dailyMatchId = String(formData.get("dailyMatchId") ?? "");
-  const homeGoals = Number(formData.get("homeGoals"));
-  const awayGoals = Number(formData.get("awayGoals"));
+  const homeRaw = String(formData.get("homeGoals") ?? "").trim();
+  const awayRaw = String(formData.get("awayGoals") ?? "").trim();
 
-  if (!Number.isInteger(homeGoals) || !Number.isInteger(awayGoals)) {
-    return { error: "Kies een score." };
+  /**
+   * Both fields typed, and typed as digits.
+   *
+   * Checked on the raw text rather than after Number(): an empty box becomes
+   * 0, which is a perfectly valid score, so a half-filled form would have gone
+   * in as a confident 0–0 that nobody chose.
+   */
+  if (!/^\d+$/.test(homeRaw) || !/^\d+$/.test(awayRaw)) {
+    return { error: "Vul beide vakjes in met een cijfer." };
   }
+
+  const homeGoals = Number(homeRaw);
+  const awayGoals = Number(awayRaw);
   if (homeGoals < 0 || awayGoals < 0 || homeGoals > MAX_GOALS || awayGoals > MAX_GOALS) {
     return { error: `Houd het tussen 0 en ${MAX_GOALS}.` };
   }
