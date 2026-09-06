@@ -1,4 +1,6 @@
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { PendingHint } from "@/components/ui/pending-hint";
 import {
   filterHref,
   type FixtureGroup,
@@ -41,16 +43,28 @@ export function EventList({
 
         return (
           <section key={group.sportKey} className="space-y-2.5">
-            <h2 className="flex items-center gap-2 border-b border-border/70 pb-2">
-              <CompetitionCrest country={meta.country} className="h-4 w-6" />
-              <span className="truncate text-sm font-semibold tracking-tight">{meta.name}</span>
-              {/* Boxing is its own competition; "Boksen Boksen" helps nobody. */}
-              {meta.name !== group.sportLabel && (
-                <span className="truncate text-xs text-muted-foreground">{group.sportLabel}</span>
+            {/* The heading is the way into a competition. It reads as a label,
+                so it needs the chevron to say it is also a door — and it stops
+                being a link once you are already inside that competition. */}
+            <h2 className="border-b border-border/70 pb-2">
+              {filter.league === group.sportKey ? (
+                <span className="flex items-center gap-2">
+                  <CompetitionCrest country={meta.country} className="h-4 w-6" />
+                  <span className="truncate text-sm font-semibold tracking-tight">{meta.name}</span>
+                  <GroupMeta group={group} meta={meta} />
+                </span>
+              ) : (
+                <Link
+                  href={filterHref({ league: group.sportKey })}
+                  className="group/head relative -my-1 flex items-center gap-2 py-1 transition-colors hover:text-accent-brand"
+                >
+                  <PendingHint className="-inset-x-2 inset-y-0 rounded-md bg-accent-brand/10" />
+                  <CompetitionCrest country={meta.country} className="h-4 w-6" />
+                  <span className="truncate text-sm font-semibold tracking-tight">{meta.name}</span>
+                  <GroupMeta group={group} meta={meta} />
+                  <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover/head:translate-x-0.5 group-hover/head:text-accent-brand" />
+                </Link>
               )}
-              <span className="ml-auto shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
-                {group.shown.length + group.hidden}
-              </span>
             </h2>
 
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 2xl:grid-cols-3">
@@ -78,5 +92,28 @@ export function EventList({
         );
       })}
     </div>
+  );
+}
+
+/** The sport name (when it differs) and the fixture count, on the right. */
+function GroupMeta({
+  group,
+  meta,
+}: {
+  group: FixtureGroup<Event>;
+  meta: { name: string };
+}) {
+  return (
+    <>
+      {/* Boxing is its own competition; "Boksen Boksen" helps nobody. */}
+      {meta.name !== group.sportLabel && (
+        <span className="truncate text-xs font-normal text-muted-foreground">
+          {group.sportLabel}
+        </span>
+      )}
+      <span className="ml-auto shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
+        {group.shown.length + group.hidden}
+      </span>
+    </>
   );
 }
