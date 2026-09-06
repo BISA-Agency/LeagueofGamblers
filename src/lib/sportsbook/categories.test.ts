@@ -180,10 +180,12 @@ describe("filterEvents", () => {
     ).toHaveLength(2);
   });
 
-  it("combines a league with the time filter", () => {
+  // A competition page that hid Wednesday's fixtures would leave no way to
+  // reach them at all, now that the 24-hour toggle is gone.
+  it("shows a chosen league in full, window or no window", () => {
     expect(
       filterEvents(EVENTS, { sport: "voetbal", league: "soccer_epl", soon: true, open: [] }, NOW)
-    ).toHaveLength(1);
+    ).toHaveLength(2);
   });
 });
 
