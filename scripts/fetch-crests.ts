@@ -4,9 +4,10 @@
 //
 //   npm run crests
 //
-// Needs FOOTBALL_DATA_TOKEN in .env.local (free key from football-data.org).
+// Needs FOOTBALL_DATA_TOKEN and API_FOOTBALL_KEY in .env.local (both free).
 // Re-run after enabling new competitions; files already present are left
-// alone, so a second run only fetches what is new.
+// alone, so a second run only asks for what is new — which matters, because
+// one of the two sources allows a hundred requests a day.
 import { config } from "dotenv";
 config({ path: ".env.local" });
 
@@ -16,38 +17,56 @@ import sharp from "sharp";
 
 const OUT_DIR = path.join(process.cwd(), "public", "crests");
 const INDEX_FILE = path.join(process.cwd(), "src", "lib", "sportsbook", "crests.ts");
-const API = "https://api.football-data.org/v4";
-/** The free tier allows ten calls a minute; seven seconds apart sits under it. */
+const FOOTBALL_DATA = "https://api.football-data.org/v4";
+const API_FOOTBALL = "https://v3.football.api-sports.io";
+/** Both free tiers allow ten calls a minute; seven seconds apart sits under it. */
 const DELAY_MS = 7000;
 /**
  * What we store, not what they send.
  *
- * football-data serves 200 px crests of up to 120 kB; the badge draws them at
- * 22. Two hundred of those would have cost more than the entire sportsbook
- * page does, so each one is resized to 64 (enough for a retina 32) and written
- * as WebP — around a kilobyte apiece, transparency intact.
+ * The sources serve crests of up to 120 kB; the badge draws them at 22 px.
+ * Two hundred of those would have cost more than the entire sportsbook page
+ * does, so each one is resized to 64 (enough for a retina 32) and written as
+ * WebP — around three kilobytes apiece, transparency intact.
  */
 const CREST_PX = 64;
 
 /**
- * Our sport keys to football-data's competition codes.
+ * Every competition we can get crests for, and where from.
  *
- * Only what its free tier covers. MLS, the second divisions and the Turkish
- * league are not in it, so those clubs keep the lettered badge — the same one
- * every tennis player and boxer gets, which reads as deliberate rather than
- * broken.
+ * football-data.org is the better source but its whole catalogue is thirteen
+ * competitions, ten of which we use. Everything else — MLS, the Turkish league,
+ * the second divisions — comes from API-Football, whose coverage is far wider
+ * and whose free tier stops at season 2024. That cutoff is why the search pass
+ * below exists.
+ *
+ * `country` is only used to disambiguate that search: it must match the
+ * country name API-Football puts on a team, not our own flag codes. Null means
+ * supranational, where filtering by country would throw away the right answer.
  */
-const COMPETITIONS: Record<string, string> = {
-  soccer_epl: "PL",
-  soccer_efl_champ: "ELC",
-  soccer_germany_bundesliga: "BL1",
-  soccer_italy_serie_a: "SA",
-  soccer_spain_la_liga: "PD",
-  soccer_france_ligue_one: "FL1",
-  soccer_netherlands_eredivisie: "DED",
-  soccer_portugal_primeira_liga: "PPL",
-  soccer_brazil_campeonato: "BSA",
-  soccer_uefa_champs_league: "CL",
+type Competition =
+  | { source: "football-data"; code: string; country: string | null }
+  | { source: "api-football"; id: number; season: number; country: string | null };
+
+const COMPETITIONS: Record<string, Competition> = {
+  soccer_epl: { source: "football-data", code: "PL", country: "England" },
+  soccer_efl_champ: { source: "football-data", code: "ELC", country: "England" },
+  soccer_germany_bundesliga: { source: "football-data", code: "BL1", country: "Germany" },
+  soccer_italy_serie_a: { source: "football-data", code: "SA", country: "Italy" },
+  soccer_spain_la_liga: { source: "football-data", code: "PD", country: "Spain" },
+  soccer_france_ligue_one: { source: "football-data", code: "FL1", country: "France" },
+  soccer_netherlands_eredivisie: { source: "football-data", code: "DED", country: "Netherlands" },
+  soccer_portugal_primeira_liga: { source: "football-data", code: "PPL", country: "Portugal" },
+  soccer_brazil_campeonato: { source: "football-data", code: "BSA", country: "Brazil" },
+  soccer_uefa_champs_league: { source: "football-data", code: "CL", country: null },
+
+  soccer_usa_mls: { source: "api-football", id: 253, season: 2024, country: "USA" },
+  soccer_turkey_super_league: { source: "api-football", id: 203, season: 2024, country: "Turkey" },
+  soccer_italy_serie_b: { source: "api-football", id: 136, season: 2024, country: "Italy" },
+  soccer_spain_segunda_division: { source: "api-football", id: 141, season: 2024, country: "Spain" },
+  soccer_germany_bundesliga2: { source: "api-football", id: 79, season: 2024, country: "Germany" },
+  soccer_france_ligue_two: { source: "api-football", id: 62, season: 2024, country: "France" },
+  soccer_italy_coppa_italia: { source: "api-football", id: 137, season: 2024, country: "Italy" },
 };
 
 /**
@@ -67,6 +86,15 @@ const ALIASES: Record<string, string> = {
   "AEK Athens": "PAE AEK",
   "Sporting Lisbon": "Sporting CP",
   Rennes: "Stade Rennais",
+  // Same problem at API-Football, plus the reserve sides: Spain enters them in
+  // the second division under a name the first team's crest must not answer to.
+  "LA Galaxy": "Los Angeles Galaxy",
+  "D.C. United": "DC United",
+  "Real Sociedad B": "Real Sociedad II",
+  "Celta Fortuna": "Celta de Vigo II",
+  // "BB" is Büyükşehir Belediyesi, which their name drops entirely.
+  "Erzurum BB": "Erzurumspor FK",
+  "Stade Lavallois": "Laval",
 };
 
 function slugify(name: string): string {
@@ -95,26 +123,110 @@ function tokens(name: string): Set<string> {
 
 const isSubset = (a: Set<string>, b: Set<string>) => [...a].every((x) => b.has(x));
 
+/** How a reserve side is marked, in either source's spelling. */
+const RESERVE_MARKS = new Set(["b", "ii", "iii", "2", "fortuna", "castilla"]);
+
+/**
+ * Whether this is a club's second team.
+ *
+ * Spain enters reserve sides in the second division, and the subset rule below
+ * happily reads "Real Sociedad" as a match for "Real Sociedad B" — which would
+ * put the first team's crest on the wrong club and never say so. A wrong crest
+ * is worse than no crest, so the two may not match each other.
+ */
+function isReserve(name: string): boolean {
+  const parts = slugify(name).split("-");
+  return RESERVE_MARKS.has(parts[parts.length - 1]);
+}
+
 /**
  * Matches only when one name's distinctive words sit entirely inside the
  * other's. "PSV" fits inside "PSV Eindhoven"; "Real Madrid" does not fit
  * inside "Real Sociedad", which is exactly the pair a looser rule gets wrong.
  */
-function matches(ours: string, theirs: string[]): boolean {
+function matches(ours: string, theirs: (string | undefined)[]): boolean {
   const mine = tokens(ours);
   if (mine.size === 0) return false;
+  const oursIsReserve = isReserve(ours);
   return theirs.some((name) => {
+    if (!name) return false;
+    if (isReserve(name) !== oursIsReserve) return false;
     const other = tokens(name);
     if (other.size === 0) return false;
     return isSubset(mine, other) || isSubset(other, mine);
   });
 }
 
-type Team = { name: string; shortName?: string; tla?: string; crest?: string };
+/**
+ * What to type into API-Football's search box.
+ *
+ * Their search is a plain substring match on the club's name, not a fuzzy one,
+ * and it rejects anything but letters, digits and spaces. So "Girona FC" finds
+ * nothing — no club is called that — while "girona" finds it, and "1. FC
+ * Heidenheim" is refused outright. Sending the longest distinctive word solves
+ * both: it is the part most likely to appear verbatim in their name.
+ */
+function searchTerm(name: string): string {
+  const alias = ALIASES[name];
+  if (alias) return alias.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const longest = [...tokens(name)].sort((a, b) => b.length - a.length)[0];
+  return longest ?? slugify(name);
+}
+
+/** One club as either source describes it, reduced to what we need. */
+type Candidate = { names: (string | undefined)[]; crest?: string; country?: string };
+
+const sleep = () => new Promise((r) => setTimeout(r, DELAY_MS));
+
+async function fromFootballData(code: string, token: string): Promise<Candidate[]> {
+  const res = await fetch(`${FOOTBALL_DATA}/competitions/${code}/teams`, {
+    headers: { "X-Auth-Token": token },
+  });
+  if (!res.ok) {
+    console.error(`  ${code}: HTTP ${res.status}`);
+    return [];
+  }
+  const teams =
+    ((await res.json()) as { teams?: { name: string; shortName?: string; tla?: string; crest?: string }[] })
+      .teams ?? [];
+  return teams.map((t) => ({ names: [t.name, t.shortName, t.tla], crest: t.crest }));
+}
+
+type ApiFootballTeam = { team: { name: string; code?: string; logo?: string; country?: string } };
+
+/** API-Football answers 200 with an errors object rather than a status code. */
+async function apiFootball(query: string, key: string): Promise<Candidate[]> {
+  const res = await fetch(`${API_FOOTBALL}/teams?${query}`, {
+    headers: { "x-apisports-key": key },
+  });
+  const body = (await res.json()) as { response?: ApiFootballTeam[]; errors?: unknown };
+  const errors = Array.isArray(body.errors) ? body.errors : Object.values(body.errors ?? {});
+  if (errors.length > 0) {
+    console.error(`  ${query}: ${JSON.stringify(errors)}`);
+    return [];
+  }
+  return (body.response ?? []).map((t) => ({
+    names: [t.team.name, t.team.code],
+    crest: t.team.logo,
+    country: t.team.country,
+  }));
+}
+
+/** Resize, re-encode, write. Returns false when the download itself failed. */
+async function save(slug: string, url: string): Promise<boolean> {
+  const img = await fetch(url);
+  if (!img.ok) return false;
+  const small = await sharp(Buffer.from(await img.arrayBuffer()))
+    .resize(CREST_PX, CREST_PX, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .webp({ quality: 90 })
+    .toBuffer();
+  await writeFile(path.join(OUT_DIR, `${slug}.webp`), small);
+  return true;
+}
 
 async function main() {
-  const token = process.env.FOOTBALL_DATA_TOKEN;
-  if (!token) throw new Error("FOOTBALL_DATA_TOKEN ontbreekt in .env.local");
+  const fdToken = process.env.FOOTBALL_DATA_TOKEN;
+  const afKey = process.env.API_FOOTBALL_KEY;
 
   const { db } = await import("../src/lib/db");
   const { events } = await import("../drizzle/schema");
@@ -134,61 +246,97 @@ async function main() {
 
   // Grouped per competition, because that is how they are fetched: one call
   // returns a league's clubs, and a team is only looked for among its own.
-  const byCompetition = new Map<string, Set<string>>();
+  // Anything already on disk drops out here, so a competition that is fully
+  // covered costs no request at all.
+  const wanted = new Map<string, string[]>();
   for (const row of rows) {
-    const set = byCompetition.get(row.sportKey) ?? new Set<string>();
-    if (row.home) set.add(row.home);
-    if (row.away) set.add(row.away);
-    byCompetition.set(row.sportKey, set);
+    for (const team of [row.home, row.away]) {
+      if (!team || have.has(slugify(team))) continue;
+      const list = wanted.get(row.sportKey) ?? [];
+      if (!list.includes(team)) list.push(team);
+      wanted.set(row.sportKey, list);
+    }
   }
 
-  const missing: string[] = [];
+  const stillMissing: { name: string; sportKey: string }[] = [];
   let fetched = 0;
 
-  for (const [sportKey, ourTeams] of byCompetition) {
-    const code = COMPETITIONS[sportKey];
-    const res = await fetch(`${API}/competitions/${code}/teams`, {
-      headers: { "X-Auth-Token": token },
-    });
-    if (!res.ok) {
-      console.error(`  ${code}: HTTP ${res.status}`);
-      await new Promise((r) => setTimeout(r, DELAY_MS));
-      continue;
+  for (const [sportKey, ourTeams] of wanted) {
+    const competition = COMPETITIONS[sportKey];
+    const label = competition.source === "football-data" ? competition.code : `#${competition.id}`;
+
+    let theirs: Candidate[] = [];
+    if (competition.source === "football-data") {
+      if (!fdToken) {
+        console.error(`${label}: overgeslagen, FOOTBALL_DATA_TOKEN ontbreekt`);
+        continue;
+      }
+      theirs = await fromFootballData(competition.code, fdToken);
+    } else {
+      if (!afKey) {
+        console.error(`${label}: overgeslagen, API_FOOTBALL_KEY ontbreekt`);
+        continue;
+      }
+      theirs = await apiFootball(`league=${competition.id}&season=${competition.season}`, afKey);
     }
-    const theirTeams = ((await res.json()) as { teams?: Team[] }).teams ?? [];
-    console.log(`${code}: ${theirTeams.length} clubs opgehaald, ${ourTeams.size} bij ons`);
+    console.log(`${label}: ${theirs.length} clubs opgehaald, ${ourTeams.length} gezocht`);
 
     for (const ours of ourTeams) {
-      const slug = slugify(ours);
-      if (have.has(slug)) continue;
-
       const alias = ALIASES[ours];
-      const hit = theirTeams.find((t) =>
+      const hit = theirs.find((t) =>
         alias
-          ? [t.name, t.shortName, t.tla].some((n) => n && slugify(n) === slugify(alias))
-          : matches(ours, [t.name, t.shortName].filter(Boolean) as string[])
+          ? t.names.some((n) => n && slugify(n) === slugify(alias))
+          : matches(ours, t.names)
       );
-
       if (!hit?.crest) {
-        missing.push(`${ours} (${code})`);
+        stillMissing.push({ name: ours, sportKey });
         continue;
       }
-
-      const img = await fetch(hit.crest);
-      if (!img.ok) {
-        missing.push(`${ours} (${code}, download ${img.status})`);
-        continue;
+      if (await save(slugify(ours), hit.crest)) {
+        have.add(slugify(ours));
+        fetched += 1;
+      } else {
+        stillMissing.push({ name: ours, sportKey });
       }
-      const small = await sharp(Buffer.from(await img.arrayBuffer()))
-        .resize(CREST_PX, CREST_PX, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
-        .webp({ quality: 90 })
-        .toBuffer();
-      await writeFile(path.join(OUT_DIR, `${slug}.webp`), small);
-      have.add(slug);
-      fetched += 1;
     }
 
-    await new Promise((r) => setTimeout(r, DELAY_MS));
+    await sleep();
+  }
+
+  /**
+   * One search per club still unaccounted for.
+   *
+   * API-Football's free tier only serves squads up to season 2024, so a club
+   * promoted or founded since then is in none of the league lists — San Diego
+   * FC joined MLS in 2025 and simply is not in the 2024 roster. Search is not
+   * season-bound, so it finds them; it is one request a club, which is why it
+   * runs last and only on the remainder.
+   */
+  const unresolved: string[] = [];
+  if (afKey && stillMissing.length > 0) {
+    console.log(`\nZoeken op naam voor ${stillMissing.length} clubs...`);
+    for (const { name, sportKey } of stillMissing) {
+      const country = COMPETITIONS[sportKey].country;
+      const alias = ALIASES[name];
+      const results = await apiFootball(`search=${encodeURIComponent(searchTerm(name))}`, afKey);
+      const hit = results.find(
+        (t) =>
+          (!country || t.country === country) &&
+          (alias
+            ? t.names.some((n) => n && slugify(n) === slugify(alias))
+            : matches(name, t.names))
+      );
+      if (hit?.crest && (await save(slugify(name), hit.crest))) {
+        have.add(slugify(name));
+        fetched += 1;
+        console.log(`  gevonden: ${name}`);
+      } else {
+        unresolved.push(`${name} (${sportKey})`);
+      }
+      await sleep();
+    }
+  } else {
+    unresolved.push(...stillMissing.map((m) => `${m.name} (${m.sportKey})`));
   }
 
   const slugs = [...have].sort();
@@ -208,9 +356,9 @@ ${slugs.map((s) => `  ${JSON.stringify(s)},`).join("\n")}
   );
 
   console.log(`\n${fetched} nieuwe emblemen, ${slugs.length} in totaal.`);
-  if (missing.length > 0) {
-    console.log(`\nNiet gevonden (${missing.length}):`);
-    console.log(missing.map((m) => `  ${m}`).join("\n"));
+  if (unresolved.length > 0) {
+    console.log(`\nNiet gevonden (${unresolved.length}):`);
+    console.log(unresolved.map((m) => `  ${m}`).join("\n"));
   }
   process.exit(0);
 }
