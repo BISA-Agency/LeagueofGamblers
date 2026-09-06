@@ -8,8 +8,6 @@ import type { Event, Market, Outcome } from "@drizzle/schema";
 import { OutcomeButton } from "./outcome-button";
 import { TeamBadge } from "./team-badge";
 
-export type EventWithOdds = Event & { markets: (Market & { outcomes: Outcome[] })[] };
-
 /**
  * 1 / X / 2 on the card, because the teams are already named directly above
  * it. The underlying label is untouched — settlement matches on it.
@@ -25,9 +23,20 @@ function shortLabel(
   return "X";
 }
 
-export function EventCard({ event }: { event: EventWithOdds }) {
-  const market = pickPrimaryMarket(event.markets);
-  const extraMarkets = event.markets.length - (market ? 1 : 0);
+/**
+ * Odds arrive beside the fixture rather than nested inside it: the page loads
+ * prices only for the cards it is about to draw, so an event row on its own
+ * has none attached.
+ */
+export function EventCard({
+  event,
+  markets,
+}: {
+  event: Event;
+  markets: (Market & { outcomes: Outcome[] })[];
+}) {
+  const market = pickPrimaryMarket(markets);
+  const extraMarkets = markets.length - (market ? 1 : 0);
   const { day, time, imminent } = formatEventDayTime(event.startsAt);
   const hasTeams = Boolean(event.homeTeam && event.awayTeam);
 

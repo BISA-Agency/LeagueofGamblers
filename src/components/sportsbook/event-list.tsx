@@ -1,5 +1,13 @@
+import Link from "next/link";
+import {
+  filterHref,
+  type FixtureGroup,
+  type SportsbookFilter,
+} from "@/lib/sportsbook/categories";
 import { competitionMeta } from "@/lib/sportsbook/competitions";
-import { EventCard, type EventWithOdds } from "./event-card";
+import type { MarketWithOutcomes } from "@/lib/sportsbook/load-odds";
+import type { Event } from "@drizzle/schema";
+import { EventCard } from "./event-card";
 import { CompetitionCrest } from "./competition-crest";
 
 /**
@@ -8,51 +16,64 @@ import { CompetitionCrest } from "./competition-crest";
  * their earliest kick-off, and so are the cards inside them, so what is on
  * soonest still surfaces first.
  *
- * The heading carries the flag and the tidied-up league name, not the
- * provider's raw title, so a page of sections reads as a list of competitions
- * instead of a list of database values.
+ * Six fixtures a competition, then a link for the rest. At seven kilobytes a
+ * card, showing all of them made the page 1.2 MB — most of it competitions
+ * the reader scrolled straight past. The link adds the competition to ?open=
+ * and the server sends its remaining cards; nothing is rendered and hidden,
+ * which would have saved nobody anything.
+ *
+ * The grouping itself happens in the page (groupFixtures), so it can fetch
+ * odds for exactly the cards below and no others.
  */
-export function EventList({ events }: { events: EventWithOdds[] }) {
-  const groups = new Map<string, { sport: string; events: EventWithOdds[] }>();
-
-  for (const event of events) {
-    // One league is one sport key, so grouping on it can never split a
-    // competition in two over a spelling change in the provider's title.
-    const group = groups.get(event.sportKey) ?? { sport: event.sportLabel, events: [] };
-    group.events.push(event);
-    groups.set(event.sportKey, group);
-  }
-
-  const earliest = (list: EventWithOdds[]) => Math.min(...list.map((e) => e.startsAt.getTime()));
-
-  const ordered = [...groups.entries()].sort(
-    ([, a], [, b]) => earliest(a.events) - earliest(b.events)
-  );
-
+export function EventList({
+  groups,
+  oddsByEvent,
+  filter,
+}: {
+  groups: FixtureGroup<Event>[];
+  oddsByEvent: Map<string, MarketWithOutcomes[]>;
+  filter: SportsbookFilter;
+}) {
   return (
     <div className="space-y-7">
-      {ordered.map(([sportKey, group]) => {
-        const first = group.events[0];
-        const meta = competitionMeta(sportKey, first.competition, first.sportLabel);
+      {groups.map((group) => {
+        const meta = competitionMeta(group.sportKey, group.competition, group.sportLabel);
 
         return (
-          <section key={sportKey} className="space-y-2.5">
+          <section key={group.sportKey} className="space-y-2.5">
             <h2 className="flex items-center gap-2 border-b border-border/70 pb-2">
               <CompetitionCrest country={meta.country} className="h-4 w-6" />
               <span className="truncate text-sm font-semibold tracking-tight">{meta.name}</span>
               {/* Boxing is its own competition; "Boksen Boksen" helps nobody. */}
-              {meta.name !== group.sport && (
-                <span className="truncate text-xs text-muted-foreground">{group.sport}</span>
+              {meta.name !== group.sportLabel && (
+                <span className="truncate text-xs text-muted-foreground">{group.sportLabel}</span>
               )}
               <span className="ml-auto shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
-                {group.events.length}
+                {group.shown.length + group.hidden}
               </span>
             </h2>
+
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 2xl:grid-cols-3">
-              {group.events.map((event) => (
-                <EventCard key={event.id} event={event} />
+              {group.shown.map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  markets={oddsByEvent.get(event.id) ?? []}
+                />
               ))}
             </div>
+
+            {group.hidden > 0 && (
+              <Link
+                href={filterHref({ ...filter, open: [...filter.open, group.sportKey] })}
+                // Not scrolling to the top: you asked for more of this
+                // competition, so the page should stay where you were.
+                scroll={false}
+                className="flex h-11 items-center justify-center rounded-lg border border-border bg-card/60 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/25 hover:text-foreground"
+              >
+                Toon {group.hidden} {group.hidden === 1 ? "wedstrijd" : "wedstrijden"} meer
+              </Link>
+            )}
           </section>
         );
       })}

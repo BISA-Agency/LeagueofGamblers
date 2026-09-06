@@ -26,36 +26,44 @@ const EVENTS = [
 ];
 
 describe("resolveFilter", () => {
-  it("defaults to everything", () => {
-    expect(resolveFilter(EVENTS, {})).toEqual({ sport: "alles", league: null, soon: false });
+  // The board opens on the next 24 hours; showing every fixture is the choice.
+  it("defaults to the 24-hour window", () => {
+    expect(resolveFilter(EVENTS, {}, NOW)).toEqual({ sport: "alles", league: null, soon: true, open: [] });
+    expect(resolveFilter(EVENTS, { soon: "0" }, NOW).soon).toBe(false);
+  });
+
+  // A day with nothing on would otherwise open on an empty board.
+  it("falls back to everything when the window is empty", () => {
+    const later = [event("soccer_epl", "Voetbal", "EPL", 200)];
+    expect(resolveFilter(later, {}, NOW).soon).toBe(false);
   });
 
   it("reads a sport and a league", () => {
-    expect(resolveFilter(EVENTS, { s: "voetbal" })).toMatchObject({
+    expect(resolveFilter(EVENTS, { s: "voetbal" }, NOW)).toMatchObject({
       sport: "voetbal",
       league: null,
     });
-    expect(resolveFilter(EVENTS, { l: "soccer_epl" })).toMatchObject({ league: "soccer_epl" });
+    expect(resolveFilter(EVENTS, { l: "soccer_epl" }, NOW)).toMatchObject({ league: "soccer_epl" });
   });
 
   // A shared link only ever carries ?l=, so the sport row still has to light up.
   it("derives the sport from the league", () => {
-    expect(resolveFilter(EVENTS, { l: "mma_mixed_martial_arts" }).sport).toBe("mma");
+    expect(resolveFilter(EVENTS, { l: "mma_mixed_martial_arts" }, NOW).sport).toBe("mma");
   });
 
   // The old rail could point at a category the list no longer had; falling
   // back to everything means a stale link shows fixtures, not an empty page.
   it("ignores a sport or league that is not on offer", () => {
-    expect(resolveFilter(EVENTS, { s: "curling", l: "soccer_nowhere" })).toEqual({
+    expect(resolveFilter(EVENTS, { s: "curling", l: "soccer_nowhere" }, NOW)).toMatchObject({
       sport: "alles",
       league: null,
-      soon: false,
+      open: [],
     });
   });
 });
 
 describe("buildNav", () => {
-  const all = { sport: "alles", league: null, soon: false };
+  const all = { sport: "alles", league: null, soon: false, open: [] as string[] };
 
   it("counts sports, with Alles first", () => {
     const { sports } = buildNav(EVENTS, all, NOW);
@@ -91,20 +99,22 @@ describe("buildNav", () => {
   });
 
   // A chip that promises nine fixtures and delivers two is worse than no chip.
-  it("counts within the 24-hour window when it is on", () => {
-    const nav = buildNav(EVENTS, { ...all, soon: true }, NOW);
-    expect(nav.sports[0].count).toBe(3);
-    expect(nav.leagues.find((l) => l.key === "soccer_epl")?.count).toBe(1);
+  it("counts sports within the 24-hour window", () => {
+    expect(buildNav(EVENTS, { ...all, soon: true }, NOW).sports[0].count).toBe(3);
   });
 
-  it("reports the soon count regardless of the active filter", () => {
-    expect(buildNav(EVENTS, { ...all, sport: "mma" }, NOW).soonCount).toBe(3);
+  // Tapping a league shows the whole league, so its chip counts the whole
+  // league — a chip must promise exactly what it delivers.
+  it("counts a league in full even inside the 24-hour window", () => {
+    const nav = buildNav(EVENTS, { ...all, soon: true }, NOW);
+    expect(nav.sports[0].count).toBe(3);
+    expect(nav.leagues.find((l) => l.key === "soccer_epl")?.count).toBe(2);
   });
 });
 
 describe("groupLeaguesByCountry", () => {
   const leaguesOf = (sport: string) =>
-    buildNav(EVENTS, { sport, league: null, soon: false }, NOW).leagues;
+    buildNav(EVENTS, { sport, league: null, soon: false, open: [] }, NOW).leagues;
 
   it("files each league under its country", () => {
     const groups = groupLeaguesByCountry(leaguesOf("voetbal"));
@@ -162,17 +172,17 @@ describe("groupLeaguesByCountry", () => {
 
 describe("filterEvents", () => {
   it("narrows by sport, then by league", () => {
-    expect(filterEvents(EVENTS, { sport: "voetbal", league: null, soon: false }, NOW)).toHaveLength(
+    expect(filterEvents(EVENTS, { sport: "voetbal", league: null, soon: false, open: [] }, NOW)).toHaveLength(
       4
     );
     expect(
-      filterEvents(EVENTS, { sport: "voetbal", league: "soccer_epl", soon: false }, NOW)
+      filterEvents(EVENTS, { sport: "voetbal", league: "soccer_epl", soon: false, open: [] }, NOW)
     ).toHaveLength(2);
   });
 
   it("combines a league with the time filter", () => {
     expect(
-      filterEvents(EVENTS, { sport: "voetbal", league: "soccer_epl", soon: true }, NOW)
+      filterEvents(EVENTS, { sport: "voetbal", league: "soccer_epl", soon: true, open: [] }, NOW)
     ).toHaveLength(1);
   });
 });
@@ -187,6 +197,8 @@ describe("filterHref", () => {
     expect(filterHref({ sport: "voetbal", league: "soccer_epl" })).toBe(
       "/app/sportsbook?l=soccer_epl"
     );
-    expect(filterHref({ sport: "voetbal", soon: true })).toBe("/app/sportsbook?s=voetbal&soon=1");
+    // The 24-hour window is the default, so only turning it *off* shows up.
+    expect(filterHref({ sport: "voetbal", soon: true })).toBe("/app/sportsbook?s=voetbal");
+    expect(filterHref({ sport: "voetbal", soon: false })).toBe("/app/sportsbook?s=voetbal&soon=0");
   });
 });

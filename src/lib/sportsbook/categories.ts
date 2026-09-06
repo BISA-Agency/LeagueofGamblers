@@ -35,7 +35,19 @@ export type SportsbookFilter = {
   sport: string;
   league: string | null;
   soon: boolean;
+  /**
+   * Competitions the reader asked to see in full.
+   *
+   * It lives in the URL rather than in component state on purpose: expanding a
+   * group has to fetch the extra fixtures, not reveal ones that were already
+   * sent. Rendering all 162 and hiding 156 would leave the page exactly as
+   * heavy as it is now, which is the thing being fixed.
+   */
+  open: string[];
 };
+
+/** Fixtures shown per competition before the expand link appears. */
+export const VISIBLE_PER_GROUP = 6;
 
 export const ALL_SPORTS = "alles";
 
@@ -63,9 +75,28 @@ function isSoon(event: Filterable, now: Date): boolean {
  */
 export function resolveFilter(
   events: Filterable[],
-  params: { s?: string; l?: string; soon?: string }
+  params: { s?: string; l?: string; soon?: string; open?: string },
+  // Passed in like every other function here, rather than read off the clock:
+  // a function that decides what you see should be testable at a fixed moment.
+  now = new Date()
 ): SportsbookFilter {
-  const soon = params.soon === "1";
+  const open = (params.open ?? "").split(",").filter(Boolean);
+
+  /**
+   * The board opens on the next 24 hours, not on everything.
+   *
+   * Every bookmaker does this and for the same reason: a list of every fixture
+   * you price is not a page anyone reads, it is a page they scroll past. Here
+   * it was 162 cards and 1.2 MB to find the three matches on tonight.
+   *
+   * ?soon=0 turns it off and shows the lot — so the toggle now switches a
+   * default off rather than a filter on, and a shared link still says exactly
+   * what it shows.
+   */
+  const wantsSoon = params.soon !== "0";
+  // Never onto an empty page: a quiet Monday with nothing in the window falls
+  // back to the full list rather than an empty one with no obvious way out.
+  const soon = wantsSoon && events.some((e) => isSoon(e, now));
 
   const league =
     params.l && events.some((e) => e.sportKey === params.l) ? params.l : null;
@@ -81,7 +112,7 @@ export function resolveFilter(
       ? params.s
       : ALL_SPORTS;
 
-  return { sport, league, soon };
+  return { sport, league, soon, open };
 }
 
 /**
@@ -94,7 +125,7 @@ export function buildNav(
   events: Filterable[],
   filter: SportsbookFilter,
   now = new Date()
-): { sports: SportTab[]; leagues: LeagueChip[]; soonCount: number } {
+): { sports: SportTab[]; leagues: LeagueChip[] } {
   const inWindow = filter.soon ? events.filter((e) => isSoon(e, now)) : events;
 
   const sportCounts = new Map<string, { label: string; count: number }>();
@@ -112,12 +143,16 @@ export function buildNav(
       .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "nl")),
   ];
 
-  // Only the leagues inside the chosen sport — that is the whole point of the
-  // second row. With "Alles" active it lists them all, biggest first.
+  /**
+   * League chips count the whole competition, not just the part inside the
+   * window — because tapping one shows the whole competition. A chip has to
+   * promise exactly what it delivers, and the sport chips above it count
+   * within the window for the same reason.
+   */
   const forLeagues =
     filter.sport === ALL_SPORTS
-      ? inWindow
-      : inWindow.filter((e) => slug(e.sportLabel) === filter.sport);
+      ? events
+      : events.filter((e) => slug(e.sportLabel) === filter.sport);
 
   const leagueCounts = new Map<string, LeagueChip & { sportLabel: string }>();
   for (const event of forLeagues) {
@@ -150,7 +185,7 @@ export function buildNav(
     .map(({ sportLabel: _sportLabel, ...chip }) => chip)
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "nl"));
 
-  return { sports, leagues, soonCount: events.filter((e) => isSoon(e, now)).length };
+  return { sports, leagues };
 }
 
 export type CountryGroup = {
@@ -230,8 +265,16 @@ export function filterEvents<T extends Filterable>(
   now = new Date()
 ): T[] {
   return events.filter((event) => {
-    if (filter.soon && !isSoon(event, now)) return false;
+    /**
+     * A chosen competition shows all of itself, window or no window.
+     *
+     * The board opens on the next 24 hours, so without this there would be no
+     * way left to see Wednesday's Champions League at all. Picking a
+     * competition is the way you say "show me this one properly" — which is
+     * how every bookmaker's league page works.
+     */
     if (filter.league) return event.sportKey === filter.league;
+    if (filter.soon && !isSoon(event, now)) return false;
     if (filter.sport !== ALL_SPORTS && slug(event.sportLabel) !== filter.sport) return false;
     return true;
   });
@@ -242,7 +285,57 @@ export function filterHref(filter: Partial<SportsbookFilter>): string {
   const params = new URLSearchParams();
   if (filter.league) params.set("l", filter.league);
   else if (filter.sport && filter.sport !== ALL_SPORTS) params.set("s", filter.sport);
-  if (filter.soon) params.set("soon", "1");
+  if (filter.soon === false) params.set("soon", "0");
+  // Only the expand links carry this. Changing sport or league starts over
+  // with every competition collapsed, which is what picking a filter means.
+  if (filter.open && filter.open.length > 0) params.set("open", filter.open.join(","));
   const query = params.toString();
   return query ? `/app/sportsbook?${query}` : "/app/sportsbook";
+}
+
+export type FixtureGroup<T> = {
+  /** The provider sport key — one league, one group. */
+  sportKey: string;
+  sportLabel: string;
+  competition: string | null;
+  /** What actually gets rendered. */
+  shown: T[];
+  /** How many more this competition has behind the expand link. */
+  hidden: number;
+};
+
+/**
+ * The board as it will be drawn: grouped by competition, ordered by the
+ * earliest kick-off, capped per group unless the reader asked for more.
+ *
+ * It lives here rather than inside the list component so the page can know
+ * which fixtures it is about to render *before* it renders them — and so
+ * fetch odds for exactly those, instead of for all of them and throwing most
+ * of it away.
+ */
+export function groupFixtures<
+  T extends { sportKey: string; sportLabel: string; competition: string | null; startsAt: Date },
+>(events: T[], filter: SportsbookFilter): FixtureGroup<T>[] {
+  const groups = new Map<string, T[]>();
+  for (const event of events) {
+    groups.set(event.sportKey, [...(groups.get(event.sportKey) ?? []), event]);
+  }
+
+  const earliest = (list: T[]) => Math.min(...list.map((e) => e.startsAt.getTime()));
+
+  return [...groups.entries()]
+    .sort(([, a], [, b]) => earliest(a) - earliest(b))
+    .map(([sportKey, list]) => {
+      // Picking a competition is already asking to see it, so no cap and no
+      // link to press twice for the same thing.
+      const expanded = filter.league === sportKey || filter.open.includes(sportKey);
+      const shown = expanded ? list : list.slice(0, VISIBLE_PER_GROUP);
+      return {
+        sportKey,
+        sportLabel: list[0].sportLabel,
+        competition: list[0].competition,
+        shown,
+        hidden: list.length - shown.length,
+      };
+    });
 }

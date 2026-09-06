@@ -5,9 +5,16 @@ import { ReceiptText } from "lucide-react";
 import { EventList } from "@/components/sportsbook/event-list";
 import { SportsbookNav } from "@/components/sportsbook/sportsbook-nav";
 import { getActiveParticipation } from "@/lib/challenges/active";
-import { buildNav, filterEvents, filterHref, resolveFilter } from "@/lib/sportsbook/categories";
+import {
+  buildNav,
+  filterEvents,
+  filterHref,
+  groupFixtures,
+  resolveFilter,
+} from "@/lib/sportsbook/categories";
+import { loadListOdds } from "@/lib/sportsbook/load-odds";
 import { db } from "@/lib/db";
-import { bets, events, markets } from "@drizzle/schema";
+import { bets, events } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Sportsbook" };
@@ -15,7 +22,7 @@ export const metadata: Metadata = { title: "Sportsbook" };
 export default async function SportsbookPage({
   searchParams,
 }: {
-  searchParams: Promise<{ s?: string; l?: string; soon?: string }>;
+  searchParams: Promise<{ s?: string; l?: string; soon?: string; open?: string }>;
 }) {
   const supabase = await createClient();
   const {
@@ -53,6 +60,9 @@ export default async function SportsbookPage({
    * come of tapping one: placeSportsbookBet refuses a started event. It was
    * simply a dead end wearing a price tag.
    */
+  // Fixtures only. The nav counts and the filtering need nothing but the
+  // event rows, and loading every market and price here to render three of
+  // them per card was the bulk of the wait.
   const upcomingEvents = await db.query.events.findMany({
     where: and(
       eq(events.challengeId, participation.challengeId),
@@ -60,18 +70,22 @@ export default async function SportsbookPage({
       gt(events.startsAt, new Date())
     ),
     orderBy: asc(events.startsAt),
-    // A suspended market must not be offered — placing on it fails server-side
-    // anyway, so showing a clickable price would only produce a dead end.
-    with: {
-      markets: { where: eq(markets.status, "open"), with: { outcomes: true } },
-    },
   });
 
   // Filtering happens in memory: a challenge's fixture list is a page or two
   // at most, and this keeps the rail's counts and the list from disagreeing.
   const filter = resolveFilter(upcomingEvents, await searchParams);
-  const { sports, leagues, soonCount } = buildNav(upcomingEvents, filter);
+  const { sports, leagues } = buildNav(upcomingEvents, filter);
   const visible = filterEvents(upcomingEvents, filter);
+
+  /**
+   * Grouped before the odds are fetched, so we know which cards are going to
+   * be drawn and can ask for exactly their prices. A suspended market is left
+   * out by loadListOdds — placing on one fails server-side anyway, so a
+   * clickable price would only be a dead end.
+   */
+  const groups = groupFixtures(visible, filter);
+  const oddsByEvent = await loadListOdds(groups.flatMap((g) => g.shown.map((e) => e.id)));
 
   const openBets = await db.$count(
     bets,
@@ -119,12 +133,7 @@ export default async function SportsbookPage({
         </p>
       ) : (
         <>
-          <SportsbookNav
-            sports={sports}
-            leagues={leagues}
-            filter={filter}
-            soonCount={soonCount}
-          />
+          <SportsbookNav sports={sports} leagues={leagues} filter={filter} />
           <div className="pt-5">
             {visible.length === 0 ? (
               <div className="rounded-xl border border-border bg-card/50 px-4 py-10 text-center">
@@ -139,7 +148,7 @@ export default async function SportsbookPage({
                 </Link>
               </div>
             ) : (
-              <EventList events={visible} />
+              <EventList groups={groups} oddsByEvent={oddsByEvent} filter={filter} />
             )}
           </div>
         </>

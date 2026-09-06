@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Clock } from "lucide-react";
 import {
   ALL_SPORTS,
   filterHref,
@@ -21,6 +20,10 @@ import { LeagueMenu } from "./league-menu";
  * dropdown for the sports, because with four of them a menu would hide the
  * whole choice behind a tap to save a row we have room for.
  *
+ * There is no time filter here. The board opens on the next 24 hours and a
+ * chosen competition shows all of itself, so a toggle would have said the
+ * same thing twice — the chip read "24u 53" beside "Alles 53".
+ *
  * The rail sticks under the app header, because the fixture list is long and a
  * filter you have to scroll back up to reach is a filter nobody uses twice.
  */
@@ -37,12 +40,10 @@ export function SportsbookNav({
   sports,
   leagues,
   filter,
-  soonCount,
 }: {
   sports: SportTab[];
   leagues: LeagueChip[];
   filter: SportsbookFilter;
-  soonCount: number;
 }) {
   const countries = groupLeaguesByCountry(leagues);
   const leagueTotal = leagues.reduce((sum, l) => sum + l.count, 0);
@@ -59,47 +60,19 @@ export function SportsbookNav({
       aria-label="Filter wedstrijden"
       className="sticky top-14 z-20 -mx-4 space-y-2 border-b border-border/70 bg-background/85 px-4 pb-3 pt-3 backdrop-blur supports-backdrop-filter:bg-background/70"
     >
-      <div className="flex items-center gap-2">
-        <FilterScroller className="min-w-0 flex-1">
-          {sports.map((sport) => (
-            <Pill
-              key={sport.key}
-              href={filterHref({ sport: sport.key, soon: filter.soon })}
-              active={filter.sport === sport.key}
-              count={sport.count}
-            >
-              <SportGlyph label={sport.label} active={filter.sport === sport.key} />
-              {sport.key === ALL_SPORTS ? "Alles" : sport.label}
-            </Pill>
-          ))}
-        </FilterScroller>
-
-        {soonCount > 0 && (
-          <Link
-            href={filterHref({ sport: filter.sport, league: filter.league, soon: !filter.soon })}
-            aria-pressed={filter.soon}
-            className={cn(
-              "relative flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
-              filter.soon
-                ? "border-accent-brand bg-accent-brand/12 text-accent-brand"
-                : "border-border bg-card/60 text-muted-foreground hover:border-foreground/25 hover:text-foreground"
-            )}
+      <FilterScroller>
+        {sports.map((sport) => (
+          <Pill
+            key={sport.key}
+            href={filterHref({ sport: sport.key })}
+            active={filter.sport === sport.key}
+            count={sport.count}
           >
-            <PendingHint className="inset-0 rounded-full bg-accent-brand/10 ring-1 ring-inset ring-accent-brand/70" />
-            <Clock className="size-3.5" />
-            <span className="hidden sm:inline">Binnen 24 uur</span>
-            <span className="sm:hidden">24u</span>
-            <span
-              className={cn(
-                "rounded-full px-1.5 text-[10px] font-semibold tabular-nums",
-                filter.soon ? "bg-accent-brand/20" : "bg-secondary text-muted-foreground"
-              )}
-            >
-              {soonCount}
-            </span>
-          </Link>
-        )}
-      </div>
+            <SportGlyph label={sport.label} active={filter.sport === sport.key} />
+            {sport.key === ALL_SPORTS ? "Alles" : sport.label}
+          </Pill>
+        ))}
+      </FilterScroller>
 
       {leagues.length > 1 && (
         <div className="flex items-center gap-2">
@@ -108,7 +81,7 @@ export function SportsbookNav({
             {pills.map((league) => (
               <Pill
                 key={league.key}
-                href={filterHref({ league: league.key, soon: filter.soon })}
+                href={filterHref({ league: league.key })}
                 active={filter.league === league.key}
                 count={league.count}
               >

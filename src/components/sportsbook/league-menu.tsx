@@ -113,7 +113,7 @@ export function LeagueMenu({
       >
         <DropdownMenuItem asChild onSelect={(e) => e.preventDefault()}>
           <Link
-            href={filterHref({ sport: filter.sport, soon: filter.soon })}
+            href={filterHref({ sport: filter.sport })}
             className={cn("relative justify-between", isActive && "text-accent-brand")}
           >
             <PendingHint className="inset-0 rounded-md bg-accent-brand/15" />
@@ -156,7 +156,7 @@ export function LeagueMenu({
                     onSelect={(e) => e.preventDefault()}
                   >
                     <Link
-                      href={filterHref({ league: league.key, soon: filter.soon })}
+                      href={filterHref({ league: league.key })}
                       className={cn(
                         "relative justify-between gap-3",
                         filter.league === league.key && "text-accent-brand"
