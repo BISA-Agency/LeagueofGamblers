@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { createChallenge, type CreateChallengeState } from "@/actions/admin/challenges";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -115,6 +116,74 @@ export function NewChallengeForm() {
             className="h-11 tabular-nums"
           />
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="durationType">Duur-type</Label>
+          <select
+            id="durationType"
+            name="durationType"
+            defaultValue="custom"
+            className="h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+          >
+            <option value="week">Week</option>
+            <option value="month">Maand</option>
+            <option value="season">Seizoen</option>
+            <option value="custom">Aangepast</option>
+          </select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="prizeMode">Prijsmodus</Label>
+          <select
+            id="prizeMode"
+            name="prizeMode"
+            defaultValue="standard"
+            className="h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+          >
+            <option value="standard">Standaard</option>
+            <option value="hardcore">Hardcore (winner takes all)</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="lateJoinDays">Late-join dagen (0 = uit)</Label>
+        <Input
+          id="lateJoinDays"
+          name="lateJoinDays"
+          type="number"
+          min={0}
+          defaultValue={0}
+          className="h-11 max-w-32 tabular-nums"
+        />
+        <p className="text-xs text-muted-foreground">
+          Aantal dagen na de startdatum waarin nog gejoined mag worden, ook als de challenge al bezig is.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <label className="flex min-h-9 items-center gap-2 text-sm">
+          <Checkbox name="bountyEnabled" />
+          Bounty mode aan
+        </label>
+        <Label htmlFor="bountyPerPlayer">Bounty per speler (€)</Label>
+        <Input
+          id="bountyPerPlayer"
+          name="bountyPerPlayer"
+          type="number"
+          min={0}
+          step="0.01"
+          defaultValue={0}
+          className="h-11 max-w-32 tabular-nums"
+        />
+        {state.fieldErrors?.bountyPerPlayer && (
+          <p className="text-sm text-loss">{state.fieldErrors.bountyPerPlayer}</p>
+        )}
+        <p className="text-xs text-muted-foreground">
+          Wordt uit de inleg gehaald (moet lager zijn dan de inleg) en per bust real-money uitgekeerd aan
+          wie de bounty-voorspelling wint.
+        </p>
       </div>
 
       {state.error && <p className="text-sm text-loss">{state.error}</p>}

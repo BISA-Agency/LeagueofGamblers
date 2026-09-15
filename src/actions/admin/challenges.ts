@@ -30,6 +30,11 @@ const createChallengeSchema = z.object({
   startingBalance: z.coerce.number().positive("Moet groter dan 0 zijn."),
   buyInAmount: z.coerce.number().nonnegative(),
   maxPlayers: z.string().optional(),
+  durationType: z.enum(["week", "month", "season", "custom"]).default("custom"),
+  prizeMode: z.enum(["standard", "hardcore"]).default("standard"),
+  lateJoinDays: z.coerce.number().int().nonnegative().default(0),
+  bountyEnabled: z.coerce.boolean().default(false),
+  bountyPerPlayer: z.coerce.number().nonnegative().default(0),
 });
 
 export type CreateChallengeState = {
@@ -61,6 +66,11 @@ export async function createChallenge(
     startingBalance: formData.get("startingBalance") || 10000,
     buyInAmount: formData.get("buyInAmount") || 100,
     maxPlayers: formData.get("maxPlayers") || undefined,
+    durationType: formData.get("durationType") || "custom",
+    prizeMode: formData.get("prizeMode") || "standard",
+    lateJoinDays: formData.get("lateJoinDays") || 0,
+    bountyEnabled: formData.get("bountyEnabled") === "on",
+    bountyPerPlayer: formData.get("bountyPerPlayer") || 0,
   });
 
   if (!parsed.success) {
@@ -80,6 +90,9 @@ export async function createChallenge(
   if (endAt <= startAt) {
     return { fieldErrors: { endAt: "Einddatum moet na de startdatum liggen." } };
   }
+  if (parsed.data.bountyEnabled && parsed.data.bountyPerPlayer >= parsed.data.buyInAmount) {
+    return { fieldErrors: { bountyPerPlayer: "Moet lager zijn dan de inleg." } };
+  }
 
   try {
     await db.insert(challenges).values({
@@ -91,6 +104,11 @@ export async function createChallenge(
       startingBalance: parsed.data.startingBalance,
       buyInAmount: parsed.data.buyInAmount,
       maxPlayers: parsed.data.maxPlayers ? Number(parsed.data.maxPlayers) : null,
+      durationType: parsed.data.durationType,
+      prizeMode: parsed.data.prizeMode,
+      lateJoinDays: parsed.data.lateJoinDays,
+      bountyEnabled: parsed.data.bountyEnabled,
+      bountyPerPlayer: parsed.data.bountyPerPlayer,
       createdBy: user.id,
     });
   } catch (err) {
