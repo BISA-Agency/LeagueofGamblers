@@ -35,6 +35,8 @@ const createChallengeSchema = z.object({
   lateJoinDays: z.coerce.number().int().nonnegative().default(0),
   bountyEnabled: z.coerce.boolean().default(false),
   bountyPerPlayer: z.coerce.number().nonnegative().default(0),
+  missionBudget: z.coerce.number().nonnegative().default(0),
+  missionsFromPot: z.coerce.boolean().default(true),
 });
 
 export type CreateChallengeState = {
@@ -71,6 +73,8 @@ export async function createChallenge(
     lateJoinDays: formData.get("lateJoinDays") || 0,
     bountyEnabled: formData.get("bountyEnabled") === "on",
     bountyPerPlayer: formData.get("bountyPerPlayer") || 0,
+    missionBudget: formData.get("missionBudget") || 0,
+    missionsFromPot: formData.get("missionsFromPot") === "on",
   });
 
   if (!parsed.success) {
@@ -109,6 +113,8 @@ export async function createChallenge(
       lateJoinDays: parsed.data.lateJoinDays,
       bountyEnabled: parsed.data.bountyEnabled,
       bountyPerPlayer: parsed.data.bountyPerPlayer,
+      missionBudget: parsed.data.missionBudget,
+      missionsFromPot: parsed.data.missionsFromPot,
       createdBy: user.id,
     });
   } catch (err) {

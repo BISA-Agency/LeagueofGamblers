@@ -67,16 +67,12 @@ export function NewChallengeForm() {
         <div className="space-y-2">
           <Label htmlFor="startAt">Start (Europe/Amsterdam)</Label>
           <Input id="startAt" name="startAt" type="datetime-local" required className="h-11" />
-          {state.fieldErrors?.startAt && (
-            <p className="text-sm text-loss">{state.fieldErrors.startAt}</p>
-          )}
+          {state.fieldErrors?.startAt && <p className="text-sm text-loss">{state.fieldErrors.startAt}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="endAt">Einde (Europe/Amsterdam)</Label>
           <Input id="endAt" name="endAt" type="datetime-local" required className="h-11" />
-          {state.fieldErrors?.endAt && (
-            <p className="text-sm text-loss">{state.fieldErrors.endAt}</p>
-          )}
+          {state.fieldErrors?.endAt && <p className="text-sm text-loss">{state.fieldErrors.endAt}</p>}
         </div>
       </div>
 
@@ -181,8 +177,29 @@ export function NewChallengeForm() {
           <p className="text-sm text-loss">{state.fieldErrors.bountyPerPlayer}</p>
         )}
         <p className="text-xs text-muted-foreground">
-          Wordt uit de inleg gehaald (moet lager zijn dan de inleg) en per bust real-money uitgekeerd aan
-          wie de bounty-voorspelling wint.
+          Wordt uit de inleg gehaald (moet lager zijn dan de inleg) en per bust real-money uitgekeerd aan wie
+          de bounty-voorspelling wint.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="missionBudget">Missiebudget (€)</Label>
+        <Input
+          id="missionBudget"
+          name="missionBudget"
+          type="number"
+          min={0}
+          step="0.01"
+          defaultValue={0}
+          className="h-11 max-w-32 tabular-nums"
+        />
+        <label className="flex min-h-9 items-center gap-2 text-sm">
+          <Checkbox name="missionsFromPot" defaultChecked />
+          Missiebudget uit de pot
+        </label>
+        <p className="text-xs text-muted-foreground">
+          Harde bovengrens voor missie-uitkeringen. Uit de pot: de prijzenpot wordt met dit bedrag verlaagd en
+          er wordt nooit meer uitgekeerd dan er binnenkomt. Uit: jij betaalt het bovenop de pot.
         </p>
       </div>
 

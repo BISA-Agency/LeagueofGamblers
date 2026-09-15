@@ -6,16 +6,15 @@ import { awardBadgeBySlug } from "@/lib/badges/award";
 import { db } from "@/lib/db";
 import { getUserEmail, sendEmail } from "@/lib/email/send";
 import { challengeFinishedEmail } from "@/lib/email/templates";
-import { calculatePrizeSplit, effectiveBuyIn, resolvePrizeTiers, type PrizeTierRow } from "@/lib/settlement/payouts";
-import { getSiteUrl } from "@/lib/site-url";
 import {
-  bets,
-  challengeParticipants,
-  challenges,
-  payments,
-  profiles,
-  rankSnapshots,
-} from "@drizzle/schema";
+  calculatePrizeSplit,
+  effectiveBuyIn,
+  potAfterMissions,
+  resolvePrizeTiers,
+  type PrizeTierRow,
+} from "@/lib/settlement/payouts";
+import { getSiteUrl } from "@/lib/site-url";
+import { bets, challengeParticipants, challenges, payments, profiles, rankSnapshots } from "@drizzle/schema";
 
 export class FinishChallengeError extends Error {}
 
@@ -34,9 +33,7 @@ export async function finishChallenge(challengeId: string, actorId: string) {
   });
   if (!challenge) throw new FinishChallengeError("Challenge niet gevonden.");
   if (challenge.status !== "settling") {
-    throw new FinishChallengeError(
-      "Alleen een challenge die wordt afgerond kan afgesloten worden."
-    );
+    throw new FinishChallengeError("Alleen een challenge die wordt afgerond kan afgesloten worden.");
   }
 
   const openBets = await db.query.bets.findMany({
@@ -50,16 +47,13 @@ export async function finishChallenge(challengeId: string, actorId: string) {
   }
 
   const participants = await db.query.challengeParticipants.findMany({
-    where: and(
-      eq(challengeParticipants.challengeId, challengeId),
-      eq(challengeParticipants.paidBuyIn, true)
-    ),
+    where: and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.paidBuyIn, true)),
   });
   const ranked = [...participants].sort((a, b) => b.balance - a.balance);
 
   const prizeTierRows = await db.query.prizeTiers.findMany();
   const tiers = resolvePrizeTiers(challenge, prizeTierRows as PrizeTierRow[]);
-  const pot = ranked.length * effectiveBuyIn(challenge);
+  const pot = potAfterMissions(ranked.length * effectiveBuyIn(challenge), challenge);
   const split = calculatePrizeSplit(ranked.length, pot, tiers);
 
   const payouts = split

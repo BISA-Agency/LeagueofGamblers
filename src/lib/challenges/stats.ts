@@ -1,4 +1,10 @@
-import { calculatePrizeSplit, effectiveBuyIn, resolvePrizeTiers, type PrizeTierRow } from "@/lib/settlement/payouts";
+import {
+  calculatePrizeSplit,
+  effectiveBuyIn,
+  potAfterMissions,
+  resolvePrizeTiers,
+  type PrizeTierRow,
+} from "@/lib/settlement/payouts";
 import type { Challenge, ChallengeParticipant } from "@drizzle/schema";
 
 /** A challenge that hasn't started yet hasn't handed out balances either. */
@@ -41,15 +47,22 @@ export type ChallengeStats = {
 export function getChallengeStats(
   challenge: Pick<
     Challenge,
-    "buyInAmount" | "maxPlayers" | "prizeSplitOverride" | "prizeMode" | "bountyEnabled" | "bountyPerPlayer"
+    | "buyInAmount"
+    | "maxPlayers"
+    | "prizeSplitOverride"
+    | "prizeMode"
+    | "bountyEnabled"
+    | "bountyPerPlayer"
+    | "missionBudget"
+    | "missionsFromPot"
   >,
   participants: Pick<ChallengeParticipant, "paidBuyIn">[],
   prizeTiers: PrizeTierRow[]
 ): ChallengeStats {
   const joinedCount = participants.length;
   const paidCount = participants.filter((p) => p.paidBuyIn).length;
-  const pot = paidCount * effectiveBuyIn(challenge);
-  const potentialPot = joinedCount * effectiveBuyIn(challenge);
+  const pot = potAfterMissions(paidCount * effectiveBuyIn(challenge), challenge);
+  const potentialPot = potAfterMissions(joinedCount * effectiveBuyIn(challenge), challenge);
 
   const tiers = resolvePrizeTiers(challenge, prizeTiers);
 

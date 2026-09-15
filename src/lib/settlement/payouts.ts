@@ -86,9 +86,7 @@ export function calculatePrizeSplit(
   tiers: PrizeTierRow[]
 ): { rank: number; amount: number }[] {
   const tier = tiers.find(
-    (t) =>
-      paidPlayerCount >= t.minPlayers &&
-      (t.maxPlayers === null || paidPlayerCount <= t.maxPlayers)
+    (t) => paidPlayerCount >= t.minPlayers && (t.maxPlayers === null || paidPlayerCount <= t.maxPlayers)
   );
 
   // Percentages are normalised rather than trusted to add up: a hand-edited
@@ -136,4 +134,26 @@ export function effectiveBuyIn(
   challenge: Pick<Challenge, "buyInAmount" | "bountyEnabled" | "bountyPerPlayer">
 ): number {
   return challenge.bountyEnabled ? challenge.buyInAmount - challenge.bountyPerPlayer : challenge.buyInAmount;
+}
+
+/**
+ * The prize pot once the mission budget has been set aside — only when the
+ * challenge funds missions from the pot. Floored at zero: a budget larger
+ * than a tiny pot means "all of it", not a negative pot.
+ */
+export function potAfterMissions(
+  grossPot: number,
+  challenge: Pick<Challenge, "missionBudget" | "missionsFromPot">
+): number {
+  return challenge.missionsFromPot ? Math.max(0, grossPot - challenge.missionBudget) : grossPot;
+}
+
+/**
+ * What a mission reward may actually pay: the reward, capped by what is
+ * left of the budget after everything already committed. Zero once the
+ * budget is spent — the player still gets XP and badge, just no money.
+ */
+export function affordableReward(reward: number, budget: number, committed: number): number {
+  const remaining = Math.max(0, budget - committed);
+  return Math.round(Math.min(reward, remaining) * 100) / 100;
 }

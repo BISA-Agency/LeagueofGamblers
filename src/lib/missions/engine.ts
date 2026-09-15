@@ -6,6 +6,7 @@ import {
   betSelections,
   bets,
   challengeParticipants,
+  challenges,
   missionCompletions,
   missions,
   payments,
@@ -15,6 +16,7 @@ import {
   type Bet,
   type Mission,
 } from "@drizzle/schema";
+import { affordableReward } from "@/lib/settlement/payouts";
 import { MISSION_TYPES, type CareerTotals, type MissionCheckContext } from "./types";
 
 async function isMissionActive(mission: Mission, now: Date) {
@@ -71,21 +73,57 @@ export async function awardMission(
   // League of Gamblers missions are XP-only by design (§missies-split): money
   // comes out of a challenge's missiebudget, which a cross-challenge mission
   // doesn't have. The create-action refuses it too; this is the backstop.
-  if (mission.rewardAmount && mission.challengeId !== null) {
-    await db.insert(payments).values({
-      direction: "payout_mission",
-      amount: mission.rewardAmount,
-      challengeId,
-      userId,
-      status: "pending",
-    });
-  }
+  const paid =
+    mission.rewardAmount && mission.challengeId !== null
+      ? await payMissionRewardWithinBudget(challengeId, userId, mission.rewardAmount)
+      : 0;
 
   await logActivity(challengeId, userId, "mission_completed", { title: mission.title });
   await createNotification({
     userId,
     type: "mission_completed",
-    payload: { title: mission.title, reward: mission.rewardAmount },
+    payload: { title: mission.title, reward: paid > 0 ? paid : null },
+  });
+}
+
+/**
+ * The missiebudget is a hard cap, not a hint. Everything committed so far
+ * (pending and confirmed payouts) is summed under a lock on the challenge
+ * row, so two missions completing at the same moment can't both squeeze
+ * through the last few euros. Returns what was actually paid — possibly
+ * less than the reward, possibly nothing.
+ */
+async function payMissionRewardWithinBudget(challengeId: string, userId: string, reward: number) {
+  return db.transaction(async (tx) => {
+    const [challenge] = await tx
+      .select({ missionBudget: challenges.missionBudget })
+      .from(challenges)
+      .where(eq(challenges.id, challengeId))
+      .for("update");
+    if (!challenge) return 0;
+
+    const [{ committed }] = await tx
+      .select({ committed: sql<number>`coalesce(sum(${payments.amount}), 0)::float` })
+      .from(payments)
+      .where(
+        and(
+          eq(payments.challengeId, challengeId),
+          eq(payments.direction, "payout_mission"),
+          ne(payments.status, "rejected")
+        )
+      );
+
+    const amount = affordableReward(reward, challenge.missionBudget, committed);
+    if (amount <= 0) return 0;
+
+    await tx.insert(payments).values({
+      direction: "payout_mission",
+      amount,
+      challengeId,
+      userId,
+      status: "pending",
+    });
+    return amount;
   });
 }
 

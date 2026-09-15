@@ -13,11 +13,7 @@ import { SportsbookSettingsForm } from "./sportsbook-settings-form";
 
 export const metadata: Metadata = { title: "Challenge-instellingen" };
 
-export default async function AdminChallengeDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function AdminChallengeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const challenge = await db.query.challenges.findFirst({ where: eq(challenges.id, id) });
   if (!challenge) notFound();
@@ -50,8 +46,8 @@ export default async function AdminChallengeDetailPage({
       {challenge.status === "open" && (
         <div className="rounded-lg border border-border p-4">
           <p className="mb-3 text-sm text-muted-foreground">
-            Zet deze challenge live: betaalde deelnemers krijgen hun startsaldo en kunnen wedden.
-            Gebeurt normaal automatisch op de startdatum.
+            Zet deze challenge live: betaalde deelnemers krijgen hun startsaldo en kunnen wedden. Gebeurt
+            normaal automatisch op de startdatum.
           </p>
           <form action={transitionChallengeToLive.bind(null, challenge.id)}>
             <Button type="submit" size="sm" className="h-11">
@@ -72,6 +68,7 @@ export default async function AdminChallengeDetailPage({
         <ChallengeRulesForm
           challengeId={challenge.id}
           defaultMissionBudget={challenge.missionBudget}
+          defaultMissionsFromPot={challenge.missionsFromPot}
           defaultAllowRebuy={challenge.allowRebuy}
           defaultDurationType={challenge.durationType}
           defaultPrizeMode={challenge.prizeMode}

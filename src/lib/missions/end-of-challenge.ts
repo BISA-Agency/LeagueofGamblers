@@ -45,9 +45,7 @@ const CHECKS: Record<string, Check> = {
 
   /** Dropped under a threshold and still finished at or above the start. */
   comeback: (f, p) =>
-    f.lowestBalance !== null &&
-    f.lowestBalance < (p.below ?? 2000) &&
-    f.finalBalance >= f.startingBalance,
+    f.lowestBalance !== null && f.lowestBalance < (p.below ?? 2000) && f.finalBalance >= f.startingBalance,
 };
 
 export const END_OF_CHALLENGE_TYPES = Object.keys(CHECKS);
@@ -58,18 +56,11 @@ async function gatherFacts(
   startingBalance: number
 ): Promise<EndOfChallengeFacts> {
   const participant = await db.query.challengeParticipants.findFirst({
-    where: and(
-      eq(challengeParticipants.challengeId, challengeId),
-      eq(challengeParticipants.userId, userId)
-    ),
+    where: and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, userId)),
   });
 
   const settled = await db.query.bets.findMany({
-    where: and(
-      eq(bets.challengeId, challengeId),
-      eq(bets.userId, userId),
-      ne(bets.status, "open")
-    ),
+    where: and(eq(bets.challengeId, challengeId), eq(bets.userId, userId), ne(bets.status, "open")),
     columns: { wasAllIn: true, settledAt: true },
   });
 
@@ -115,15 +106,18 @@ export async function evaluateEndOfChallengeMissions(challengeId: string) {
 
   const relevant = (
     await db.query.missions.findMany({
-      where: (m, { isNull, or, eq: eqOp }) =>
-        or(isNull(m.challengeId), eqOp(m.challengeId, challengeId)),
+      where: (m, { isNull, or, eq: eqOp }) => or(isNull(m.challengeId), eqOp(m.challengeId, challengeId)),
     })
   ).filter((m) => END_OF_CHALLENGE_TYPES.includes(m.type));
   if (relevant.length === 0) return;
 
+  // Best finisher first: the missiebudget is a hard cap, so when several
+  // players earn money at once and it runs out, the podium is served before
+  // the field rather than whoever the database happened to list first.
   const participants = await db.query.challengeParticipants.findMany({
     where: eq(challengeParticipants.challengeId, challengeId),
     columns: { userId: true },
+    orderBy: (p, { asc }) => asc(p.finalRank),
   });
 
   for (const { userId } of participants) {

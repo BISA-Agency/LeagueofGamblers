@@ -1,15 +1,5 @@
 import { sql } from "drizzle-orm";
-import {
-  boolean,
-  check,
-  integer,
-  jsonb,
-  pgEnum,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { boolean, check, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { money } from "./_helpers";
 import { profiles } from "./profiles";
 
@@ -28,10 +18,7 @@ export const challengeDurationTypeEnum = pgEnum("challenge_duration_type", [
   "custom",
 ]);
 
-export const challengePrizeModeEnum = pgEnum("challenge_prize_mode", [
-  "standard",
-  "hardcore",
-]);
+export const challengePrizeModeEnum = pgEnum("challenge_prize_mode", ["standard", "hardcore"]);
 
 export const challenges = pgTable(
   "challenges",
@@ -51,6 +38,13 @@ export const challenges = pgTable(
     currency: text("currency").notNull().default("EUR"),
     maxPlayers: integer("max_players"),
     missionBudget: money("mission_budget").notNull().default(0),
+    // Where mission money comes from. True: set aside from the buy-ins, so the
+    // prize pot shrinks by missionBudget and total payouts never exceed what
+    // was collected. False: the organiser pays missions on top of the pot —
+    // the way the first challenges ran, kept for those so their promised pot
+    // stays what it was. Either way missionBudget is a hard cap (see
+    // affordableReward in src/lib/settlement/payouts.ts).
+    missionsFromPot: boolean("missions_from_pot").notNull().default(true),
     // Per-challenge override of the default prize_tiers staffel (§5.2) — added in Fase 1.
     prizeSplitOverride: jsonb("prize_split_override"),
     sportKeys: text("sport_keys")

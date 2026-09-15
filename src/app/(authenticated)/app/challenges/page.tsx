@@ -150,6 +150,7 @@ export default async function ChallengesPage({
         allowRebuy: challenge.allowRebuy,
         lateJoinDays: challenge.lateJoinDays,
         missionBudget: challenge.missionBudget,
+        missionsFromPot: challenge.missionsFromPot,
         startAt: challenge.startAt,
         endAt: challenge.endAt,
       },

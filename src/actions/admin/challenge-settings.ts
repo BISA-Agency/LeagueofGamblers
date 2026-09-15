@@ -116,6 +116,7 @@ export async function updateChallengeRules(
     .update(challenges)
     .set({
       missionBudget,
+      missionsFromPot: formData.get("missionsFromPot") === "on",
       allowRebuy: formData.get("allowRebuy") === "on",
       durationType,
       prizeMode,
