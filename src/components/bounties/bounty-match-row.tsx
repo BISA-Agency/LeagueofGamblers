@@ -35,9 +35,21 @@ export function BountyMatchRow({ match }: { match: BountyRoundMatchView }) {
           </p>
         ) : match.open ? (
           <div className="flex shrink-0 items-center gap-1.5">
-            <GoalInput name="homeGoals" value={home} onChange={setHome} disabled={pending} />
+            <GoalInput
+              name="homeGoals"
+              value={home}
+              onChange={setHome}
+              disabled={pending}
+              label={`Doelpunten ${match.homeTeam ?? "thuis"}`}
+            />
             <span className="text-muted-foreground">:</span>
-            <GoalInput name="awayGoals" value={away} onChange={setAway} disabled={pending} />
+            <GoalInput
+              name="awayGoals"
+              value={away}
+              onChange={setAway}
+              disabled={pending}
+              label={`Doelpunten ${match.awayTeam ?? "uit"}`}
+            />
             <button
               type="submit"
               disabled={!filled || pending}
@@ -65,11 +77,13 @@ function GoalInput({
   value,
   onChange,
   disabled,
+  label,
 }: {
   name: string;
   value: string;
   onChange: (next: string) => void;
   disabled: boolean;
+  label: string;
 }) {
   return (
     <input
@@ -77,6 +91,7 @@ function GoalInput({
       value={value}
       onChange={(e) => onChange(clean(e.target.value))}
       disabled={disabled}
+      aria-label={label}
       type="text"
       inputMode="numeric"
       autoComplete="off"
