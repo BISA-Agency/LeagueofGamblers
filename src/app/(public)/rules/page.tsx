@@ -9,7 +9,6 @@ export const metadata: Metadata = {
 const SECTIONS = [
   { id: "hoe-het-werkt", title: "Hoe de challenge werkt" },
   { id: "sportsbook", title: "Het sportsbook" },
-  { id: "bewijsbet", title: "De bewijsbet" },
   { id: "settlement", title: "Uitslagen & afrekenen" },
   { id: "missies-badges", title: "Missies en badges" },
   { id: "inleg", title: "Inleg en uitbetaling" },
@@ -50,8 +49,8 @@ export default function RulesPage() {
             Elke challenge is een maand-durend spel tussen jou en je vrienden. Bij de start
             krijgt iedereen die zijn inleg betaald heeft hetzelfde{" "}
             <strong className="text-foreground">virtuele startsaldo</strong> (standaard
-            €10.000). Vanaf dat moment wed je met dat virtuele geld — via het sportsbook in
-            de app, of via een bewijsbet.
+            €10.000). Vanaf dat moment wed je met dat virtuele geld via het sportsbook in
+            de app.
           </p>
           <p>
             Aan het einde van de challenge telt alleen je eindsaldo. Wie het hoogste saldo
@@ -112,53 +111,6 @@ export default function RulesPage() {
           </p>
         </section>
 
-        <section id="bewijsbet" className="scroll-mt-20 space-y-3">
-          <h2 className="text-xl font-semibold tracking-tight">De bewijsbet</h2>
-          <p>
-            Wil je wedden op iets dat niet in het sportsbook staat — een andere competitie,
-            een cornermarkt, een doelpuntenmaker, een special bij je eigen bookmaker — dan
-            gebruik je een <strong className="text-foreground">bewijsbet</strong>. Dit is
-            geen sportsbook-bet: je voert zelf in wat je gewed zou hebben, en levert bewijs.
-          </p>
-          <p>Je bewijsbet moet aan een paar harde eisen voldoen:</p>
-          <ul className="list-disc space-y-1.5 pl-5">
-            <li>
-              De bet moet in de app staan{" "}
-              <strong className="text-foreground">vóórdat de wedstrijd begint</strong>. De
-              app registreert zelf het moment van uploaden — je kunt de aanvangstijd achteraf
-              niet meer wijzigen.
-            </li>
-            <li>
-              Je levert een <strong className="text-foreground">screenshot</strong> van de
-              bet slip bij de bookmaker, met daarop zichtbaar: de selecties, de quoteringen,
-              de ingevulde inzet, en het liefst ook de klok/statusbalk van je telefoon. Je
-              hoeft de bet niet écht te plaatsen — alleen het bedrag invullen zodat het op de
-              foto staat is genoeg.
-            </li>
-            <li>
-              De screenshot moet gemaakt zijn <strong className="text-foreground">vóór</strong>{" "}
-              aanvang. Is de wedstrijd al bezig (live-markering, veranderde odds, tussenstand
-              zichtbaar), dan wordt de bet afgekeurd.
-            </li>
-            <li>
-              De inzet en de quoteringen op de screenshot moeten exact overeenkomen met wat je
-              in de app hebt ingevuld.
-            </li>
-          </ul>
-          <p>
-            Elke bewijsbet krijgt een status: <strong className="text-foreground">⏳
-            ongecontroleerd</strong> (telt voorlopig al mee), <strong className="text-foreground">
-            ✓ goedgekeurd</strong> of <strong className="text-foreground">✗ afgekeurd</strong>.
-            De admin controleert elke bewijsbet. Wordt een bet afgekeurd, dan krijg je je
-            inzet terug. Medespelers kunnen een bewijsbet die hen verdacht voorkomt ook
-            betwisten — de admin beslist dan.
-          </p>
-          <p>
-            Net als sportsbook-bets zijn bewijsbets (en de screenshot) verborgen voor
-            medespelers tot de wedstrijd begint.
-          </p>
-        </section>
-
         <section id="settlement" className="scroll-mt-20 space-y-3">
           <h2 className="text-xl font-semibold tracking-tight">Uitslagen & afrekenen</h2>
           <p>
@@ -169,9 +121,9 @@ export default function RulesPage() {
             wordt de bet void verklaard en krijg je je inzet terug.
           </p>
           <p>
-            Voor markten die de app niet automatisch kan afrekenen, en voor alle bewijsbets,
-            geldt: settlement gebeurt handmatig (door jou bij een bewijsbet, of door de admin
-            bij een custom event), en is altijd zichtbaar mét de bron van de uitslag.
+            Voor markten die de app niet automatisch kan afrekenen geldt: settlement gebeurt
+            handmatig door de admin bij een custom event, en is altijd zichtbaar mét de bron
+            van de uitslag.
           </p>
         </section>
 
@@ -213,14 +165,12 @@ export default function RulesPage() {
           <p>Om het voor iedereen eerlijk te houden:</p>
           <ul className="list-disc space-y-1.5 pl-5">
             <li>Alles wordt server-side gecontroleerd: je kunt nooit meer inzetten dan je saldo, en nooit meer wedden op een wedstrijd die al begonnen is.</li>
-            <li>Bewijsbets worden altijd gecontroleerd door de admin, en kunnen door medespelers betwist worden.</li>
             <li>Elke ingreep van de admin (saldo-correcties, geannuleerde bets, sancties) wordt gelogd en is achteraf te herleiden.</li>
           </ul>
           <p>
-            Bij een afgekeurde bewijsbet (bijvoorbeeld een nep- of live-screenshot, of een
-            inzet die niet overeenkomt) kan de admin een sanctie opleggen: een waarschuwing,
-            een saldo-correctie, of in ernstige gevallen diskwalificatie. Sancties zijn
-            zichtbaar op je profiel, zodat de groep het ook ziet.
+            Bij een overtreding van de spelregels kan de admin een sanctie opleggen: een
+            waarschuwing, een saldo-correctie, of in ernstige gevallen diskwalificatie.
+            Sancties zijn zichtbaar op je profiel, zodat de groep het ook ziet.
           </p>
         </section>
 
@@ -237,16 +187,14 @@ export default function RulesPage() {
             <div>
               <p className="font-medium">Moet ik een account bij een bookmaker hebben?</p>
               <p className="text-muted-foreground">
-                Voor het sportsbook in de app: nee. Voor een bewijsbet heb je een bookmaker-app
-                nodig om er een screenshot van te maken — je hoeft de bet daar niet echt te
-                plaatsen of geld te storten.
+                Nee. Je wedt alleen met het sportsbook in de app, met het virtuele startsaldo
+                van je challenge.
               </p>
             </div>
             <div>
               <p className="font-medium">Wat als een wedstrijd wordt afgelast?</p>
               <p className="text-muted-foreground">
-                Dan wordt de bet void verklaard en krijg je je inzet terug — zowel bij
-                sportsbook-bets als bij bewijsbets.
+                Dan wordt de bet void verklaard en krijg je je inzet terug.
               </p>
             </div>
             <div>

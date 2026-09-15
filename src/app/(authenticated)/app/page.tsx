@@ -154,12 +154,9 @@ export default async function AppHomePage() {
         </div>
 
         {started && (
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <Button asChild variant="outline" size="sm" className="h-11">
+          <div className="mt-4">
+            <Button asChild variant="outline" size="sm" className="h-11 w-full">
               <Link href="/app/sportsbook">Sportsbook</Link>
-            </Button>
-            <Button asChild variant="outline" size="sm" className="h-11">
-              <Link href="/app/bets/proof">Bewijsbet</Link>
             </Button>
           </div>
         )}

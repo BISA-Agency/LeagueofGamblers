@@ -1,7 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { getActiveParticipation } from "@/lib/challenges/active";
 import { db } from "@/lib/db";
 import { ensureInviteCode } from "@/lib/referrals/assign";
@@ -41,17 +40,12 @@ export default async function BetsPage() {
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-semibold tracking-tight">Mijn bets</h1>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/app/bets/field"
-            className="shrink-0 text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
-          >
-            Het veld
-          </Link>
-          <Button asChild size="sm" className="h-11">
-            <Link href="/app/bets/proof">+ Bewijsbet</Link>
-          </Button>
-        </div>
+        <Link
+          href="/app/bets/field"
+          className="shrink-0 text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
+        >
+          Het veld
+        </Link>
       </div>
 
       {myBets.length === 0 && (
