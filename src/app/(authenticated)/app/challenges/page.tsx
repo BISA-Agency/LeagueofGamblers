@@ -121,7 +121,10 @@ export default async function ChallengesPage() {
                 : null;
             const isLateJoinOpen = canJoin && challenge.status === "live";
             const seatsNearlyFull =
-              stats.maxPlayers !== null && stats.joinedCount >= stats.maxPlayers - 2 && stats.joinedCount < stats.maxPlayers;
+              stats.joinedCount > 0 &&
+              stats.maxPlayers !== null &&
+              stats.joinedCount >= stats.maxPlayers - 2 &&
+              stats.joinedCount < stats.maxPlayers;
             const isHot = hotFlags.get(challenge.id) ?? false;
 
             return (
