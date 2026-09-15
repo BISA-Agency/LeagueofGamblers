@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ActivityFeed } from "@/components/activity/activity-feed";
 import { BetOfTheDay } from "@/components/activity/bet-of-the-day";
+import { BountyRoundCard } from "@/components/bounties/bounty-round-card";
 import { ChallengeResults } from "@/components/challenges/challenge-results";
 import { ChallengeStatsPanel } from "@/components/challenges/challenge-stats";
 import { Countdown } from "@/components/challenges/countdown";
@@ -10,6 +11,7 @@ import { DailyPredictionCard } from "@/components/predictions/daily-prediction-c
 import { ReferralNudge } from "@/components/referral/referral-nudge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getActiveBountyRounds } from "@/lib/bounties/view";
 import { getActiveParticipation } from "@/lib/challenges/active";
 import { getChallengeResults } from "@/lib/challenges/results";
 import { getDailyMatch } from "@/lib/predictions/daily";
@@ -102,6 +104,8 @@ export default async function AppHomePage() {
     ? await getDailyMatch(challenge.id, user.id, challenge.startingBalance)
     : null;
 
+  const bountyRounds = started ? await getActiveBountyRounds(challenge.id, user.id) : [];
+
   const otherParticipations = participations.filter((p) => p.challengeId !== active.challengeId);
 
   return (
@@ -163,6 +167,9 @@ export default async function AppHomePage() {
       </div>
 
       {dailyMatch && <DailyPredictionCard match={dailyMatch} />}
+      {bountyRounds.map((round) => (
+        <BountyRoundCard key={round.bountyRoundId} round={round} />
+      ))}
 
       <ChallengeStatsPanel stats={stats} buyIn={challenge.buyInAmount} />
 
