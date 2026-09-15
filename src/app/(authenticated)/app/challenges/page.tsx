@@ -1,46 +1,44 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarDays, Flame, RefreshCw, Skull, Target, Users } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Countdown } from "@/components/challenges/countdown";
 import { db } from "@/lib/db";
 import { canJoinChallenge } from "@/lib/challenges/eligibility";
 import { isHotChallenge } from "@/lib/challenges/hot";
+import {
+  defaultLobbyStatus,
+  lobbyHref,
+  lobbyStatusOf,
+  matchesLobbyFacets,
+  parseLobbyFilters,
+  type LobbyStatus,
+} from "@/lib/challenges/lobby-filters";
 import { getChallengeStats } from "@/lib/challenges/stats";
 import type { PrizeTierRow } from "@/lib/settlement/payouts";
 import { createClient } from "@/lib/supabase/server";
-import { JoinButton } from "./join-button";
+import { LobbyFilters } from "./lobby-filters";
+import { LobbyTable, type LobbyRow } from "./lobby-table";
 
 export const metadata: Metadata = { title: "Challenges" };
 
-const STATUS_LABEL: Record<string, string> = {
-  open: "Open",
-  live: "Bezig",
-  settling: "Wordt afgerond",
-  finished: "Afgelopen",
-};
-
-const DURATION_LABEL: Record<string, string> = {
-  week: "Week",
-  month: "Maand",
-  season: "Seizoen",
-};
-
-const money = new Intl.NumberFormat("nl-NL", {
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
-
-const dateFormatter = new Intl.DateTimeFormat("nl-NL", {
-  day: "numeric",
-  month: "long",
-  timeZone: "Europe/Amsterdam",
-});
-
 const DAY_MS = 86_400_000;
 
-export default async function ChallengesPage() {
-  const supabase = await createClient();
+const TIMING_HEADER: Record<LobbyStatus, string> = {
+  open: "Start",
+  live: "Status",
+  finished: "Status",
+};
+
+const EMPTY_TAB: Record<LobbyStatus, string> = {
+  open: "Er staat nu niets open voor inschrijving.",
+  live: "Er loopt op dit moment geen challenge.",
+  finished: "Nog geen afgelopen challenges.",
+};
+
+export default async function ChallengesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; type?: string; feat?: string }>;
+}) {
+  const [params, supabase] = await Promise.all([searchParams, createClient()]);
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -49,7 +47,7 @@ export default async function ChallengesPage() {
     db.query.challenges.findMany({
       where: (c, { ne }) => ne(c.status, "draft"),
       orderBy: (c, { desc }) => desc(c.startAt),
-      with: { participants: { with: { user: { columns: { username: true, avatarUrl: true } } } } },
+      with: { participants: true },
     }),
     user
       ? db.query.challengeParticipants.findMany({
@@ -68,190 +66,85 @@ export default async function ChallengesPage() {
     )
   );
 
-  const groups = [
-    {
-      key: "open",
-      title: "Open voor inschrijving",
-      hint: "Meld je aan voordat de challenge begint.",
-      items: allChallenges.filter((c) => c.status === "open"),
-    },
-    {
-      key: "running",
-      title: "Nu bezig",
-      hint: "Deze lopen — inschrijving is gesloten, tenzij late-join open staat.",
-      items: allChallenges.filter((c) => c.status === "live" || c.status === "settling"),
-    },
-    {
-      key: "done",
-      title: "Afgelopen",
-      hint: null,
-      items: allChallenges.filter((c) => c.status === "finished"),
-    },
-  ].filter((g) => g.items.length > 0);
+  const rows: (LobbyRow & { tab: LobbyStatus })[] = [];
+  for (const challenge of allChallenges) {
+    const tab = lobbyStatusOf(challenge.status);
+    if (!tab) continue;
+    const stats = getChallengeStats(challenge, challenge.participants, prizeTiers as PrizeTierRow[]);
+    const canJoin = canJoinChallenge(challenge);
+    rows.push({
+      tab,
+      id: challenge.id,
+      slug: challenge.slug,
+      name: challenge.name,
+      status: challenge.status,
+      durationType: challenge.durationType,
+      prizeMode: challenge.prizeMode,
+      allowRebuy: challenge.allowRebuy,
+      bountyEnabled: challenge.bountyEnabled,
+      startAt: challenge.startAt,
+      endAt: challenge.endAt,
+      buyIn: challenge.buyInAmount,
+      pot: stats.pot,
+      joinedCount: stats.joinedCount,
+      maxPlayers: stats.maxPlayers,
+      seatsNearlyFull:
+        stats.joinedCount > 0 &&
+        stats.maxPlayers !== null &&
+        stats.joinedCount >= stats.maxPlayers - 2 &&
+        stats.joinedCount < stats.maxPlayers,
+      joined: joinedIds.has(challenge.id),
+      isHot: hotFlags.get(challenge.id) ?? false,
+      canJoin,
+      lateJoinDeadline:
+        challenge.status === "live" && challenge.lateJoinDays > 0
+          ? new Date(challenge.startAt.getTime() + challenge.lateJoinDays * DAY_MS)
+          : null,
+    });
+  }
+
+  // Facets narrow every tab; the tab counts tell you what's left in each.
+  const parsed = parseLobbyFilters(params);
+  const faceted = rows.filter((r) => matchesLobbyFacets(r, parsed));
+  const counts: Record<LobbyStatus, number> = { open: 0, live: 0, finished: 0 };
+  for (const r of faceted) counts[r.tab] += 1;
+
+  const filters = {
+    ...parsed,
+    status: parsed.status ?? defaultLobbyStatus(counts),
+  };
+  const visible = faceted.filter((r) => r.tab === filters.status);
+  const hasFacets = filters.types.length > 0 || filters.features.length > 0;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
+    <div className="mx-auto max-w-4xl space-y-5 px-4 py-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Challenges</h1>
-        <p className="text-sm text-muted-foreground">
-          Alles wat loopt, binnenkort begint of al is afgelopen.
-        </p>
+        <p className="text-sm text-muted-foreground">Kies een tafel en schuif aan.</p>
       </div>
 
-      {groups.length === 0 && (
-        <p className="text-sm text-muted-foreground">Er zijn nog geen challenges.</p>
-      )}
+      <LobbyFilters filters={filters} counts={counts} />
 
-      {groups.map((group) => (
-        <section key={group.key} className="space-y-3">
-          <div>
-            <h2 className="text-sm font-medium text-muted-foreground">
-              {group.title} ({group.items.length})
-            </h2>
-            {group.hint && <p className="text-xs text-muted-foreground/70">{group.hint}</p>}
-          </div>
-
-          {group.items.map((challenge) => {
-            const joined = joinedIds.has(challenge.id);
-            const stats = getChallengeStats(challenge, challenge.participants, prizeTiers as PrizeTierRow[]);
-            const canJoin = canJoinChallenge(challenge);
-            const lateJoinDeadline =
-              challenge.status === "live" && challenge.lateJoinDays > 0
-                ? new Date(challenge.startAt.getTime() + challenge.lateJoinDays * DAY_MS)
-                : null;
-            const isLateJoinOpen = canJoin && challenge.status === "live";
-            const seatsNearlyFull =
-              stats.joinedCount > 0 &&
-              stats.maxPlayers !== null &&
-              stats.joinedCount >= stats.maxPlayers - 2 &&
-              stats.joinedCount < stats.maxPlayers;
-            const isHot = hotFlags.get(challenge.id) ?? false;
-
-            return (
-              <div key={challenge.id} className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <h3 className="truncate text-lg font-semibold tracking-tight">
-                          <Link href={`/c/${challenge.slug}`} className="hover:underline">
-                            {challenge.name}
-                          </Link>
-                        </h3>
-                        {isHot && (
-                          <Badge variant="outline" className="gap-1 border-loss/40 text-loss">
-                            <Flame className="size-3" /> Hot
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <CalendarDays className="size-3.5 shrink-0" />
-                        <span className="tabular-nums">
-                          {dateFormatter.format(challenge.startAt)} – {dateFormatter.format(challenge.endAt)}
-                        </span>
-                      </p>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {DURATION_LABEL[challenge.durationType] && (
-                          <Badge variant="secondary">{DURATION_LABEL[challenge.durationType]}</Badge>
-                        )}
-                        {challenge.prizeMode === "hardcore" && (
-                          <Badge variant="outline" className="gap-1 border-accent-brand/40 text-accent-brand">
-                            <Skull className="size-3" /> Hardcore
-                          </Badge>
-                        )}
-                        {challenge.allowRebuy && (
-                          <Badge variant="outline" className="gap-1">
-                            <RefreshCw className="size-3" /> Rebuy
-                          </Badge>
-                        )}
-                        {challenge.bountyEnabled && (
-                          <Badge variant="outline" className="gap-1">
-                            <Target className="size-3" /> Bounty
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <Badge variant="secondary" className="shrink-0">
-                      {STATUS_LABEL[challenge.status] ?? challenge.status}
-                    </Badge>
-                  </div>
-
-                  <div className="mt-5 flex items-end justify-between gap-4">
-                    <div>
-                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Users className="size-3.5" />
-                        Spelers
-                      </p>
-                      <p className={"text-2xl font-semibold tabular-nums" + (seatsNearlyFull ? " text-loss" : "")}>
-                        {stats.joinedCount}
-                        {stats.maxPlayers !== null && (
-                          <span className="text-sm font-normal text-muted-foreground">/{stats.maxPlayers}</span>
-                        )}
-                      </p>
-                      {seatsNearlyFull && (
-                        <p className="text-xs text-loss">
-                          Nog maar {(stats.maxPlayers as number) - stats.joinedCount} plekken over
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Prijzenpot</p>
-                      <p className="text-2xl font-semibold tabular-nums text-accent-brand">
-                        €{money.format(stats.pot)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {stats.joinedCount > 0 && (
-                    <p className="mt-3 truncate text-xs text-muted-foreground">
-                      {challenge.participants
-                        .slice(0, 5)
-                        .map((p) => p.user.username)
-                        .join(", ")}
-                      {stats.joinedCount > 5 && ` +${stats.joinedCount - 5}`}
-                    </p>
-                  )}
-
-                  <p className="mt-3 text-xs text-muted-foreground tabular-nums">
-                    Inleg €{money.format(challenge.buyInAmount)} · startsaldo €
-                    {money.format(challenge.startingBalance)} virtueel
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-between gap-3 border-t border-border bg-secondary/20 px-5 py-3">
-                  {joined ? (
-                    <>
-                      <span className="text-sm text-profit">Je doet mee</span>
-                      <Link
-                        href={`/app/challenge/${challenge.slug}`}
-                        className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                      >
-                        Bekijk challenge
-                      </Link>
-                    </>
-                  ) : challenge.status === "open" ? (
-                    <>
-                      <span className="text-sm text-muted-foreground">
-                        Meedoen kost €{money.format(challenge.buyInAmount)}
-                      </span>
-                      <JoinButton challengeId={challenge.id} />
-                    </>
-                  ) : isLateJoinOpen && lateJoinDeadline ? (
-                    <>
-                      <Countdown label="Late registratie sluit over" target={lateJoinDeadline.toISOString()} />
-                      <JoinButton challengeId={challenge.id} label="Nog meedoen" />
-                    </>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">
-                      {challenge.status === "finished" ? "Afgelopen" : "Inschrijving gesloten"}
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </section>
-      ))}
+      <LobbyTable
+        rows={visible}
+        timingHeader={TIMING_HEADER[filters.status]}
+        emptyMessage={
+          hasFacets ? (
+            <>
+              Geen challenges met deze filters.{" "}
+              <Link
+                href={lobbyHref(filters, { clearFacets: true })}
+                scroll={false}
+                className="text-foreground underline underline-offset-2"
+              >
+                Wis filters
+              </Link>
+            </>
+          ) : (
+            EMPTY_TAB[filters.status]
+          )
+        }
+      />
     </div>
   );
 }
