@@ -273,10 +273,22 @@ export async function checkAndMarkBust(challengeId: string, userId: string) {
   );
   if (openBetCount > 0) return;
 
-  await db
+  // The status change is the lock (same claim-the-row pattern as bet
+  // settlement above): two overlapping settlement runs would otherwise both
+  // mark the bust and both open a bounty round.
+  const claimed = await db
     .update(challengeParticipants)
     .set({ status: "bust" })
-    .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, userId)));
+    .where(
+      and(
+        eq(challengeParticipants.challengeId, challengeId),
+        eq(challengeParticipants.userId, userId),
+        eq(challengeParticipants.status, "active")
+      )
+    )
+    .returning({ userId: challengeParticipants.userId });
+  if (claimed.length === 0) return;
+
   await logActivity(challengeId, userId, "bust", {});
   await createBountyRoundIfEnabled(challengeId, userId);
 }
