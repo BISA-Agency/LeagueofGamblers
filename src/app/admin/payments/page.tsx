@@ -15,6 +15,7 @@ const DIRECTION_LABEL: Record<string, string> = {
   buy_in: "inleg",
   payout_mission: "missie-uitkering",
   payout_prize: "prijzengeld",
+  payout_bounty: "bounty-uitkering",
   refund: "terugbetaling",
 };
 
