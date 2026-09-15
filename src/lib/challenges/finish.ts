@@ -6,7 +6,7 @@ import { awardBadgeBySlug } from "@/lib/badges/award";
 import { db } from "@/lib/db";
 import { getUserEmail, sendEmail } from "@/lib/email/send";
 import { challengeFinishedEmail } from "@/lib/email/templates";
-import { calculatePrizeSplit, type PrizeTierRow } from "@/lib/settlement/payouts";
+import { calculatePrizeSplit, effectiveBuyIn, resolvePrizeTiers, type PrizeTierRow } from "@/lib/settlement/payouts";
 import { getSiteUrl } from "@/lib/site-url";
 import {
   bets,
@@ -58,9 +58,8 @@ export async function finishChallenge(challengeId: string, actorId: string) {
   const ranked = [...participants].sort((a, b) => b.balance - a.balance);
 
   const prizeTierRows = await db.query.prizeTiers.findMany();
-  const tiers = ((challenge.prizeSplitOverride as PrizeTierRow[] | null) ??
-    prizeTierRows) as PrizeTierRow[];
-  const pot = ranked.length * challenge.buyInAmount;
+  const tiers = resolvePrizeTiers(challenge, prizeTierRows as PrizeTierRow[]);
+  const pot = ranked.length * effectiveBuyIn(challenge);
   const split = calculatePrizeSplit(ranked.length, pot, tiers);
 
   const payouts = split

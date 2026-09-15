@@ -1,4 +1,4 @@
-import { calculatePrizeSplit, type PrizeTierRow } from "@/lib/settlement/payouts";
+import { calculatePrizeSplit, effectiveBuyIn, resolvePrizeTiers, type PrizeTierRow } from "@/lib/settlement/payouts";
 import type { Challenge, ChallengeParticipant } from "@drizzle/schema";
 
 /** A challenge that hasn't started yet hasn't handed out balances either. */
@@ -39,16 +39,19 @@ export type ChallengeStats = {
  * players: three payers at €100 is €300, ten is €1000.
  */
 export function getChallengeStats(
-  challenge: Pick<Challenge, "buyInAmount" | "maxPlayers" | "prizeSplitOverride">,
+  challenge: Pick<
+    Challenge,
+    "buyInAmount" | "maxPlayers" | "prizeSplitOverride" | "prizeMode" | "bountyEnabled" | "bountyPerPlayer"
+  >,
   participants: Pick<ChallengeParticipant, "paidBuyIn">[],
   prizeTiers: PrizeTierRow[]
 ): ChallengeStats {
   const joinedCount = participants.length;
   const paidCount = participants.filter((p) => p.paidBuyIn).length;
-  const pot = paidCount * challenge.buyInAmount;
-  const potentialPot = joinedCount * challenge.buyInAmount;
+  const pot = paidCount * effectiveBuyIn(challenge);
+  const potentialPot = joinedCount * effectiveBuyIn(challenge);
 
-  const tiers = (challenge.prizeSplitOverride as PrizeTierRow[] | null) ?? prizeTiers;
+  const tiers = resolvePrizeTiers(challenge, prizeTiers);
 
   return {
     joinedCount,

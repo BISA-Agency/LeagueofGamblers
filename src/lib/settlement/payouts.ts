@@ -1,3 +1,5 @@
+import type { Challenge } from "@drizzle/schema";
+
 export type PrizeSplitEntry = { rank: number; percent: number };
 export type PrizeTierRow = {
   minPlayers: number;
@@ -103,4 +105,35 @@ function normalise(values: number[]): number[] {
   const total = values.reduce((sum, v) => sum + v, 0);
   if (total <= 0) return values.map(() => 0);
   return values.map((v) => v / total);
+}
+
+/**
+ * The tiers a challenge actually pays out with. Hardcore mode is a
+ * first-class setting, not a hand-edited JSON trick — it always pays 100% to
+ * rank 1, regardless of any prizeSplitOverride, so it can't be silently
+ * misconfigured into paying multiple places.
+ */
+export function resolvePrizeTiers(
+  challenge: Pick<Challenge, "prizeMode" | "prizeSplitOverride">,
+  defaultTiers: PrizeTierRow[]
+): PrizeTierRow[] {
+  if (challenge.prizeMode === "hardcore") {
+    return [{ minPlayers: 1, maxPlayers: null, split: [{ rank: 1, percent: 100 }] }];
+  }
+  return (challenge.prizeSplitOverride as PrizeTierRow[] | null) ?? defaultTiers;
+}
+
+/**
+ * What a paid buy-in contributes to the main prize pot. When bounty mode is
+ * on, bountyPerPlayer of every buy-in is earmarked for bounty payouts
+ * instead — see settleBountyRound() in src/lib/bounties/settle.ts, which
+ * pays that portion out separately, as real money via `payments`, whenever
+ * a player busts. The player is still charged the full buyInAmount at
+ * join time; this only changes how much of it counts toward the pot split
+ * at the end.
+ */
+export function effectiveBuyIn(
+  challenge: Pick<Challenge, "buyInAmount" | "bountyEnabled" | "bountyPerPlayer">
+): number {
+  return challenge.bountyEnabled ? challenge.buyInAmount - challenge.bountyPerPlayer : challenge.buyInAmount;
 }
