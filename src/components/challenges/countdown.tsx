@@ -12,7 +12,15 @@ function formatRemaining(ms: number): string {
   return `${minutes}m`;
 }
 
-export function Countdown({ label, target }: { label: string; target: string }) {
+export function Countdown({
+  label,
+  target,
+  className = "text-xs text-muted-foreground",
+}: {
+  label: string;
+  target: string;
+  className?: string;
+}) {
   // Server and client will render a slightly different "now" — that's
   // expected for a clock, so the dynamic bit is marked to skip the
   // hydration-mismatch warning rather than delaying the first paint.
@@ -26,7 +34,7 @@ export function Countdown({ label, target }: { label: string; target: string }) 
   const remaining = new Date(target).getTime() - now;
 
   return (
-    <p className="text-xs text-muted-foreground">
+    <p className={className}>
       {label}{" "}
       <span className="tabular-nums font-medium text-foreground" suppressHydrationWarning>
         {formatRemaining(remaining)}
