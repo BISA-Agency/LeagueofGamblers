@@ -11,8 +11,8 @@ export function BountyRoundCard({ round }: { round: BountyRoundView }) {
           🎯 Bounty op {round.bustedUsername} — €{money.format(round.payoutAmount)}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Voorspel 5 wedstrijden van morgen. Exacte uitslag = 3 punten, juiste winnaar = 1 punt. Hoogste
-          score wint de bounty; bij gelijke stand wordt hij verdeeld.
+          Voorspel {round.matches.length} wedstrijden van morgen. Exacte uitslag = 3 punten, juiste winnaar = 1
+          punt. Hoogste score wint de bounty; bij gelijke stand wordt hij verdeeld.
         </p>
       </header>
       {round.matches.map((match) => (
