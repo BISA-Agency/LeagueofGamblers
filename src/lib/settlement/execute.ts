@@ -1,6 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { logActivity } from "@/lib/activity/log";
 import { createBountyRoundIfEnabled } from "@/lib/bounties/rounds";
+import { resolveBountyMatchesForVoidedEvent } from "@/lib/bounties/settle";
 import { db } from "@/lib/db";
 import { settleableMarkets } from "@/lib/odds-provider/settleable-markets";
 import type { MarketType } from "@/lib/odds-provider/types";
@@ -340,4 +341,6 @@ export async function voidEvent(eventId: string) {
     .where(eq(events.id, eventId));
 
   await finalizeAffectedBets(eventMarkets.flatMap((m) => m.outcomes.map((o) => o.id)));
+
+  await resolveBountyMatchesForVoidedEvent(eventId);
 }

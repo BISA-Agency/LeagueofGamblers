@@ -1,5 +1,6 @@
 import { and, eq, gte, lte } from "drizzle-orm";
 import { NextResponse, type NextRequest } from "next/server";
+import { settleBountyPredictionsForEvent } from "@/lib/bounties/settle";
 import { requireCronSecret } from "@/lib/cron-auth";
 import { settleScorePredictions } from "@/lib/predictions/daily";
 import { db } from "@/lib/db";
@@ -107,6 +108,7 @@ export async function GET(request: NextRequest) {
       // Match of the day: whoever called the score gets paid here, on the same
       // final score the markets were settled against.
       await settleScorePredictions(event.id, homeScore, awayScore);
+      await settleBountyPredictionsForEvent(event.id, homeScore, awayScore);
 
       settled.push(event.id);
     }
