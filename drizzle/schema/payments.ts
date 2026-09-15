@@ -10,6 +10,7 @@ export const paymentDirectionEnum = pgEnum("payment_direction", [
   "buy_in",
   "payout_mission",
   "payout_prize",
+  "payout_bounty",
   "refund",
 ]);
 export const paymentStatusEnum = pgEnum("payment_status", ["pending", "confirmed", "rejected"]);
