@@ -1,10 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import {
-  updateChallengeRules,
-  type SettingsState,
-} from "@/actions/admin/challenge-settings";
+import { updateChallengeRules, type SettingsState } from "@/actions/admin/challenge-settings";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +10,7 @@ import { SaveBar } from "./save-bar";
 export function ChallengeRulesForm({
   challengeId,
   defaultMissionBudget,
+  defaultMissionsFromPot,
   defaultAllowRebuy,
   defaultDurationType,
   defaultPrizeMode,
@@ -22,6 +20,7 @@ export function ChallengeRulesForm({
 }: {
   challengeId: string;
   defaultMissionBudget: number;
+  defaultMissionsFromPot: boolean;
   defaultAllowRebuy: boolean;
   defaultDurationType: "week" | "month" | "season" | "custom";
   defaultPrizeMode: "standard" | "hardcore";
@@ -48,10 +47,16 @@ export function ChallengeRulesForm({
           className="h-11 tabular-nums"
         />
         <p className="text-xs text-muted-foreground">
-          Het bedrag dat je apart houdt voor missie-uitkeringen. Puur administratief — het
-          wordt niet automatisch van de pot afgetrokken.
+          Harde bovengrens voor missie-uitkeringen in deze challenge. Is het op, dan krijgen spelers nog wel
+          XP en badges, maar geen geld meer.
         </p>
       </div>
+
+      <label className="flex min-h-9 items-center gap-2 text-sm">
+        <Checkbox name="missionsFromPot" defaultChecked={defaultMissionsFromPot} />
+        Missiebudget uit de pot (de prijzenpot wordt met dit bedrag verlaagd; uit = jij betaalt het bovenop de
+        pot)
+      </label>
 
       <label className="flex min-h-9 items-center gap-2 text-sm">
         <Checkbox name="allowRebuy" defaultChecked={defaultAllowRebuy} />

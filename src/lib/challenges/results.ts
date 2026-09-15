@@ -1,6 +1,12 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { calculatePrizeSplit, effectiveBuyIn, resolvePrizeTiers, type PrizeTierRow } from "@/lib/settlement/payouts";
+import {
+  calculatePrizeSplit,
+  effectiveBuyIn,
+  potAfterMissions,
+  resolvePrizeTiers,
+  type PrizeTierRow,
+} from "@/lib/settlement/payouts";
 import { challengeParticipants, challenges, payments, prizeTiers } from "@drizzle/schema";
 
 export type ChallengeResultRow = {
@@ -58,10 +64,7 @@ export async function getChallengeResults(challengeId: string): Promise<Challeng
   // Only paid participants: an unpaid entry is not in the running and must
   // not take up a prize rank.
   const participants = await db.query.challengeParticipants.findMany({
-    where: and(
-      eq(challengeParticipants.challengeId, challengeId),
-      eq(challengeParticipants.paidBuyIn, true)
-    ),
+    where: and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.paidBuyIn, true)),
     with: { user: true },
   });
 
@@ -89,7 +92,7 @@ export async function getChallengeResults(challengeId: string): Promise<Challeng
     return b.balance - a.balance;
   });
 
-  const pot = ordered.length * effectiveBuyIn(challenge);
+  const pot = potAfterMissions(ordered.length * effectiveBuyIn(challenge), challenge);
 
   if (!final) {
     const tierRows = await db.query.prizeTiers.findMany({ orderBy: prizeTiers.minPlayers });

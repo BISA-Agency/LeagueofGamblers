@@ -148,6 +148,13 @@
       "when": 1789490418398,
       "tag": "0020_tense_harrier",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1789512848648,
+      "tag": "0021_kind_starfox",
+      "breakpoints": true
     }
   ]
 }

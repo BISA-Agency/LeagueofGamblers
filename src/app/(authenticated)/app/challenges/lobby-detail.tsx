@@ -37,6 +37,7 @@ export type LobbyDetail = {
     allowRebuy: boolean;
     lateJoinDays: number;
     missionBudget: number;
+    missionsFromPot: boolean;
     startAt: Date;
     endAt: Date;
   };
@@ -149,7 +150,12 @@ export function LobbyDetailPanel({ detail }: { detail: LobbyDetail }) {
             </Row>
           )}
           {structure.missionBudget > 0 && (
-            <Row label="Missies">€{money.format(structure.missionBudget)} extra</Row>
+            <Row label="Missies">
+              €{money.format(structure.missionBudget)}{" "}
+              <span className="text-muted-foreground">
+                {structure.missionsFromPot ? "uit de pot, al verrekend" : "extra, bovenop de pot"}
+              </span>
+            </Row>
           )}
           <Row label="Start">{longDate.format(structure.startAt)}</Row>
           <Row label="Einde">{longDate.format(structure.endAt)}</Row>
