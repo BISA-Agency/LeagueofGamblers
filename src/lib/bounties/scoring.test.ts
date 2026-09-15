@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { resolveBountyWinners, scoreBountyPrediction } from "./settle";
+import { resolveBountyWinners, scoreBountyPrediction } from "./scoring";
 
 describe("scoreBountyPrediction", () => {
   const result = { homeScore: 2, awayScore: 1 };

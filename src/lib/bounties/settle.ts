@@ -1,48 +1,12 @@
 import { and, eq, isNull } from "drizzle-orm";
+import { db } from "@/lib/db";
 import { bountyPredictions, bountyRoundMatches, bountyRounds, payments } from "@drizzle/schema";
+import { resolveBountyWinners, scoreBountyPrediction } from "./scoring";
 
-/**
- * `@/lib/db` opens the real Postgres connection at import time (throws if
- * `DATABASE_URL` isn't set), so a static import here would break
- * `scoreBountyPrediction`/`resolveBountyWinners`'s own unit test the moment it
- * imports this module — same reason every other unit-tested file in this repo
- * (markets.ts, decide-bet.ts, payouts.ts, ...) has no `db` import at all.
- * Deferred so it only resolves when one of the DB-touching functions below
- * actually runs.
- */
-async function getDb() {
-  const { db } = await import("@/lib/db");
-  return db;
-}
-
-/** 3 for the exact score, 1 for the correct winner (or a correctly-called draw), 0 for a miss. */
-export function scoreBountyPrediction(
-  prediction: { homeGoals: number; awayGoals: number },
-  result: { homeScore: number; awayScore: number }
-): number {
-  if (prediction.homeGoals === result.homeScore && prediction.awayGoals === result.awayScore) {
-    return 3;
-  }
-  const predictedOutcome = Math.sign(prediction.homeGoals - prediction.awayGoals);
-  const actualOutcome = Math.sign(result.homeScore - result.awayScore);
-  return predictedOutcome === actualOutcome ? 1 : 0;
-}
-
-/**
- * Every user tied at the highest total wins, splitting the bounty. A highest
- * total of 0 means nobody predicted anything correctly (or nobody predicted
- * at all) — the round goes unclaimed rather than rewarding a field of zeros.
- */
-export function resolveBountyWinners(totals: { userId: string; points: number }[]): string[] {
-  if (totals.length === 0) return [];
-  const max = Math.max(...totals.map((t) => t.points));
-  if (max <= 0) return [];
-  return totals.filter((t) => t.points === max).map((t) => t.userId);
-}
+export { resolveBountyWinners, scoreBountyPrediction };
 
 /** Pays out a round: one `payments` row per tied winner, real money, separate from challenge balance. */
 async function settleBountyRound(bountyRoundId: string) {
-  const db = await getDb();
   const round = await db.query.bountyRounds.findFirst({
     where: eq(bountyRounds.id, bountyRoundId),
     with: { matches: { with: { predictions: true } } },
@@ -88,7 +52,6 @@ async function settleBountyRound(bountyRoundId: string) {
 
 /** Scores every prediction on one match, marks it resolved, and settles its round once every match in it is resolved. */
 async function resolveBountyRoundMatch(matchId: string, bountyRoundId: string, points: (p: { homeGoals: number; awayGoals: number }) => number) {
-  const db = await getDb();
   const predictions = await db.query.bountyPredictions.findMany({
     where: eq(bountyPredictions.bountyRoundMatchId, matchId),
   });
@@ -108,7 +71,6 @@ async function resolveBountyRoundMatch(matchId: string, bountyRoundId: string, p
 
 /** Called from the results cron right after an event is marked finished — same trigger point as settleScorePredictions. */
 export async function settleBountyPredictionsForEvent(eventId: string, homeScore: number, awayScore: number) {
-  const db = await getDb();
   const matches = await db.query.bountyRoundMatches.findMany({
     where: and(eq(bountyRoundMatches.eventId, eventId), isNull(bountyRoundMatches.resolvedAt)),
   });
@@ -121,7 +83,6 @@ export async function settleBountyPredictionsForEvent(eventId: string, homeScore
 
 /** Called from voidEvent() — a postponed/cancelled fixture still needs to unblock any round waiting on it. Everyone scores 0 on it, same as a miss. */
 export async function resolveBountyMatchesForVoidedEvent(eventId: string) {
-  const db = await getDb();
   const matches = await db.query.bountyRoundMatches.findMany({
     where: and(eq(bountyRoundMatches.eventId, eventId), isNull(bountyRoundMatches.resolvedAt)),
   });
