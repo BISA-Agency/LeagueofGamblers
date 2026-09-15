@@ -5,6 +5,14 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import type { Challenge } from "@drizzle/schema";
 import { JoinButton } from "./join-button";
+import { LobbyDetailPanel, type LobbyDetail } from "./lobby-detail";
+import {
+  ExpandableListItem,
+  ExpandableTableRow,
+  ExpandToggle,
+  LobbyExpandProvider,
+  NoToggle,
+} from "./lobby-expand";
 
 /** Everything a lobby row needs, computed once in the page so both layouts render the same numbers. */
 export type LobbyRow = {
@@ -28,7 +36,10 @@ export type LobbyRow = {
   /** Open for registration right now — either status "open" or inside the late-join window. */
   canJoin: boolean;
   lateJoinDeadline: Date | null;
+  detail: LobbyDetail;
 };
+
+const COLUMNS = 6;
 
 const money = new Intl.NumberFormat("nl-NL", {
   minimumFractionDigits: 0,
@@ -66,108 +77,117 @@ export function LobbyTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-felt">
-      {/* Desktop: a real table, columns scan the way a poker lobby does. */}
-      <table className="hidden w-full md:table">
-        <thead>
-          <tr className="bg-black/20 text-xs text-muted-foreground">
-            <th scope="col" className="px-4 py-2.5 text-left font-normal">
-              Challenge
-            </th>
-            <th scope="col" className="px-3 py-2.5 text-right font-normal">
-              Inleg
-            </th>
-            <th scope="col" className="w-40 px-3 py-2.5 text-left font-normal">
-              Spelers
-            </th>
-            <th scope="col" className="px-3 py-2.5 text-right font-normal">
-              Pot
-            </th>
-            <th scope="col" className="px-3 py-2.5 text-left font-normal">
-              {timingHeader}
-            </th>
-            <th scope="col" className="px-4 py-2.5 text-right font-normal">
-              <span className="sr-only">Actie</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
+    <LobbyExpandProvider>
+      <div className="overflow-hidden rounded-xl border border-border bg-felt">
+        {/* Desktop: a real table, columns scan the way a poker lobby does. */}
+        <table className="hidden w-full md:table">
+          <thead>
+            <tr className="bg-black/20 text-xs text-muted-foreground">
+              <th scope="col" className="px-4 py-2.5 text-left font-normal">
+                Challenge
+              </th>
+              <th scope="col" className="px-3 py-2.5 text-right font-normal">
+                Inleg
+              </th>
+              <th scope="col" className="w-40 px-3 py-2.5 text-left font-normal">
+                Spelers
+              </th>
+              <th scope="col" className="px-3 py-2.5 text-right font-normal">
+                Pot
+              </th>
+              <th scope="col" className="px-3 py-2.5 text-left font-normal">
+                {timingHeader}
+              </th>
+              <th scope="col" className="px-4 py-2.5 text-right font-normal">
+                <span className="sr-only">Actie</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <ExpandableTableRow
+                key={row.id}
+                id={row.id}
+                colSpan={COLUMNS}
+                panel={<LobbyDetailPanel detail={row.detail} />}
+                className={cn(
+                  "border-t border-felt-line transition-colors hover:bg-white/[0.03]",
+                  row.joined && "shadow-[inset_2px_0_0_var(--color-accent-brand)]"
+                )}
+              >
+                <td className="px-4 py-3 align-middle">
+                  <Name row={row} />
+                  <Tags row={row} className="mt-1.5" />
+                </td>
+                <td className="px-3 py-3 text-right align-middle tabular-nums">€{money.format(row.buyIn)}</td>
+                <td className="px-3 py-3 align-middle">
+                  <Seats row={row} />
+                </td>
+                <td className="px-3 py-3 text-right align-middle text-base font-semibold tabular-nums text-accent-brand">
+                  €{money.format(row.pot)}
+                </td>
+                <td className="whitespace-nowrap px-3 py-3 align-middle text-sm">
+                  <Timing row={row} />
+                </td>
+                <td className="px-4 py-3 text-right align-middle">
+                  <NoToggle className="flex justify-end">
+                    <Action row={row} />
+                  </NoToggle>
+                </td>
+              </ExpandableTableRow>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Phone: the same numbers, stacked. */}
+        <ul className="md:hidden">
           {rows.map((row) => (
-            <tr
+            <ExpandableListItem
               key={row.id}
+              id={row.id}
+              panel={<LobbyDetailPanel detail={row.detail} />}
               className={cn(
-                "border-t border-felt-line transition-colors hover:bg-white/[0.03]",
+                "border-t border-felt-line first:border-t-0",
                 row.joined && "shadow-[inset_2px_0_0_var(--color-accent-brand)]"
               )}
             >
-              <td className="px-4 py-3 align-middle">
-                <Name row={row} />
-                <Tags row={row} className="mt-1.5" />
-              </td>
-              <td className="px-3 py-3 text-right align-middle tabular-nums">€{money.format(row.buyIn)}</td>
-              <td className="px-3 py-3 align-middle">
-                <Seats row={row} />
-              </td>
-              <td className="px-3 py-3 text-right align-middle text-base font-semibold tabular-nums text-accent-brand">
-                €{money.format(row.pot)}
-              </td>
-              <td className="px-3 py-3 align-middle text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <Name row={row} />
+                  <Tags row={row} className="mt-1.5" />
+                </div>
+                <NoToggle className="shrink-0">
+                  <Action row={row} />
+                </NoToggle>
+              </div>
+
+              <dl className="mt-3 grid grid-cols-[auto_1fr_auto] items-end gap-x-5 text-sm">
+                <div>
+                  <dt className="text-xs text-muted-foreground">Inleg</dt>
+                  <dd className="tabular-nums">€{money.format(row.buyIn)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Spelers</dt>
+                  <dd>
+                    <Seats row={row} />
+                  </dd>
+                </div>
+                <div className="text-right">
+                  <dt className="text-xs text-muted-foreground">Pot</dt>
+                  <dd className="text-base font-semibold tabular-nums text-accent-brand">
+                    €{money.format(row.pot)}
+                  </dd>
+                </div>
+              </dl>
+
+              <div className="mt-2.5 text-sm">
                 <Timing row={row} />
-              </td>
-              <td className="px-4 py-3 text-right align-middle">
-                <Action row={row} />
-              </td>
-            </tr>
+              </div>
+            </ExpandableListItem>
           ))}
-        </tbody>
-      </table>
-
-      {/* Phone: the same numbers, stacked. */}
-      <ul className="md:hidden">
-        {rows.map((row) => (
-          <li
-            key={row.id}
-            className={cn(
-              "border-t border-felt-line px-4 py-4 first:border-t-0",
-              row.joined && "shadow-[inset_2px_0_0_var(--color-accent-brand)]"
-            )}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <Name row={row} />
-                <Tags row={row} className="mt-1.5" />
-              </div>
-              <div className="shrink-0">
-                <Action row={row} />
-              </div>
-            </div>
-
-            <dl className="mt-3 grid grid-cols-[auto_1fr_auto] items-end gap-x-5 text-sm">
-              <div>
-                <dt className="text-xs text-muted-foreground">Inleg</dt>
-                <dd className="tabular-nums">€{money.format(row.buyIn)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">Spelers</dt>
-                <dd>
-                  <Seats row={row} />
-                </dd>
-              </div>
-              <div className="text-right">
-                <dt className="text-xs text-muted-foreground">Pot</dt>
-                <dd className="text-base font-semibold tabular-nums text-accent-brand">
-                  €{money.format(row.pot)}
-                </dd>
-              </div>
-            </dl>
-
-            <div className="mt-2.5 text-sm">
-              <Timing row={row} />
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
+        </ul>
+      </div>
+    </LobbyExpandProvider>
   );
 }
 
@@ -181,9 +201,7 @@ function Name({ row }: { row: LobbyRow }) {
           role="img"
         />
       )}
-      <Link href={`/c/${row.slug}`} className="truncate font-semibold hover:underline">
-        {row.name}
-      </Link>
+      <ExpandToggle id={row.id}>{row.name}</ExpandToggle>
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { isNotNull } from "drizzle-orm";
+import { events } from "@drizzle/schema";
 import { canJoinChallenge } from "@/lib/challenges/eligibility";
 import { isHotChallenge } from "@/lib/challenges/hot";
 import {
@@ -11,15 +13,35 @@ import {
   parseLobbyFilters,
   type LobbyStatus,
 } from "@/lib/challenges/lobby-filters";
-import { getChallengeStats } from "@/lib/challenges/stats";
-import type { PrizeTierRow } from "@/lib/settlement/payouts";
+import { displayBalance, getChallengeStats, hasStarted } from "@/lib/challenges/stats";
+import { DEFAULT_SPORT_KEYS, DEFAULT_SPORT_LABELS } from "@/lib/odds-provider/sports";
+import { calculatePrizeSplit, resolvePrizeTiers, type PrizeTierRow } from "@/lib/settlement/payouts";
 import { createClient } from "@/lib/supabase/server";
+import { type LobbyDetail } from "./lobby-detail";
 import { LobbyFilters } from "./lobby-filters";
 import { LobbyTable, type LobbyRow } from "./lobby-table";
 
 export const metadata: Metadata = { title: "Challenges" };
 
 const DAY_MS = 86_400_000;
+
+// challenges.sportKeys holds the provider's keys ("soccer_epl"). The
+// competition name comes from the events we've imported under that key,
+// falling back to the static list; a key we've never seen is shown as-is
+// rather than guessed.
+const STATIC_SPORT_LABELS: Record<string, string> = Object.fromEntries(
+  Object.entries(DEFAULT_SPORT_KEYS).map(([ours, api]) => [api, DEFAULT_SPORT_LABELS[ours] ?? ours])
+);
+
+async function competitionLabelMap(): Promise<Map<string, string>> {
+  const rows = await db
+    .selectDistinct({ key: events.sportKey, competition: events.competition })
+    .from(events)
+    .where(isNotNull(events.competition));
+  const map = new Map(Object.entries(STATIC_SPORT_LABELS));
+  for (const row of rows) if (row.competition) map.set(row.key, row.competition);
+  return map;
+}
 
 const TIMING_HEADER: Record<LobbyStatus, string> = {
   open: "Start",
@@ -43,11 +65,11 @@ export default async function ChallengesPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [allChallenges, myParticipations, prizeTiers] = await Promise.all([
+  const [allChallenges, myParticipations, prizeTiers, sportLabels] = await Promise.all([
     db.query.challenges.findMany({
       where: (c, { ne }) => ne(c.status, "draft"),
       orderBy: (c, { desc }) => desc(c.startAt),
-      with: { participants: true },
+      with: { participants: { with: { user: { columns: { username: true, avatarUrl: true } } } } },
     }),
     user
       ? db.query.challengeParticipants.findMany({
@@ -55,6 +77,7 @@ export default async function ChallengesPage({
         })
       : Promise.resolve([]),
     db.query.prizeTiers.findMany(),
+    competitionLabelMap(),
   ]);
 
   const joinedIds = new Set(myParticipations.map((p) => p.challengeId));
@@ -72,7 +95,69 @@ export default async function ChallengesPage({
     if (!tab) continue;
     const stats = getChallengeStats(challenge, challenge.participants, prizeTiers as PrizeTierRow[]);
     const canJoin = canJoinChallenge(challenge);
+    const joined = joinedIds.has(challenge.id);
+    const started = hasStarted(challenge.status);
+
+    // Before the first buy-in lands, project the split on what everyone who
+    // joined would pay — otherwise the pane shows nothing to play for.
+    const splitIsProjected = stats.paidCount === 0 && stats.joinedCount > 0;
+    const splitBase = splitIsProjected ? stats.potentialPot : stats.pot;
+    const rawSplit = splitIsProjected
+      ? calculatePrizeSplit(
+          stats.joinedCount,
+          stats.potentialPot,
+          resolvePrizeTiers(challenge, prizeTiers as PrizeTierRow[])
+        )
+      : stats.split;
+
+    // Standings once it runs (final rank is the authority after the finish);
+    // sign-up order before that.
+    const ordered = [...challenge.participants].sort((a, b) => {
+      if (!started) return a.joinedAt.getTime() - b.joinedAt.getTime();
+      if (a.finalRank !== null && b.finalRank !== null) return a.finalRank - b.finalRank;
+      return displayBalance(b, challenge) - displayBalance(a, challenge);
+    });
+
+    const detail: LobbyDetail = {
+      slug: challenge.slug,
+      joined,
+      started,
+      descriptionMd: challenge.descriptionMd,
+      prizes: {
+        pot: stats.pot,
+        potentialPot: stats.potentialPot,
+        unpaidCount: stats.unpaidCount,
+        split: rawSplit
+          .filter((e) => e.amount > 0)
+          .map((e) => ({ ...e, percent: splitBase > 0 ? Math.round((e.amount / splitBase) * 100) : 0 })),
+        splitIsProjected,
+        hardcore: challenge.prizeMode === "hardcore",
+        bountyPerPlayer: challenge.bountyEnabled ? challenge.bountyPerPlayer : null,
+      },
+      players: ordered.map((p, i) => ({
+        username: p.user.username,
+        avatarUrl: p.user.avatarUrl,
+        balance: started ? displayBalance(p, challenge) : null,
+        rank: started ? i + 1 : null,
+        paid: p.paidBuyIn,
+        bust: p.status === "bust",
+        isMe: user?.id === p.userId,
+      })),
+      structure: {
+        startingBalance: challenge.startingBalance,
+        buyIn: challenge.buyInAmount,
+        feePercent: challenge.platformFeePercent,
+        sports: challenge.sportKeys.map((key) => sportLabels.get(key) ?? key),
+        allowRebuy: challenge.allowRebuy,
+        lateJoinDays: challenge.lateJoinDays,
+        missionBudget: challenge.missionBudget,
+        startAt: challenge.startAt,
+        endAt: challenge.endAt,
+      },
+    };
+
     rows.push({
+      detail,
       tab,
       id: challenge.id,
       slug: challenge.slug,
@@ -93,7 +178,7 @@ export default async function ChallengesPage({
         stats.maxPlayers !== null &&
         stats.joinedCount >= stats.maxPlayers - 2 &&
         stats.joinedCount < stats.maxPlayers,
-      joined: joinedIds.has(challenge.id),
+      joined,
       isHot: hotFlags.get(challenge.id) ?? false,
       canJoin,
       lateJoinDeadline:
