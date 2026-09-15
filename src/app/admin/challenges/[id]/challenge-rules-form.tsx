@@ -118,6 +118,7 @@ export function ChallengeRulesForm({
         </div>
       </div>
 
+      {state.error && <p className="text-sm text-loss">{state.error}</p>}
       <SaveBar label="Spelregels opslaan" saved={Boolean(state.saved)} />
     </form>
   );

@@ -17,7 +17,7 @@ async function requireAdmin() {
   return user;
 }
 
-export type SettingsState = { saved?: boolean };
+export type SettingsState = { saved?: boolean; error?: string };
 
 export async function updateChallengeSportsbookSettings(
   challengeId: string,
@@ -82,14 +82,34 @@ export async function updateChallengeRules(
   const prizeMode = PRIZE_MODES.includes(prizeRaw as PrizeMode) ? (prizeRaw as PrizeMode) : null;
   if (durationType === null || prizeMode === null) return {};
 
+  const current = await db.query.challenges.findFirst({
+    where: eq(challenges.id, challengeId),
+    columns: { status: true, buyInAmount: true, bountyEnabled: true, bountyPerPlayer: true },
+  });
+  if (!current) return {};
+
   if (bountyEnabled) {
     // Same rule as the create form (§2): the bounty is carved out of the
     // buy-in, so it can never be the whole buy-in or more.
-    const current = await db.query.challenges.findFirst({
-      where: eq(challenges.id, challengeId),
-      columns: { buyInAmount: true },
-    });
-    if (!current || bountyPerPlayer >= current.buyInAmount) return {};
+    if (bountyPerPlayer >= current.buyInAmount) {
+      return { error: "Bounty moet lager zijn dan de inleg." };
+    }
+  }
+
+  /**
+   * Once a challenge is live (or later), bounty rounds may already have paid
+   * out of the old carve-out. Turning bounty off or lowering it below what
+   * was promised would then let effectiveBuyIn() recompute a smaller pot
+   * than what was actually collected, so total payouts would exceed it.
+   * Raising the bounty, or enabling it mid-flight, doesn't have that problem.
+   */
+  if (
+    current.status !== "draft" &&
+    current.status !== "open" &&
+    ((current.bountyEnabled && !bountyEnabled) ||
+      (current.bountyEnabled && bountyPerPlayer < current.bountyPerPlayer))
+  ) {
+    return { error: "Bounty kan niet worden uitgezet of verlaagd zodra de challenge bezig is." };
   }
 
   await db
