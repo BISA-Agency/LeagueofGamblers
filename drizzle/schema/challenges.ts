@@ -21,6 +21,18 @@ export const challengeStatusEnum = pgEnum("challenge_status", [
   "finished",
 ]);
 
+export const challengeDurationTypeEnum = pgEnum("challenge_duration_type", [
+  "week",
+  "month",
+  "season",
+  "custom",
+]);
+
+export const challengePrizeModeEnum = pgEnum("challenge_prize_mode", [
+  "standard",
+  "hardcore",
+]);
+
 export const challenges = pgTable(
   "challenges",
   {
@@ -50,6 +62,15 @@ export const challenges = pgTable(
       .notNull()
       .default(sql`'{}'::text[]`),
     allowRebuy: boolean("allow_rebuy").notNull().default(false),
+    durationType: challengeDurationTypeEnum("duration_type").notNull().default("custom"),
+    prizeMode: challengePrizeModeEnum("prize_mode").notNull().default("standard"),
+    // Days after startAt during which a challenge already "live" can still be
+    // joined. 0 = today's behaviour (join only while status is "open").
+    lateJoinDays: integer("late_join_days").notNull().default(0),
+    bountyEnabled: boolean("bounty_enabled").notNull().default(false),
+    // Carved out of buyInAmount when bountyEnabled — see effectiveBuyIn() in
+    // src/lib/settlement/payouts.ts. Meaningless while bountyEnabled is false.
+    bountyPerPlayer: money("bounty_per_player").notNull().default(0),
     autoPublishImports: boolean("auto_publish_imports").notNull().default(false),
     // Optional Thursday mini-import alongside the main Monday one (§5.3, default off).
     midweekImportEnabled: boolean("midweek_import_enabled").notNull().default(false),
