@@ -49,6 +49,7 @@ export async function placeSportsbookBet(
       marketLabel: markets.label,
       marketStatus: markets.status,
       eventId: events.id,
+      eventChallengeId: events.challengeId,
       eventName: events.name,
       eventStartsAt: events.startsAt,
       eventStatus: events.status,
@@ -76,6 +77,13 @@ export async function placeSportsbookBet(
   const now = new Date();
   const seenEventIds = new Set<string>();
   for (const row of rows) {
+    // Every event belongs to exactly one challenge, and the sportsbook only
+    // ever shows a challenge its own board. Without this check a player in two
+    // challenges at once could stake one challenge's balance on the other's
+    // fixtures — the outcome ids are client-supplied, the board is not.
+    if (row.eventChallengeId !== challengeId) {
+      return { error: `${row.eventName} hoort niet bij deze challenge.` };
+    }
     if (row.eventStartsAt <= now || row.eventStatus !== "upcoming") {
       return { error: `${row.eventName} is al begonnen — deze selectie kan niet meer.` };
     }
