@@ -10,6 +10,7 @@ import { totalWithFee } from "@/lib/payments/rate";
 import { getSiteUrl } from "@/lib/site-url";
 import { challengeParticipants, challenges, profiles } from "@drizzle/schema";
 import { createClient } from "@/lib/supabase/server";
+import { canJoinChallenge } from "@/lib/challenges/eligibility";
 
 export type JoinChallengeState = { error?: string };
 
@@ -28,7 +29,7 @@ export async function joinChallenge(
   const challenge = await db.query.challenges.findFirst({
     where: eq(challenges.id, challengeId),
   });
-  if (!challenge || challenge.status !== "open") {
+  if (!challenge || !canJoinChallenge(challenge)) {
     return { error: "Deze challenge is niet (meer) open voor inschrijving." };
   }
 
