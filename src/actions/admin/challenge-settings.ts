@@ -65,7 +65,7 @@ export async function updateChallengeRules(
   const prizeRaw = formData.get("prizeMode");
   const lateJoinRaw = formData.get("lateJoinDays");
   const lateJoinDays = lateJoinRaw === null || lateJoinRaw === "" ? 0 : Number(lateJoinRaw);
-  if (!Number.isFinite(lateJoinDays) || lateJoinDays < 0) return {};
+  if (!Number.isInteger(lateJoinDays) || lateJoinDays < 0) return {};
 
   const bountyEnabled = formData.get("bountyEnabled") === "on";
   const bountyRaw = formData.get("bountyPerPlayer");
