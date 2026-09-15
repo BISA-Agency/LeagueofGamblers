@@ -1,5 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { logActivity } from "@/lib/activity/log";
+import { createBountyRoundIfEnabled } from "@/lib/bounties/rounds";
+import { resolveBountyMatchesForVoidedEvent } from "@/lib/bounties/settle";
 import { db } from "@/lib/db";
 import { settleableMarkets } from "@/lib/odds-provider/settleable-markets";
 import type { MarketType } from "@/lib/odds-provider/types";
@@ -272,11 +274,31 @@ export async function checkAndMarkBust(challengeId: string, userId: string) {
   );
   if (openBetCount > 0) return;
 
-  await db
+  // The status change is the lock (same claim-the-row pattern as bet
+  // settlement above): two overlapping settlement runs would otherwise both
+  // mark the bust and both open a bounty round.
+  const claimed = await db
     .update(challengeParticipants)
     .set({ status: "bust" })
-    .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, userId)));
+    .where(
+      and(
+        eq(challengeParticipants.challengeId, challengeId),
+        eq(challengeParticipants.userId, userId),
+        eq(challengeParticipants.status, "active")
+      )
+    )
+    .returning({ userId: challengeParticipants.userId });
+  if (claimed.length === 0) return;
+
   await logActivity(challengeId, userId, "bust", {});
+
+  // A bounty-only failure must not undo or block the bust that already
+  // happened above.
+  try {
+    await createBountyRoundIfEnabled(challengeId, userId);
+  } catch (err) {
+    console.error("[settlement] bounty-ronde aanmaken mislukt:", err instanceof Error ? err.message : err);
+  }
 }
 
 export async function voidAndRefundBet(betId: string) {
@@ -326,4 +348,6 @@ export async function voidEvent(eventId: string) {
     .where(eq(events.id, eventId));
 
   await finalizeAffectedBets(eventMarkets.flatMap((m) => m.outcomes.map((o) => o.id)));
+
+  await resolveBountyMatchesForVoidedEvent(eventId);
 }

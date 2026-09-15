@@ -24,6 +24,7 @@ export * from "./activity-feed";
 export * from "./feed-reactions";
 export * from "./follows";
 export * from "./notifications";
+export * from "./bounties";
 export * from "./predictions";
 export * from "./score-predictions";
 // Op proef — zie lib/referrals/credits.ts.

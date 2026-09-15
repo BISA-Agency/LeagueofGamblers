@@ -1,5 +1,6 @@
 import { and, eq, gte, lte } from "drizzle-orm";
 import { NextResponse, type NextRequest } from "next/server";
+import { settleBountyPredictionsForEvent, settleStrandedBountyRounds } from "@/lib/bounties/settle";
 import { requireCronSecret } from "@/lib/cron-auth";
 import { settleScorePredictions } from "@/lib/predictions/daily";
 import { db } from "@/lib/db";
@@ -40,6 +41,14 @@ export async function GET(request: NextRequest) {
   const now = Date.now();
   const ripeBy = new Date(now - SETTLE_AFTER_MINUTES * 60_000);
   const tooOld = new Date(now - GIVE_UP_AFTER_DAYS * 24 * 60 * 60_000);
+
+  // Rounds stranded in "collecting" by an earlier crashed run — cheap, and
+  // must not stop this run's settlement if it fails itself.
+  try {
+    await settleStrandedBountyRounds();
+  } catch (err) {
+    console.error("[cron/results] gestrande bounty-rondes afronden mislukt:", err instanceof Error ? err.message : err);
+  }
 
   const pendingEvents = await db.query.events.findMany({
     where: and(
@@ -107,6 +116,7 @@ export async function GET(request: NextRequest) {
       // Match of the day: whoever called the score gets paid here, on the same
       // final score the markets were settled against.
       await settleScorePredictions(event.id, homeScore, awayScore);
+      await settleBountyPredictionsForEvent(event.id, homeScore, awayScore);
 
       settled.push(event.id);
     }

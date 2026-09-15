@@ -5,6 +5,7 @@ import { badges } from "./badges";
 import { betFlags } from "./bet-flags";
 import { betSelections } from "./bet-selections";
 import { bets } from "./bets";
+import { bountyPredictions, bountyRoundMatches, bountyRounds } from "./bounties";
 import { challenges } from "./challenges";
 import { events } from "./events";
 import { feedReactions } from "./feed-reactions";
@@ -52,6 +53,7 @@ export const challengesRelations = relations(challenges, ({ one, many }) => ({
   missions: many(missions),
   payments: many(payments),
   oddsImports: many(oddsImports),
+  bountyRounds: many(bountyRounds),
   sanctions: many(sanctions),
 }));
 
@@ -206,4 +208,24 @@ export const scorePredictionsRelations = relations(scorePredictions, ({ one }) =
     references: [dailyMatches.id],
   }),
   user: one(profiles, { fields: [scorePredictions.userId], references: [profiles.id] }),
+}));
+
+export const bountyRoundsRelations = relations(bountyRounds, ({ one, many }) => ({
+  challenge: one(challenges, { fields: [bountyRounds.challengeId], references: [challenges.id] }),
+  bustedUser: one(profiles, { fields: [bountyRounds.bustedUserId], references: [profiles.id] }),
+  matches: many(bountyRoundMatches),
+}));
+
+export const bountyRoundMatchesRelations = relations(bountyRoundMatches, ({ one, many }) => ({
+  round: one(bountyRounds, { fields: [bountyRoundMatches.bountyRoundId], references: [bountyRounds.id] }),
+  event: one(events, { fields: [bountyRoundMatches.eventId], references: [events.id] }),
+  predictions: many(bountyPredictions),
+}));
+
+export const bountyPredictionsRelations = relations(bountyPredictions, ({ one }) => ({
+  match: one(bountyRoundMatches, {
+    fields: [bountyPredictions.bountyRoundMatchId],
+    references: [bountyRoundMatches.id],
+  }),
+  user: one(profiles, { fields: [bountyPredictions.userId], references: [profiles.id] }),
 }));

@@ -630,8 +630,11 @@ describe("pickRandomMatches", () => {
 
   test("with a fixed random source, always picks the same items deterministically", () => {
     const pool = [1, 2, 3, 4, 5];
-    const alwaysZero = () => 0; // Fisher-Yates with random()=0 never swaps
-    expect(pickRandomMatches(pool, 3, alwaysZero)).toEqual([1, 2, 3]);
+    // Fisher-Yates with random() always 0 always swaps index i with index 0 —
+    // traced by hand: [1,2,3,4,5] -> [5,2,3,4,1] -> [4,2,3,5,1] -> [3,2,4,5,1]
+    // -> [2,3,4,5,1], then sliced to 3.
+    const alwaysZero = () => 0;
+    expect(pickRandomMatches(pool, 3, alwaysZero)).toEqual([2, 3, 4]);
   });
 });
 ```

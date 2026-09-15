@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { calculatePrizeSplit, type PrizeTierRow } from "@/lib/settlement/payouts";
+import { calculatePrizeSplit, effectiveBuyIn, resolvePrizeTiers, type PrizeTierRow } from "@/lib/settlement/payouts";
 import { challengeParticipants, challenges, payments, prizeTiers } from "@drizzle/schema";
 
 export type ChallengeResultRow = {
@@ -89,12 +89,11 @@ export async function getChallengeResults(challengeId: string): Promise<Challeng
     return b.balance - a.balance;
   });
 
-  const pot = ordered.length * challenge.buyInAmount;
+  const pot = ordered.length * effectiveBuyIn(challenge);
 
   if (!final) {
     const tierRows = await db.query.prizeTiers.findMany({ orderBy: prizeTiers.minPlayers });
-    const tiers = ((challenge.prizeSplitOverride as PrizeTierRow[] | null) ??
-      tierRows) as PrizeTierRow[];
+    const tiers = resolvePrizeTiers(challenge, tierRows as PrizeTierRow[]);
     for (const [index, entry] of calculatePrizeSplit(ordered.length, pot, tiers).entries()) {
       const participant = ordered[index];
       if (participant && entry.amount > 0) prizeByUser.set(participant.userId, entry.amount);
