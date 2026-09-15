@@ -291,7 +291,14 @@ export async function checkAndMarkBust(challengeId: string, userId: string) {
   if (claimed.length === 0) return;
 
   await logActivity(challengeId, userId, "bust", {});
-  await createBountyRoundIfEnabled(challengeId, userId);
+
+  // A bounty-only failure must not undo or block the bust that already
+  // happened above.
+  try {
+    await createBountyRoundIfEnabled(challengeId, userId);
+  } catch (err) {
+    console.error("[settlement] bounty-ronde aanmaken mislukt:", err instanceof Error ? err.message : err);
+  }
 }
 
 export async function voidAndRefundBet(betId: string) {
