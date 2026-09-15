@@ -97,6 +97,34 @@ export async function resolveBountyMatchesForVoidedEvent(eventId: string) {
  * resolved and paying out). Idempotent: settleBountyRound claims the row.
  */
 export async function settleStrandedBountyRounds() {
+  /**
+   * Also recovers a match whose event finished (or was voided) but was never
+   * resolved. The results cron marks the event finished, then calls
+   * settleScorePredictions, then settleBountyPredictionsForEvent — a throw or
+   * timeout between those steps leaves the event finished, this match's
+   * resolvedAt null, and its round stuck in "collecting" forever. Idempotent:
+   * the isNull(resolvedAt) filter, plus the claim in settleBountyRound, mean a
+   * re-run that finds nothing new to resolve does nothing.
+   */
+  const unresolvedMatches = await db.query.bountyRoundMatches.findMany({
+    where: isNull(bountyRoundMatches.resolvedAt),
+    with: { event: true },
+  });
+  for (const match of unresolvedMatches) {
+    const { event } = match;
+    if (event.status === "finished") {
+      const result = event.result as { homeScore?: unknown; awayScore?: unknown } | null;
+      if (typeof result?.homeScore === "number" && typeof result?.awayScore === "number") {
+        const finalResult = { homeScore: result.homeScore, awayScore: result.awayScore };
+        await resolveBountyRoundMatch(match.id, match.bountyRoundId, (p) =>
+          scoreBountyPrediction(p, finalResult)
+        );
+      }
+    } else if (event.status === "void") {
+      await resolveBountyRoundMatch(match.id, match.bountyRoundId, () => 0);
+    }
+  }
+
   const rounds = await db.query.bountyRounds.findMany({
     where: eq(bountyRounds.status, "collecting"),
     with: { matches: { columns: { resolvedAt: true } } },
