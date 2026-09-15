@@ -1,5 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { logActivity } from "@/lib/activity/log";
+import { createBountyRoundIfEnabled } from "@/lib/bounties/rounds";
 import { db } from "@/lib/db";
 import { settleableMarkets } from "@/lib/odds-provider/settleable-markets";
 import type { MarketType } from "@/lib/odds-provider/types";
@@ -277,6 +278,7 @@ export async function checkAndMarkBust(challengeId: string, userId: string) {
     .set({ status: "bust" })
     .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, userId)));
   await logActivity(challengeId, userId, "bust", {});
+  await createBountyRoundIfEnabled(challengeId, userId);
 }
 
 export async function voidAndRefundBet(betId: string) {
