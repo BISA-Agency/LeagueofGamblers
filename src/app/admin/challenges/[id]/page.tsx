@@ -73,6 +73,11 @@ export default async function AdminChallengeDetailPage({
           challengeId={challenge.id}
           defaultMissionBudget={challenge.missionBudget}
           defaultAllowRebuy={challenge.allowRebuy}
+          defaultDurationType={challenge.durationType}
+          defaultPrizeMode={challenge.prizeMode}
+          defaultLateJoinDays={challenge.lateJoinDays}
+          defaultBountyEnabled={challenge.bountyEnabled}
+          defaultBountyPerPlayer={challenge.bountyPerPlayer}
         />
       </div>
 

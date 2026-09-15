@@ -61,11 +61,47 @@ export async function updateChallengeRules(
   const missionBudget = budgetRaw === null || budgetRaw === "" ? 0 : Number(budgetRaw);
   if (!Number.isFinite(missionBudget) || missionBudget < 0) return {};
 
+  const durationRaw = formData.get("durationType");
+  const prizeRaw = formData.get("prizeMode");
+  const lateJoinRaw = formData.get("lateJoinDays");
+  const lateJoinDays = lateJoinRaw === null || lateJoinRaw === "" ? 0 : Number(lateJoinRaw);
+  if (!Number.isFinite(lateJoinDays) || lateJoinDays < 0) return {};
+
+  const bountyEnabled = formData.get("bountyEnabled") === "on";
+  const bountyRaw = formData.get("bountyPerPlayer");
+  const bountyPerPlayer = bountyRaw === null || bountyRaw === "" ? 0 : Number(bountyRaw);
+  if (!Number.isFinite(bountyPerPlayer) || bountyPerPlayer < 0) return {};
+
+  const DURATION_TYPES = ["week", "month", "season", "custom"] as const;
+  const PRIZE_MODES = ["standard", "hardcore"] as const;
+  type DurationType = (typeof DURATION_TYPES)[number];
+  type PrizeMode = (typeof PRIZE_MODES)[number];
+  const durationType = DURATION_TYPES.includes(durationRaw as DurationType)
+    ? (durationRaw as DurationType)
+    : null;
+  const prizeMode = PRIZE_MODES.includes(prizeRaw as PrizeMode) ? (prizeRaw as PrizeMode) : null;
+  if (durationType === null || prizeMode === null) return {};
+
+  if (bountyEnabled) {
+    // Same rule as the create form (§2): the bounty is carved out of the
+    // buy-in, so it can never be the whole buy-in or more.
+    const current = await db.query.challenges.findFirst({
+      where: eq(challenges.id, challengeId),
+      columns: { buyInAmount: true },
+    });
+    if (!current || bountyPerPlayer >= current.buyInAmount) return {};
+  }
+
   await db
     .update(challenges)
     .set({
       missionBudget,
       allowRebuy: formData.get("allowRebuy") === "on",
+      durationType,
+      prizeMode,
+      lateJoinDays,
+      bountyEnabled,
+      bountyPerPlayer,
       updatedAt: new Date(),
     })
     .where(eq(challenges.id, challengeId));
