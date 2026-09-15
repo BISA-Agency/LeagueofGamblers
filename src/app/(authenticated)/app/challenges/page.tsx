@@ -19,11 +19,15 @@ import { calculatePrizeSplit, resolvePrizeTiers, type PrizeTierRow } from "@/lib
 import { createClient } from "@/lib/supabase/server";
 import { type LobbyDetail } from "./lobby-detail";
 import { LobbyFilters } from "./lobby-filters";
-import { LobbyTable, type LobbyRow } from "./lobby-table";
+import { LobbyCards, type LobbyRow } from "./lobby-cards";
 
 export const metadata: Metadata = { title: "Challenges" };
 
 const DAY_MS = 86_400_000;
+
+/** Whole days from now until a moment, never negative — "start over 3 dagen", "nog 1 dag". */
+const daysBetween = (from: Date, to: Date) =>
+  Math.max(0, Math.ceil((to.getTime() - from.getTime()) / DAY_MS));
 
 // challenges.sportKeys holds the provider's keys ("soccer_epl"). The
 // competition name comes from the events we've imported under that key,
@@ -42,12 +46,6 @@ async function competitionLabelMap(): Promise<Map<string, string>> {
   for (const row of rows) if (row.competition) map.set(row.key, row.competition);
   return map;
 }
-
-const TIMING_HEADER: Record<LobbyStatus, string> = {
-  open: "Start",
-  live: "Status",
-  finished: "Status",
-};
 
 const EMPTY_TAB: Record<LobbyStatus, string> = {
   open: "Er staat nu niets open voor inschrijving.",
@@ -80,6 +78,7 @@ export default async function ChallengesPage({
     competitionLabelMap(),
   ]);
 
+  const now = new Date();
   const joinedIds = new Set(myParticipations.map((p) => p.challengeId));
   const hotFlags = new Map(
     await Promise.all(
@@ -185,6 +184,8 @@ export default async function ChallengesPage({
         challenge.status === "live" && challenge.lateJoinDays > 0
           ? new Date(challenge.startAt.getTime() + challenge.lateJoinDays * DAY_MS)
           : null,
+      daysUntilStart: daysBetween(now, challenge.startAt),
+      daysLeft: daysBetween(now, challenge.endAt),
     });
   }
 
@@ -210,9 +211,8 @@ export default async function ChallengesPage({
 
       <LobbyFilters filters={filters} counts={counts} />
 
-      <LobbyTable
+      <LobbyCards
         rows={visible}
-        timingHeader={TIMING_HEADER[filters.status]}
         emptyMessage={
           hasFacets ? (
             <>
