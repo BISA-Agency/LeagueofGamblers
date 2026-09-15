@@ -90,3 +90,20 @@ export async function resolveBountyMatchesForVoidedEvent(eventId: string) {
     await resolveBountyRoundMatch(match.id, match.bountyRoundId, () => 0);
   }
 }
+
+/**
+ * Safety net for rounds whose last match resolved but whose settlement never
+ * ran (a cron timeout or a transient DB error between marking the match
+ * resolved and paying out). Idempotent: settleBountyRound claims the row.
+ */
+export async function settleStrandedBountyRounds() {
+  const rounds = await db.query.bountyRounds.findMany({
+    where: eq(bountyRounds.status, "collecting"),
+    with: { matches: { columns: { resolvedAt: true } } },
+  });
+  for (const round of rounds) {
+    if (round.matches.length > 0 && round.matches.every((m) => m.resolvedAt !== null)) {
+      await settleBountyRound(round.id);
+    }
+  }
+}
